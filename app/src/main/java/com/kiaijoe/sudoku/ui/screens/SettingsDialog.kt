@@ -28,9 +28,24 @@ fun SettingsDialog(settings: Settings, onChange: (Settings) -> Unit, onDismiss: 
         text = {
             Column {
                 SettingRow(
+                    title = "Show mistakes right away",
+                    subtitle = if (settings.instantCheck) {
+                        "Wrong numbers turn red as you place them"
+                    } else {
+                        "Nothing is marked until you tap Check"
+                    },
+                    checked = settings.instantCheck,
+                    onCheckedChange = { onChange(settings.copy(instantCheck = it)) },
+                )
+                SettingRow(
                     title = "Mistake limit",
-                    subtitle = "End the game after $MISTAKE_LIMIT wrong numbers",
-                    checked = settings.mistakeLimit,
+                    subtitle = if (settings.instantCheck) {
+                        "End the game after $MISTAKE_LIMIT wrong numbers"
+                    } else {
+                        "Only applies when mistakes are shown right away"
+                    },
+                    checked = settings.mistakeLimit && settings.instantCheck,
+                    enabled = settings.instantCheck,
                     onCheckedChange = { onChange(settings.copy(mistakeLimit = it)) },
                 )
                 SettingRow(
@@ -45,6 +60,12 @@ fun SettingsDialog(settings: Settings, onChange: (Settings) -> Unit, onDismiss: 
                     checked = settings.highlightSameNumbers,
                     onCheckedChange = { onChange(settings.copy(highlightSameNumbers = it)) },
                 )
+                SettingRow(
+                    title = "Vibration",
+                    subtitle = "A light tap when you place a number or finish a row, column or box",
+                    checked = settings.haptics,
+                    onCheckedChange = { onChange(settings.copy(haptics = it)) },
+                )
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
@@ -52,11 +73,17 @@ fun SettingsDialog(settings: Settings, onChange: (Settings) -> Unit, onDismiss: 
 }
 
 @Composable
-private fun SettingRow(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun SettingRow(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    enabled: Boolean = true,
+) {
     Row(
         Modifier
             .fillMaxWidth()
-            .toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = onCheckedChange)
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -69,6 +96,6 @@ private fun SettingRow(title: String, subtitle: String, checked: Boolean, onChec
             )
         }
         Spacer(Modifier.width(12.dp))
-        Switch(checked = checked, onCheckedChange = null)
+        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
     }
 }

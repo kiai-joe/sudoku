@@ -16,6 +16,8 @@ interface GameActions {
     fun erase()
     fun undo()
     fun toggleNotesMode()
+    fun fillCandidates()
+    fun check()
     fun hint()
     fun hintNext()
     fun hintPlace()
@@ -33,6 +35,8 @@ interface GameActions {
         override fun erase() = Unit
         override fun undo() = Unit
         override fun toggleNotesMode() = Unit
+        override fun fillCandidates() = Unit
+        override fun check() = Unit
         override fun hint() = Unit
         override fun hintNext() = Unit
         override fun hintPlace() = Unit

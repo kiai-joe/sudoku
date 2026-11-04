@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kiaijoe.sudoku.data.DifficultyStats
+import com.kiaijoe.sudoku.data.Settings
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.GameStatus
@@ -75,6 +76,24 @@ class ScreenshotTest {
         val g = Fixtures.midGame()
         GameScreen(
             state = UiState(game = g, selected = Fixtures.selectedCell(g)),
+            actions = GameActions.None,
+            onExit = {},
+        )
+    }
+
+    /** "Show mistakes right away" off, after tapping Check: the wrong number is flagged. */
+    @Test
+    fun checkModeLight() = capture("game_check_light", dark = false) {
+        val g = Fixtures.midGame()
+        val wrong = (0 until 81).filter { g.isWrong(it) }.toSet()
+        GameScreen(
+            state = UiState(
+                game = g,
+                settings = Settings(instantCheck = false),
+                flagged = wrong,
+                checks = 1,
+                checkMessage = "1 number is wrong. It's marked in red.",
+            ),
             actions = GameActions.None,
             onExit = {},
         )

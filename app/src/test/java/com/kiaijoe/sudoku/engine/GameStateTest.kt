@@ -117,4 +117,60 @@ class GameStateTest {
         assertEquals(null, decoded?.hardest)
         assertEquals(g.copy(hardest = null), decoded)
     }
+
+    @Test
+    fun withoutCheckingNothingGivesTheAnswerAway() {
+        val g = TestGrids.game()
+        val cell = empty
+        val right = TestGrids.SOLUTION[cell]
+        val wrong = (1..9).first { it != right }
+
+        val placedWrong = g.place(cell, wrong, mistakeLimit = 1, autoRemoveNotes = true, checking = false)
+        assertEquals("no mistake counted", 0, placedWrong.mistakes)
+        assertEquals("not lost", GameStatus.PLAYING, placedWrong.status)
+
+        val placedRight = placedWrong.place(cell, right, mistakeLimit = 1, autoRemoveNotes = true, checking = false)
+        val changedAgain = placedRight.place(cell, wrong, mistakeLimit = 1, autoRemoveNotes = true, checking = false)
+        assertEquals("a correct cell can still be changed", wrong, changedAgain.values[cell])
+        assertEquals("and erased", 0, placedRight.erase(cell, checking = false).values[cell])
+
+        // The number pad counts every placed copy, right or wrong.
+        val before = g.remaining(wrong, checking = false)
+        assertEquals(before - 1, placedWrong.remaining(wrong, checking = false))
+    }
+
+    @Test
+    fun withCheckingCorrectCellsStayLocked() {
+        val g = TestGrids.game().place(empty, TestGrids.SOLUTION[empty], 3, true)
+        val other = (1..9).first { it != TestGrids.SOLUTION[empty] }
+        assertSame(g, g.place(empty, other, 3, true))
+        assertSame(g, g.erase(empty))
+    }
+
+    @Test
+    fun allCandidatesUseOnlyWhatIsOnTheBoard() {
+        val g = TestGrids.game().withAllCandidates()
+        for (cell in 0 until 81) {
+            if (g.values[cell] != 0) {
+                assertEquals(0, g.notes[cell])
+                continue
+            }
+            for (d in 1..9) {
+                val seen = Grid.peers[cell].any { g.values[it] == d }
+                assertEquals("cell $cell digit $d", !seen, g.hasNote(cell, d))
+            }
+            assertTrue("the answer is always a candidate", g.hasNote(cell, TestGrids.SOLUTION[cell]))
+        }
+    }
+
+    @Test
+    fun completingARowColumnOrBoxIsReported() {
+        var g = TestGrids.game()
+        val row0 = House.ROWS[0].cells.filter { !g.isGiven(it) }
+        for (cell in row0.dropLast(1)) g = g.place(cell, TestGrids.SOLUTION[cell], 3, true)
+        val last = row0.last()
+        assertTrue(House.ROWS[0] !in g.completedHouses(last))
+        g = g.place(last, TestGrids.SOLUTION[last], 3, true)
+        assertTrue(House.ROWS[0] in g.completedHouses(last))
+    }
 }

@@ -43,6 +43,10 @@ data class UiState(
     val canUndo: Boolean = false,
     val lastWinWasBest: Boolean = false,
     val hint: HintUi? = null,
+    val feedback: Feedback? = null,
+    val flagged: Set<Int> = emptySet(),
+    val checks: Int = 0,
+    val checkMessage: String? = null,
     val settings: Settings = Settings(),
     val stats: Map<Difficulty, DifficultyStats> = emptyMap(),
 ) {
@@ -68,6 +72,14 @@ data class DailyUi(
     val longestStreak: Int get() = Daily.longestStreak(results.keys)
 }
 
+enum class FeedbackKind { PLACE, NOTE, WRONG, COMPLETE }
+
+/**
+ * What the last input did, for a vibration and, when a row, column or box
+ * was finished, the ink wash over [completed]. [id] changes on every input.
+ */
+data class Feedback(val id: Long, val kind: FeedbackKind, val completed: List<Int> = emptyList())
+
 /** An open hint: the plan and which of its cards is showing. */
 data class HintUi(val plan: HintPlan, val index: Int = 0) {
     private val cards: List<HintCard> get() = (plan as? HintPlan.Teach)?.cards.orEmpty()
@@ -82,6 +94,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     private val undoStack = ArrayDeque<GameState>()
     private var timerJob: Job? = null
     private var gameScreenActive = false
+    private var feedbackId = 0L
 
     private val _ui = MutableStateFlow(
         repo.loadGame().let { saved ->
@@ -162,6 +175,10 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 selected = null,
                 notesMode = false,
                 hint = null,
+                flagged = emptySet(),
+                checks = 0,
+                checkMessage = null,
+                feedback = null,
                 lastWinWasBest = false,
                 stats = repo.loadStats(),
             )
@@ -182,6 +199,8 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 canUndo = false,
                 paused = false,
                 hint = null,
+                flagged = emptySet(),
+                checkMessage = null,
             )
         }
         updateTimer()
@@ -216,7 +235,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     override fun input(digit: Int) {
         val s = _ui.value
         val cell = s.selected ?: return
+        val before = s.game ?: return
         val settings = s.settings
+        val checking = settings.instantCheck
         move { g ->
             if (s.notesMode) {
                 g.toggleNote(cell, digit)
@@ -224,16 +245,61 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 g.place(
                     cell = cell,
                     digit = digit,
-                    mistakeLimit = if (settings.mistakeLimit) MISTAKE_LIMIT else null,
+                    mistakeLimit = if (settings.mistakeLimit && checking) MISTAKE_LIMIT else null,
                     autoRemoveNotes = settings.autoRemoveNotes,
+                    checking = checking,
                 )
             }
+        }
+        val after = _ui.value.game ?: return
+        if (after == before) return
+        // Finishing a group is only celebrated when it can't give away whether numbers are right.
+        val completed = if (!s.notesMode && checking && after.isCorrect(cell)) {
+            after.completedHouses(cell).flatMap { it.cells.toList() }.distinct()
+        } else {
+            emptyList()
+        }
+        val kind = when {
+            s.notesMode -> FeedbackKind.NOTE
+            completed.isNotEmpty() -> FeedbackKind.COMPLETE
+            checking && after.isWrong(cell) -> FeedbackKind.WRONG
+            else -> FeedbackKind.PLACE
+        }
+        _ui.update {
+            it.copy(
+                feedback = Feedback(++feedbackId, kind, completed),
+                flagged = it.flagged - cell,
+                checkMessage = null,
+            )
         }
     }
 
     override fun erase() {
         val cell = _ui.value.selected ?: return
-        move { it.erase(cell) }
+        val checking = _ui.value.settings.instantCheck
+        move { it.erase(cell, checking) }
+        _ui.update { it.copy(flagged = it.flagged - cell, checkMessage = null) }
+    }
+
+    /** Pencils every possible number into the empty cells. Undoable. */
+    override fun fillCandidates() = move { it.withAllCandidates() }
+
+    /** Marks the wrong numbers on the board, for players who check only when they ask. */
+    override fun check() {
+        val game = _ui.value.game ?: return
+        if (game.status != GameStatus.PLAYING) return
+        val wrong = (0 until 81).filter { game.isWrong(it) }.toSet()
+        _ui.update {
+            it.copy(
+                flagged = wrong,
+                checks = it.checks + 1,
+                checkMessage = when (wrong.size) {
+                    0 -> "Everything so far is right."
+                    1 -> "1 number is wrong. It's marked in red."
+                    else -> "${wrong.size} numbers are wrong. They're marked in red."
+                },
+            )
+        }
     }
 
     /** Opens a teaching hint for the board as it stands. Opening one counts as a hint used. */
