@@ -48,7 +48,7 @@ object Hints {
         if (game.isSolved) return HintPlan.NothingLeft
 
         val known = IntArray(Grid.CELLS) { if (game.isGiven(it) || game.isCorrect(it)) game.values[it] else 0 }
-        val solver = LogicSolver(known)
+        val solver = LogicSolver(known, game.cages)
         val cards = ArrayList<HintCard>()
         while (cards.size < MAX_STEPS) {
             val step = solver.nextStep() ?: break
@@ -88,7 +88,7 @@ object Hints {
         return HintCard(
             technique = step.technique,
             title = step.technique.label,
-            text = explain(step) { solver.candidates(it) },
+            text = explain(step, { solver.candidates(it) }, { solver.value(it) }),
             focus = step.pattern.toSet(),
             area = area,
             eliminations = step.eliminations,
@@ -99,7 +99,7 @@ object Hints {
     }
 
     /** Plain-language explanation of [step]. [cands] gives a cell's candidates before the step. */
-    fun explain(step: Step, cands: (Int) -> Int): String {
+    fun explain(step: Step, cands: (Int) -> Int, value: (Int) -> Int = { 0 }): String {
         val d = digitList(step.digits)
         val h = step.houses
         val k = step.pattern.size
@@ -118,6 +118,8 @@ object Hints {
             Technique.CLAIMING ->
                 "In ${houseName(h[0])}, $d can only go inside ${houseName(h[1])}. So ${houseName(h[1])} gets its " +
                     "$d from ${houseName(h[0])}, and $d can't go anywhere else in that box."
+
+            Technique.CAGE -> cageText(step, cands, value)
 
             Technique.NAKED_PAIR, Technique.NAKED_TRIPLE, Technique.NAKED_QUAD ->
                 "These ${countWord(k)} cells in ${houseName(h[0])} can only hold $d. Between them they must take " +
@@ -153,13 +155,46 @@ object Hints {
         }
     }
 
+    /**
+     * "This cage adds up to 15. Its 2 empty cells need 9 more, and with the
+     * numbers still possible there the only ways are 1+8 or 4+5. So ..."
+     */
+    private fun cageText(step: Step, cands: (Int) -> Int, value: (Int) -> Int): String {
+        val cage = step.cage ?: return "The cage's sum rules out the crossed-out numbers."
+        val open = cage.cells.filter { value(it) == 0 }
+        val placed = cage.cells.map(value).filter { it != 0 }
+        val remaining = cage.sum - placed.sum()
+        val used = placed.fold(0) { m, d -> m or (1 shl (d - 1)) }
+        val combos = Killer.combinations(open.map(cands), remaining, used)
+        val ways = combos.take(4).joinToString(" or ") { mask ->
+            (1..9).filter { mask and (1 shl (it - 1)) != 0 }.joinToString("+")
+        } + if (combos.size > 4) ", among others" else ""
+        if (open.size == 1) {
+            return "This cage adds up to ${cage.sum} and already has ${joinAnd(placed.map { it.toString() })}, " +
+                "so its last empty cell must be $remaining."
+        }
+        val start = if (placed.isEmpty()) {
+            "This cage of ${open.size} cells adds up to ${cage.sum}."
+        } else {
+            "This cage adds up to ${cage.sum} and already has ${joinAnd(placed.map { it.toString() })}, " +
+                "so its ${open.size} empty cells need $remaining more."
+        }
+        val combosText = when {
+            combos.size == 1 ->
+                " Using the numbers still possible in its cells, with none repeated, the only way to make $remaining is $ways."
+            else ->
+                " Using the numbers still possible in its cells, with none repeated, $remaining can only be made as $ways."
+        }
+        return "$start$combosText So ${digitList(step.digits)} can't go where they're crossed out."
+    }
+
     // --- Wording ----------------------------------------------------------
 
     private val Technique.showsAllCandidates: Boolean
         get() = when (this) {
             Technique.NAKED_PAIR, Technique.NAKED_TRIPLE, Technique.NAKED_QUAD,
             Technique.HIDDEN_PAIR, Technique.HIDDEN_TRIPLE, Technique.HIDDEN_QUAD,
-            Technique.XY_WING, Technique.XYZ_WING,
+            Technique.XY_WING, Technique.XYZ_WING, Technique.CAGE,
             -> true
             else -> false
         }

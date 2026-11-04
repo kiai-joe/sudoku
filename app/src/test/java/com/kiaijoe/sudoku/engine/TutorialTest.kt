@@ -10,7 +10,7 @@ class TutorialTest {
 
     @Test
     fun everyTechniqueHasOneLessonInOrder() {
-        assertEquals(Technique.entries, Tutorial.lessons.map { it.technique })
+        assertEquals(Technique.entries.filter { !it.killerOnly }, Tutorial.lessons.map { it.technique })
     }
 
     /**

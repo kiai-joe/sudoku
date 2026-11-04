@@ -56,11 +56,13 @@ fun HomeScreen(
     onPlayDaily: () -> Unit,
     onCalendar: () -> Unit,
     onNewGame: (Difficulty) -> Unit,
+    onNewKiller: () -> Unit,
     onStats: () -> Unit,
     onLearn: () -> Unit,
     onSettingsChange: (Settings) -> Unit,
 ) {
     var pending by remember { mutableStateOf<Difficulty?>(null) }
+    var pendingKiller by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -98,7 +100,7 @@ fun HomeScreen(
                         Column(horizontalAlignment = Alignment.Start) {
                             Text("Continue", fontWeight = FontWeight.SemiBold)
                             Text(
-                                "${game.difficulty.label} · ${formatTime(game.elapsedSeconds)}",
+                                "${if (game.isKiller) "Killer · " else ""}${game.difficulty.label} · ${formatTime(game.elapsedSeconds)}",
                                 style = MaterialTheme.typography.bodySmall,
                             )
                         }
@@ -134,6 +136,20 @@ fun HomeScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                 }
+                OutlinedButton(
+                    onClick = { if (state.canContinue) pendingKiller = true else onNewKiller() },
+                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.fillMaxWidth().height(64.dp),
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("Killer Sudoku", style = MaterialTheme.typography.titleSmall)
+                        Text(
+                            "Cages that add up",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
 
                 Spacer(Modifier.height(20.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
@@ -166,6 +182,18 @@ fun HomeScreen(
                 Button(onClick = { pending = null; onNewGame(d) }) { Text("Start") }
             },
             dismissButton = { TextButton(onClick = { pending = null }) { Text("Cancel") } },
+        )
+    }
+
+    if (pendingKiller) {
+        AlertDialog(
+            onDismissRequest = { pendingKiller = false },
+            title = { Text("Start a Killer Sudoku game?") },
+            text = { Text("Your game in progress will be replaced.") },
+            confirmButton = {
+                Button(onClick = { pendingKiller = false; onNewKiller() }) { Text("Start") }
+            },
+            dismissButton = { TextButton(onClick = { pendingKiller = false }) { Text("Cancel") } },
         )
     }
 

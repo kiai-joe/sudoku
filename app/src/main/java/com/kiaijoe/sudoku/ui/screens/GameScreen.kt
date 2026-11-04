@@ -108,6 +108,7 @@ fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
                         when {
                             state.generating -> "New game"
                             game?.daily != null -> "Daily · ${game.difficulty.label}"
+                            game?.isKiller == true -> "Killer · ${game.difficulty.label}"
                             else -> game?.difficulty?.label.orEmpty()
                         },
                         style = MaterialTheme.typography.titleLarge,
@@ -235,7 +236,7 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
         Spacer(Modifier.height(18.dp))
         val hint = state.hint
         if (won) {
-            WinPanel(state, game, onNewGame = { actions.newGame(game.difficulty) }, onHome = onExit)
+            WinPanel(state, game, onNewGame = { actions.newLike(game) }, onHome = onExit)
         } else if (hint != null) {
             HintPanel(
                 hint = hint,
@@ -350,7 +351,7 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
         )
         Spacer(Modifier.height(4.dp))
         Text(
-            "${game.difficulty.label} in ${formatTime(game.elapsedSeconds)}",
+            "${if (game.isKiller) "Killer · " else ""}${game.difficulty.label} in ${formatTime(game.elapsedSeconds)}",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.primary,
@@ -421,6 +422,9 @@ private fun StatusRow(state: UiState, game: GameState) {
     }
 }
 
+/** Starts another game of the same kind as [game]. */
+private fun GameActions.newLike(game: GameState) = if (game.isKiller) newKiller() else newGame(game.difficulty)
+
 /** A short vibration for each input, through the system's own haptic feedback settings. */
 @Composable
 private fun Haptics(feedback: Feedback?, enabled: Boolean) {
@@ -471,7 +475,7 @@ private fun EndDialogs(game: GameState, actions: GameActions) {
             text = { Text("That was $MISTAKE_LIMIT wrong numbers. Try this puzzle again or start a fresh one.") },
             confirmButton = { Button(onClick = actions::restart) { Text("Try again") } },
             dismissButton = {
-                FilledTonalButton(onClick = { actions.newGame(game.difficulty) }) { Text("New puzzle") }
+                FilledTonalButton(onClick = { actions.newLike(game) }) { Text("New puzzle") }
             },
         )
         GameStatus.PLAYING -> Unit

@@ -42,7 +42,12 @@ import com.kiaijoe.sudoku.ui.formatTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun StatsScreen(stats: Map<Difficulty, DifficultyStats>, onReset: () -> Unit, onBack: () -> Unit) {
+fun StatsScreen(
+    stats: Map<Difficulty, DifficultyStats>,
+    onReset: () -> Unit,
+    onBack: () -> Unit,
+    killerStats: DifficultyStats = DifficultyStats(),
+) {
     BackHandler(onBack = onBack)
     var confirmReset by remember { mutableStateOf(false) }
 
@@ -70,7 +75,11 @@ fun StatsScreen(stats: Map<Difficulty, DifficultyStats>, onReset: () -> Unit, on
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Difficulty.entries.forEach { d ->
-                StatCard(d, stats[d] ?: DifficultyStats())
+                StatCard(d.label, stats[d] ?: DifficultyStats())
+                Spacer(Modifier.height(12.dp))
+            }
+            if (killerStats.played > 0) {
+                StatCard("Killer Sudoku", killerStats)
                 Spacer(Modifier.height(12.dp))
             }
         }
@@ -88,7 +97,7 @@ fun StatsScreen(stats: Map<Difficulty, DifficultyStats>, onReset: () -> Unit, on
 }
 
 @Composable
-private fun StatCard(difficulty: Difficulty, stats: DifficultyStats) {
+private fun StatCard(title: String, stats: DifficultyStats) {
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = MaterialTheme.colorScheme.surface,
@@ -96,7 +105,7 @@ private fun StatCard(difficulty: Difficulty, stats: DifficultyStats) {
         modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
     ) {
         Column(Modifier.padding(18.dp)) {
-            Text(difficulty.label, style = MaterialTheme.typography.titleMedium)
+            Text(title, style = MaterialTheme.typography.titleMedium)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Stat("Played", stats.played.toString())

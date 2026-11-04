@@ -17,15 +17,16 @@ object GameCodec {
         state.status.name,
         state.hardest?.name ?: "-",
         state.daily?.toString() ?: "-",
+        if (state.cages.isEmpty()) "-" else state.cages.joinToString(";") { "${it.sum}:${it.cells.joinToString(".")}" },
     ).joinToString("|")
 
     /**
      * Returns null for anything that isn't a well-formed save. Older saves
-     * have 10 fields (before grading) or 11 (before daily puzzles).
+     * have 10 fields (before grading), 11 (before daily puzzles) or 12 (before Killer).
      */
     fun decode(text: String): GameState? = runCatching {
         val parts = text.split("|")
-        if (parts.size !in 10..12 || parts[0] != VERSION) return null
+        if (parts.size !in 10..13 || parts[0] != VERSION) return null
         val givens = digits(parts[2])
         val solution = digits(parts[3])
         val values = digits(parts[4])
@@ -44,8 +45,14 @@ object GameCodec {
             status = GameStatus.valueOf(parts[9]),
             hardest = parts.getOrNull(10)?.takeIf { it != "-" }?.let { Technique.valueOf(it) },
             daily = parts.getOrNull(11)?.takeIf { it != "-" }?.toLong(),
+            cages = parts.getOrNull(12)?.takeIf { it != "-" }?.let(::cages).orEmpty(),
         )
     }.getOrNull()
+
+    private fun cages(s: String): List<Cage> = s.split(";").map { cage ->
+        val (sum, cells) = cage.split(":")
+        Cage(sum.toInt(), cells.split(".").map { it.toInt().also { c -> require(c in 0 until Grid.CELLS) } })
+    }
 
     private fun digits(s: String): List<Int> {
         require(s.length == Grid.CELLS)

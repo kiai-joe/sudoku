@@ -15,12 +15,14 @@ enum class Difficulty(val label: String, val techniques: String) {
 
 /**
  * @property hardest the hardest technique the puzzle needs, as graded by [LogicSolver].
+ * @property cages Killer Sudoku cages, or empty for a classic puzzle.
  */
 class Puzzle(
     val givens: IntArray,
     val solution: IntArray,
     val difficulty: Difficulty,
     val hardest: Technique? = null,
+    val cages: List<Cage> = emptyList(),
 )
 
 /**

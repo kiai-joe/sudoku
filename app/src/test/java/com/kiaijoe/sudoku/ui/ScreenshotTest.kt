@@ -13,6 +13,7 @@ import com.kiaijoe.sudoku.engine.GameStatus
 import com.kiaijoe.sudoku.engine.Generator
 import com.kiaijoe.sudoku.engine.HintPlan
 import com.kiaijoe.sudoku.engine.Hints
+import com.kiaijoe.sudoku.engine.Killer
 import com.kiaijoe.sudoku.engine.Technique
 import com.kiaijoe.sudoku.engine.Tutorial
 import com.kiaijoe.sudoku.ui.screens.CalendarScreen
@@ -70,6 +71,7 @@ class ScreenshotTest {
             onPlayDaily = {},
             onCalendar = {},
             onNewGame = {},
+            onNewKiller = {},
             onStats = {},
             onLearn = {},
             onSettingsChange = {},
@@ -86,6 +88,7 @@ class ScreenshotTest {
             onPlayDaily = {},
             onCalendar = {},
             onNewGame = {},
+            onNewKiller = {},
             onStats = {},
             onLearn = {},
             onSettingsChange = {},
@@ -138,6 +141,28 @@ class ScreenshotTest {
             actions = GameActions.None,
             onExit = {},
         )
+    }
+
+    // --- Killer Sudoku -------------------------------------------------------
+
+    @Test fun killerLight() = killer(dark = false)
+
+    @Test fun killerDark() = killer(dark = true)
+
+    private fun killer(dark: Boolean) = capture(if (dark) "killer_dark" else "killer_light", dark) {
+        val g = Fixtures.killerGame()
+        GameScreen(
+            state = UiState(game = g, selected = (0 until 81).first { g.values[it] == 0 }),
+            actions = GameActions.None,
+            onExit = {},
+        )
+    }
+
+    /** A Killer hint explaining a cage. */
+    @Test
+    fun killerHintLight() = capture("killer_hint_light", dark = false) {
+        val (g, plan) = Fixtures.killerCageHint()
+        GameScreen(state = UiState(game = g, hint = HintUi(plan)), actions = GameActions.None, onExit = {})
     }
 
     // --- Hints -------------------------------------------------------------
@@ -263,6 +288,26 @@ private object Fixtures {
             g = placeNextHint(g)
         }
         error("no elimination hint found")
+    }
+
+    /** A Killer game a few moves in. */
+    fun killerGame(): GameState {
+        var g = GameState.from(Killer.generate(Random(11)))
+        repeat(6) { g = placeNextHint(g) }
+        return g.copy(elapsedSeconds = 184)
+    }
+
+    /** A Killer game at the point where the next hint is a cage combination. */
+    fun killerCageHint(): Pair<GameState, HintPlan> {
+        var g = GameState.from(Killer.generate(Random(11)))
+        repeat(81) {
+            val plan = Hints.forGame(g)
+            if (plan is HintPlan.Teach && plan.cards.first().technique == Technique.CAGE && it >= 4) {
+                return g.copy(elapsedSeconds = 241) to plan
+            }
+            g = placeNextHint(g)
+        }
+        error("no cage hint found")
     }
 
     fun wonGame(): GameState {

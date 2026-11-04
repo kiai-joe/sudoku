@@ -71,6 +71,10 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
                     viewModel.newGame(difficulty)
                     screen = Screen.Game
                 },
+                onNewKiller = {
+                    viewModel.newKiller()
+                    screen = Screen.Game
+                },
                 onStats = { screen = Screen.Stats },
                 onLearn = { screen = Screen.Learn },
                 onSettingsChange = viewModel::updateSettings,
@@ -111,6 +115,7 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
             )
             Screen.Stats -> StatsScreen(
                 stats = state.stats,
+                killerStats = state.killerStats,
                 onReset = viewModel::resetStats,
                 onBack = { screen = Screen.Home },
             )

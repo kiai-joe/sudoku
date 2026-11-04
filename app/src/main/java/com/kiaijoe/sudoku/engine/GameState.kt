@@ -9,6 +9,7 @@ enum class GameStatus { PLAYING, WON, LOST }
  * [notes] holds one 9-bit mask per cell: bit (d - 1) is set when pencil mark d is shown.
  * [hardest] is the hardest technique the puzzle needs, when known.
  * [daily] is the epoch day of the daily puzzle this game is, or null for a regular game.
+ * [cages] are the Killer Sudoku cages, or empty for a classic game.
  */
 data class GameState(
     val difficulty: Difficulty,
@@ -22,7 +23,10 @@ data class GameState(
     val status: GameStatus = GameStatus.PLAYING,
     val hardest: Technique? = null,
     val daily: Long? = null,
+    val cages: List<Cage> = emptyList(),
 ) {
+    val isKiller: Boolean get() = cages.isNotEmpty()
+
     fun isGiven(cell: Int) = givens[cell] != 0
     fun isWrong(cell: Int) = values[cell] != 0 && values[cell] != solution[cell]
     fun isCorrect(cell: Int) = values[cell] != 0 && values[cell] == solution[cell]
@@ -139,6 +143,7 @@ data class GameState(
             values = puzzle.givens.toList(),
             notes = List(Grid.CELLS) { 0 },
             hardest = puzzle.hardest,
+            cages = puzzle.cages,
         )
     }
 }

@@ -14,6 +14,7 @@ import com.kiaijoe.sudoku.engine.Generator
 import com.kiaijoe.sudoku.engine.HintCard
 import com.kiaijoe.sudoku.engine.HintPlan
 import com.kiaijoe.sudoku.engine.Hints
+import com.kiaijoe.sudoku.engine.Killer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -49,6 +50,7 @@ data class UiState(
     val checkMessage: String? = null,
     val settings: Settings = Settings(),
     val stats: Map<Difficulty, DifficultyStats> = emptyMap(),
+    val killerStats: DifficultyStats = DifficultyStats(),
 ) {
     val canContinue: Boolean get() = savedGame?.status == GameStatus.PLAYING && !generating
 }
@@ -104,6 +106,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 daily = loadDaily(),
                 settings = repo.loadSettings(),
                 stats = repo.loadStats(),
+                killerStats = repo.loadKillerStats(),
             )
         },
     )
@@ -117,6 +120,17 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             val puzzle = withContext(Dispatchers.Default) { Generator.generate(difficulty) }
             val game = GameState.from(puzzle)
             repo.recordStart(difficulty)
+            repo.saveGame(game)
+            show(game, savedGame = game)
+        }
+    }
+
+    /** Starts a Killer Sudoku game. It takes the regular game's slot, like any new game. */
+    override fun newKiller() {
+        startLoading()
+        viewModelScope.launch {
+            val game = GameState.from(withContext(Dispatchers.Default) { Killer.generate() })
+            repo.recordKillerStart()
             repo.saveGame(game)
             show(game, savedGame = game)
         }
@@ -181,6 +195,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 feedback = null,
                 lastWinWasBest = false,
                 stats = repo.loadStats(),
+                killerStats = repo.loadKillerStats(),
             )
         }
         updateTimer()
@@ -363,6 +378,8 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             if (day != null) {
                 repo.recordDailyWin(day, next.elapsedSeconds)
                 best = false
+            } else if (next.isKiller) {
+                best = repo.recordKillerWin(next.elapsedSeconds)
             } else {
                 best = repo.recordWin(next.difficulty, next.elapsedSeconds)
             }
@@ -375,6 +392,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 canUndo = undoStack.isNotEmpty(),
                 lastWinWasBest = best,
                 stats = if (next.status == GameStatus.WON) repo.loadStats() else it.stats,
+                killerStats = if (next.status == GameStatus.WON) repo.loadKillerStats() else it.killerStats,
             )
         }
         updateTimer()
@@ -403,7 +421,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
 
     fun resetStats() {
         repo.resetStats()
-        _ui.update { it.copy(stats = repo.loadStats()) }
+        _ui.update { it.copy(stats = repo.loadStats(), killerStats = repo.loadKillerStats()) }
     }
 
     // --- Timer ----------------------------------------------------------
