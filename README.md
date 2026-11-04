@@ -17,9 +17,10 @@ Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi bla
 - Timer that pauses when you leave the app, plus a manual pause that hides the board.
 - Killer Sudoku in four levels: the grid is split into cages, each showing the sum of its cells, with no repeats inside a cage. Killer has its own ladder, because cage logic solves most puzzles before classic techniques are needed: Easy needs cage combinations, Medium the 45 rule (innies and outies), Hard classic techniques such as pointing and pairs, and Expert the same with no printed numbers at all. Every puzzle is solvable by logic, and hints explain cage combinations and the 45 rule.
 - Learn: a lesson for every technique the puzzles are graded by, each with a worked example from a real puzzle that you step through on the board, explained the same way hints are.
-- Daily puzzle: the same puzzle for everyone each day, made from the date so it works offline. It runs from Easy on Monday to Expert on Sunday. A streak counts the days in a row you solve it, and a calendar marks each solved day with a hanamaru. It's saved separately, so it never replaces your regular game.
+- Daily puzzle: the same puzzle for everyone each day, made from the date so it works offline. It runs from Easy on Monday to Expert on Sunday, with a Killer puzzle on Saturday. A streak counts the days in a row you solve it, and a calendar marks each solved day with a hanamaru. It's saved separately, so it never replaces your regular game.
 - The current game is saved after every move and can be resumed.
 - Statistics per level: games played, wins, win rate and best time.
+- Twelve achievements, from a first solve to a 30-day daily streak and an Expert Killer with no printed numbers. New ones show on the win screen; all are listed, stamped and dated, under Statistics. Ones already earned from saved statistics are awarded on first launch.
 - Three ink palettes, picked in Settings: Sumi (ink on washi paper), Indigo night (paper-white on deep indigo, always dark) and Bamboo (green-tinted paper). Sumi and Bamboo follow the system's light or dark setting.
 
 ## Install on your phone
@@ -68,6 +69,7 @@ app/src/main/java/com/kiaijoe/sudoku/
 │   ├── Daily.kt       Daily puzzle from the date, weekly levels, streaks
 │   ├── Tutorial.kt    Lessons and their worked examples (stored as seed + moves)
 │   ├── Killer.kt      Killer cages, cage combinations and the Killer generator
+│   ├── Achievements.kt Achievements and the rules for earning them
 │   ├── Generator.kt   Graded, unique-solution puzzle generator and levels
 │   ├── GameState.kt   Immutable game state and moves
 │   └── GameCodec.kt   Save format

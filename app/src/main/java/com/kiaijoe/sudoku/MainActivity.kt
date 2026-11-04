@@ -116,6 +116,7 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
             Screen.Stats -> StatsScreen(
                 stats = state.stats,
                 killerStats = state.killerStats,
+                achievements = state.achievements,
                 onReset = viewModel::resetStats,
                 onBack = { screen = Screen.Home },
             )

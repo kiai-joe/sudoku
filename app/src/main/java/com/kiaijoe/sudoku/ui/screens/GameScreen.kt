@@ -107,7 +107,8 @@ fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
                     Text(
                         when {
                             state.generating -> "New game"
-                            game?.daily != null -> "Daily · ${game.difficulty.label}"
+                            game?.daily != null ->
+                                "Daily · ${if (game.isKiller) "Killer " else ""}${game.difficulty.label}"
                             game?.isKiller == true -> "Killer · ${game.difficulty.label}"
                             else -> game?.difficulty?.label.orEmpty()
                         },
@@ -371,6 +372,18 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
                 fontWeight = FontWeight.SemiBold,
             )
             Spacer(Modifier.height(2.dp))
+        }
+        for (achievement in state.newAchievements) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+                HanamaruStamp(SealRed, Modifier.size(20.dp), animate = false)
+                Spacer(Modifier.size(6.dp))
+                Text(
+                    "New achievement: ${achievement.title}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SealRed,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
         }
         game.hardest?.let { technique ->
             Text(

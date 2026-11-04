@@ -84,7 +84,7 @@ fun DailyCard(daily: DailyUi, onPlay: () -> Unit, onCalendar: () -> Unit, modifi
                 Column(Modifier.weight(1f)) {
                     Text("Daily puzzle", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "${dayName(today)} · ${daily.difficulty.label}",
+                        "${dayName(today)} · ${daily.label}",
                         style = MaterialTheme.typography.bodySmall,
                         color = scheme.onSurfaceVariant,
                     )
@@ -313,7 +313,7 @@ private fun WeekdayCard(daily: DailyUi) {
         Column(Modifier.padding(18.dp)) {
             Text("By weekday", style = MaterialTheme.typography.titleMedium)
             Text(
-                "Average solve time. Levels rise from Easy on Monday to Expert on Sunday.",
+                "Average solve time. Levels rise from Easy on Monday to Expert on Sunday, with Killer on Saturday.",
                 style = MaterialTheme.typography.bodySmall,
                 color = scheme.onSurfaceVariant,
             )
@@ -325,7 +325,11 @@ private fun WeekdayCard(daily: DailyUi) {
                             row.day.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
                             style = MaterialTheme.typography.labelLarge,
                         )
-                        Text(row.difficulty.label, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                        Text(
+                            if (row.killer) "Killer" else row.difficulty.label,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurfaceVariant,
+                        )
                     }
                     Box(
                         Modifier

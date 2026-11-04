@@ -8,6 +8,7 @@ import kotlin.random.Random
 data class WeekdayStats(
     val day: DayOfWeek,
     val difficulty: Difficulty,
+    val killer: Boolean,
     val solved: Int,
     val averageSeconds: Long?,
     val bestSeconds: Long?,
@@ -22,15 +23,29 @@ data class WeekdayStats(
  */
 object Daily {
 
-    /** Easy on Monday, rising through the week to Expert on Sunday. */
+    /**
+     * Easy on Monday, rising through the week to Expert on Sunday, with a
+     * Killer puzzle on Saturday (Medium on the Killer ladder: the 45 rule).
+     */
     fun difficultyFor(day: Long): Difficulty = when (LocalDate.ofEpochDay(day).dayOfWeek) {
         DayOfWeek.MONDAY, DayOfWeek.TUESDAY -> Difficulty.EASY
         DayOfWeek.WEDNESDAY, DayOfWeek.THURSDAY -> Difficulty.MEDIUM
-        DayOfWeek.FRIDAY, DayOfWeek.SATURDAY -> Difficulty.HARD
+        DayOfWeek.FRIDAY -> Difficulty.HARD
+        DayOfWeek.SATURDAY -> Difficulty.MEDIUM
         DayOfWeek.SUNDAY -> Difficulty.EXPERT
     }
 
-    fun puzzleFor(day: Long): Puzzle = Generator.generate(difficultyFor(day), Random(seed(day)))
+    /** Saturday's daily is a Killer puzzle. */
+    fun isKiller(day: Long): Boolean = LocalDate.ofEpochDay(day).dayOfWeek == DayOfWeek.SATURDAY
+
+    /** "Medium" or "Killer · Medium", for showing which puzzle a day has. */
+    fun label(day: Long): String = (if (isKiller(day)) "Killer · " else "") + difficultyFor(day).label
+
+    fun puzzleFor(day: Long): Puzzle = if (isKiller(day)) {
+        Killer.generate(difficultyFor(day), Random(seed(day)))
+    } else {
+        Generator.generate(difficultyFor(day), Random(seed(day)))
+    }
 
     /** A fresh game for [day], marked as that day's daily puzzle. */
     fun gameFor(day: Long): GameState = GameState.from(puzzleFor(day)).copy(daily = day)
@@ -74,6 +89,7 @@ object Daily {
                 // Any date with this weekday gives its level. Epoch day 4 (1970-01-05)
                 // was a Monday, and DayOfWeek.value runs 1 (Monday) to 7 (Sunday).
                 difficulty = difficultyFor(3L + dow.value),
+                killer = isKiller(3L + dow.value),
                 solved = times.size,
                 averageSeconds = if (times.isEmpty()) null else times.sum() / times.size,
                 bestSeconds = times.minOrNull(),

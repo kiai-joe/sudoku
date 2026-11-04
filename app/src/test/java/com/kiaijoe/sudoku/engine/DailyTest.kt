@@ -4,6 +4,7 @@ import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.LocalDate
 
@@ -16,11 +17,15 @@ class DailyTest {
         // 2026-11-02 is a Monday.
         val expected = listOf(
             Difficulty.EASY, Difficulty.EASY, Difficulty.MEDIUM, Difficulty.MEDIUM,
-            Difficulty.HARD, Difficulty.HARD, Difficulty.EXPERT,
+            Difficulty.HARD, Difficulty.MEDIUM, Difficulty.EXPERT,
         )
         for ((i, level) in expected.withIndex()) {
-            assertEquals(level, Daily.difficultyFor(day("2026-11-02") + i))
+            val d = day("2026-11-02") + i
+            assertEquals(level, Daily.difficultyFor(d))
+            assertEquals("only Saturday is Killer", i == 5, Daily.isKiller(d))
         }
+        assertEquals("Killer · Medium", Daily.label(day("2026-11-07")))
+        assertEquals("Hard", Daily.label(day("2026-11-06")))
     }
 
     @Test
@@ -37,8 +42,16 @@ class DailyTest {
         val monday = day("2026-11-02")
         for (offset in 0L until 7L) {
             val d = monday + offset
-            val grade = LogicSolver.grade(Daily.puzzleFor(d).givens)
-            assertEquals("day $offset", Daily.difficultyFor(d), grade.level)
+            val puzzle = Daily.puzzleFor(d)
+            val grade = LogicSolver.grade(puzzle.givens, puzzle.cages)
+            assertTrue("day $offset solvable", grade.solved)
+            val level = if (Daily.isKiller(d)) {
+                assertTrue("Saturday has cages", puzzle.cages.isNotEmpty())
+                Killer.levelOf(grade.hardest, puzzle.givens.count { it != 0 })
+            } else {
+                grade.level
+            }
+            assertEquals("day $offset", Daily.difficultyFor(d), level)
         }
     }
 
@@ -85,6 +98,7 @@ class DailyTest {
         assertEquals(300L, stats[0].averageSeconds)
         assertEquals(200L, stats[0].bestSeconds)
         assertEquals(Difficulty.EXPERT, stats[6].difficulty)
+        assertTrue("Saturday is Killer", stats[5].killer)
         assertEquals(900L, stats[6].averageSeconds)
         assertEquals(0, stats[2].solved)
         assertNull(stats[2].averageSeconds)
