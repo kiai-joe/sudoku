@@ -138,7 +138,8 @@ fun NumberPad(
                 },
                 modifier = Modifier
                     .weight(1f)
-                    .aspectRatio(0.72f)
+                    // Taller in large mode so the bigger digit still leaves room for the count under it.
+                    .aspectRatio(if (largeNumbers) 0.6f else 0.72f)
                     .semantics {
                         contentDescription = if (done) "$digit, all placed" else "$digit, $left left"
                     },
