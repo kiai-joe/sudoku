@@ -1,5 +1,8 @@
 package com.kiaijoe.sudoku.ui.components
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -15,10 +18,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
@@ -30,10 +36,14 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.engine.GameState
-import com.kiaijoe.sudoku.engine.HintCard
 import com.kiaijoe.sudoku.engine.Grid
+import com.kiaijoe.sudoku.engine.HintCard
+import com.kiaijoe.sudoku.ui.Feedback
 import com.kiaijoe.sudoku.ui.theme.BoardColors
 import com.kiaijoe.sudoku.ui.theme.LocalBoardColors
+import com.kiaijoe.sudoku.ui.theme.SealRed
+import kotlin.math.PI
+import kotlin.math.sin
 
 @Composable
 fun SudokuBoard(
@@ -44,7 +54,12 @@ fun SudokuBoard(
     modifier: Modifier = Modifier,
     hint: HintCard? = null,
     mistakeCell: Int? = null,
+    revealWrong: Boolean = true,
+    flagged: Set<Int> = emptySet(),
+    flash: Feedback? = null,
 ) {
+    // With instant checking off, a wrong number only shows once Check has flagged it.
+    val wrongShown: (Int) -> Boolean = { game.isWrong(it) && (revealWrong || it in flagged) }
     val colors = LocalBoardColors.current
     val shape = RoundedCornerShape(10.dp)
     val selectedDigit = selected?.let { game.values[it] }?.takeIf { it != 0 && highlightSameNumbers }
@@ -75,8 +90,9 @@ fun SudokuBoard(
                             background = if (hint != null || mistakeCell != null) {
                                 hintBackground(index, hint, mistakeCell, colors)
                             } else {
-                                cellBackground(game, index, selected, selectedDigit, colors)
+                                cellBackground(game, index, selected, selectedDigit, colors, wrongShown(index))
                             },
+                            wrongShown = wrongShown(index),
                             hintShown = hint?.candidates?.get(index) ?: 0,
                             hintStruck = hint?.eliminations?.get(index) ?: 0,
                             selectedDigit = selectedDigit,
@@ -92,6 +108,8 @@ fun SudokuBoard(
                 }
             }
         }
+
+        if (flash != null && flash.completed.isNotEmpty()) InkWash(flash)
 
         // Grid lines are drawn on top so cell backgrounds never cover them.
         Canvas(Modifier.fillMaxSize()) {
@@ -131,9 +149,10 @@ private fun cellBackground(
     selected: Int?,
     selectedDigit: Int?,
     colors: BoardColors,
+    wrongShown: Boolean,
 ): Color = when {
     index == selected -> colors.selected
-    game.isWrong(index) -> colors.wrongBackground
+    wrongShown -> colors.wrongBackground
     selectedDigit != null && game.values[index] == selectedDigit -> colors.sameNumber
     selected != null && Grid.arePeers(index, selected) -> colors.peer
     else -> Color.Transparent
@@ -150,6 +169,7 @@ private fun Cell(
     colors: BoardColors,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    wrongShown: Boolean = false,
     hintShown: Int = 0,
     hintStruck: Int = 0,
 ) {
@@ -159,7 +179,7 @@ private fun Cell(
         when {
             value == 0 -> append("empty")
             game.isGiven(index) -> append("$value, given")
-            game.isWrong(index) -> append("$value, incorrect")
+            wrongShown -> append("$value, incorrect")
             else -> append(value)
         }
     }
@@ -180,7 +200,7 @@ private fun Cell(
                 fontWeight = if (game.isGiven(index)) FontWeight.Normal else FontWeight.SemiBold,
                 color = when {
                     game.isGiven(index) -> colors.given
-                    game.isWrong(index) -> colors.wrong
+                    wrongShown -> colors.wrong
                     else -> colors.entered
                 },
             )
@@ -265,6 +285,33 @@ private fun HintNotes(shown: Int, struck: Int, size: TextUnit, colors: BoardColo
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * A brief vermilion wash that sweeps across a just-finished row, column or
+ * box, in the order its cells read.
+ */
+@Composable
+private fun InkWash(flash: Feedback) {
+    val progress = remember(flash.id) { Animatable(0f) }
+    LaunchedEffect(flash.id) { progress.animateTo(1f, tween(durationMillis = 900, easing = LinearEasing)) }
+    val cells = flash.completed
+    Canvas(Modifier.fillMaxSize()) {
+        val step = size.width / 9f
+        cells.forEachIndexed { i, cell ->
+            // Each cell starts a little after the one before, over the first half.
+            val start = i.toFloat() / cells.size * 0.5f
+            val t = ((progress.value - start) / 0.5f).coerceIn(0f, 1f)
+            val alpha = sin(t * PI.toFloat()) * 0.45f
+            if (alpha > 0f) {
+                drawRect(
+                    color = SealRed.copy(alpha = alpha),
+                    topLeft = Offset(Grid.col(cell) * step, Grid.row(cell) * step),
+                    size = Size(step, step),
+                )
             }
         }
     }
