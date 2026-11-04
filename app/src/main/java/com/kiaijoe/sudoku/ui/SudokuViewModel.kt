@@ -6,6 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.kiaijoe.sudoku.data.DifficultyStats
 import com.kiaijoe.sudoku.data.GameRepository
 import com.kiaijoe.sudoku.data.Settings
+import com.kiaijoe.sudoku.engine.Achievement
+import com.kiaijoe.sudoku.engine.Achievements
 import com.kiaijoe.sudoku.engine.Daily
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameState
@@ -15,6 +17,7 @@ import com.kiaijoe.sudoku.engine.HintCard
 import com.kiaijoe.sudoku.engine.HintPlan
 import com.kiaijoe.sudoku.engine.Hints
 import com.kiaijoe.sudoku.engine.Killer
+import com.kiaijoe.sudoku.engine.Progress
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -51,6 +54,8 @@ data class UiState(
     val settings: Settings = Settings(),
     val stats: Map<Difficulty, DifficultyStats> = emptyMap(),
     val killerStats: DifficultyStats = DifficultyStats(),
+    val achievements: Map<Achievement, Long> = emptyMap(),
+    val newAchievements: List<Achievement> = emptyList(),
 ) {
     val canContinue: Boolean get() = savedGame?.status == GameStatus.PLAYING && !generating
 }
@@ -112,6 +117,33 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         },
     )
     val ui: StateFlow<UiState> = _ui.asStateFlow()
+
+    init {
+        // Award anything already earned from saved statistics, such as streaks.
+        award(won = null)
+        _ui.update { it.copy(achievements = repo.loadAchievements()) }
+    }
+
+    /** What the saved statistics add up to, for achievements. */
+    private fun progress(): Progress {
+        val daily = repo.loadDailyResults()
+        return Progress(
+            won = repo.loadStats().mapValues { it.value.won },
+            killerWon = repo.loadKillerStats().won,
+            dailySolved = daily.size,
+            longestStreak = Daily.longestStreak(daily.keys),
+        )
+    }
+
+    /** Saves any achievements earned now (including by [won], a just-won game) and returns the new ones. */
+    private fun award(won: GameState?): List<Achievement> {
+        val have = repo.loadAchievements().keys
+        val earned = Achievements.earned(progress(), won, mistakesShown = _ui.value.settings.instantCheck)
+        val fresh = earned - have
+        if (fresh.isEmpty()) return emptyList()
+        repo.addAchievements(fresh, LocalDate.now().toEpochDay())
+        return Achievement.entries.filter { it in fresh }
+    }
 
     // --- Game lifecycle -------------------------------------------------
 
@@ -195,6 +227,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 checkMessage = null,
                 feedback = null,
                 lastWinWasBest = false,
+                newAchievements = emptyList(),
                 stats = repo.loadStats(),
                 killerStats = repo.loadKillerStats(),
             )
@@ -386,6 +419,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             }
             undoStack.clear()
         }
+        val newAchievements = if (next.status == GameStatus.WON) award(next) else emptyList()
         persist(next)
         _ui.update {
             synced(it, next).copy(
@@ -394,6 +428,8 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 lastWinWasBest = best,
                 stats = if (next.status == GameStatus.WON) repo.loadStats() else it.stats,
                 killerStats = if (next.status == GameStatus.WON) repo.loadKillerStats() else it.killerStats,
+                newAchievements = newAchievements,
+                achievements = if (newAchievements.isEmpty()) it.achievements else repo.loadAchievements(),
             )
         }
         updateTimer()

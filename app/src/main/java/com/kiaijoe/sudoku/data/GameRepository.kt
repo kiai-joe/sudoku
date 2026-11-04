@@ -1,6 +1,7 @@
 package com.kiaijoe.sudoku.data
 
 import android.content.Context
+import com.kiaijoe.sudoku.engine.Achievement
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameCodec
 import com.kiaijoe.sudoku.engine.GameState
@@ -66,6 +67,23 @@ class GameRepository(context: Context) {
         val results = loadDailyResults().toMutableMap()
         results[day] = minOf(seconds, results[day] ?: Long.MAX_VALUE)
         prefs.edit().putStringSet(KEY_DAILY_RESULTS, results.map { (d, t) -> "$d:$t" }.toSet()).apply()
+    }
+
+    /** Earned achievements and the epoch day each was earned. */
+    fun loadAchievements(): Map<Achievement, Long> =
+        prefs.getStringSet(KEY_ACHIEVEMENTS, emptySet()).orEmpty().mapNotNull { entry ->
+            val parts = entry.split(":")
+            if (parts.size != 2) return@mapNotNull null
+            val achievement = Achievement.entries.firstOrNull { it.name == parts[0] } ?: return@mapNotNull null
+            val day = parts[1].toLongOrNull() ?: return@mapNotNull null
+            achievement to day
+        }.toMap()
+
+    /** Adds [earned] with [day], keeping the first day for any already earned. */
+    fun addAchievements(earned: Set<Achievement>, day: Long) {
+        val all = loadAchievements().toMutableMap()
+        for (a in earned) all.putIfAbsent(a, day)
+        prefs.edit().putStringSet(KEY_ACHIEVEMENTS, all.map { (a, d) -> "${a.name}:$d" }.toSet()).apply()
     }
 
     fun loadSettings() = Settings(
@@ -144,6 +162,7 @@ class GameRepository(context: Context) {
         const val KEY_GAME = "current_game"
         const val KEY_DAILY_GAME = "daily_game"
         const val KEY_DAILY_RESULTS = "daily_results"
+        const val KEY_ACHIEVEMENTS = "achievements"
         const val KEY_MISTAKE_LIMIT = "mistake_limit"
         const val KEY_AUTO_NOTES = "auto_remove_notes"
         const val KEY_HIGHLIGHT = "highlight_same"

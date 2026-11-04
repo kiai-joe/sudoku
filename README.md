@@ -20,6 +20,7 @@ Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi bla
 - Daily puzzle: the same puzzle for everyone each day, made from the date so it works offline. It runs from Easy on Monday to Expert on Sunday, with a Killer puzzle on Saturday. A streak counts the days in a row you solve it, and a calendar marks each solved day with a hanamaru. It's saved separately, so it never replaces your regular game.
 - The current game is saved after every move and can be resumed.
 - Statistics per level: games played, wins, win rate and best time.
+- Twelve achievements, from a first solve to a 30-day daily streak and an Expert Killer with no printed numbers. New ones show on the win screen; all are listed, stamped and dated, under Statistics. Ones already earned from saved statistics are awarded on first launch.
 - Three ink palettes, picked in Settings: Sumi (ink on washi paper), Indigo night (paper-white on deep indigo, always dark) and Bamboo (green-tinted paper). Sumi and Bamboo follow the system's light or dark setting.
 
 ## Install on your phone
@@ -68,6 +69,7 @@ app/src/main/java/com/kiaijoe/sudoku/
 │   ├── Daily.kt       Daily puzzle from the date, weekly levels, streaks
 │   ├── Tutorial.kt    Lessons and their worked examples (stored as seed + moves)
 │   ├── Killer.kt      Killer cages, cage combinations and the Killer generator
+│   ├── Achievements.kt Achievements and the rules for earning them
 │   ├── Generator.kt   Graded, unique-solution puzzle generator and levels
 │   ├── GameState.kt   Immutable game state and moves
 │   └── GameCodec.kt   Save format

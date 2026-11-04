@@ -373,6 +373,18 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
             )
             Spacer(Modifier.height(2.dp))
         }
+        for (achievement in state.newAchievements) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(vertical = 2.dp)) {
+                HanamaruStamp(SealRed, Modifier.size(20.dp), animate = false)
+                Spacer(Modifier.size(6.dp))
+                Text(
+                    "New achievement: ${achievement.title}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = SealRed,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
         game.hardest?.let { technique ->
             Text(
                 "Hardest step: ${technique.label}",

@@ -7,6 +7,7 @@ import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kiaijoe.sudoku.data.DifficultyStats
 import com.kiaijoe.sudoku.data.Settings
+import com.kiaijoe.sudoku.engine.Achievement
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.GameStatus
@@ -272,6 +273,34 @@ class ScreenshotTest {
     fun statsLight() = capture("stats_light", dark = false) {
         StatsScreen(stats = Fixtures.stats, onReset = {}, onBack = {})
     }
+
+    /** The whole statistics page with some achievements earned. */
+    @Test
+    @Config(qualifiers = "w411dp-h1700dp-xxhdpi")
+    fun statsFullLight() = capture("stats_full_light", dark = false) {
+        StatsScreen(
+            stats = Fixtures.stats,
+            killerStats = DifficultyStats(played = 3, won = 2, bestSeconds = 640),
+            achievements = Fixtures.achievements,
+            onReset = {},
+            onBack = {},
+        )
+    }
+
+    /** A win that earns two achievements. */
+    @Test
+    fun winAchievementLight() = capture("win_achievement_light", dark = false) {
+        GameScreen(
+            state = UiState(
+                game = Fixtures.wonGame(),
+                lastWinWasBest = true,
+                stats = Fixtures.stats,
+                newAchievements = listOf(Achievement.STEADY_HAND, Achievement.ON_YOUR_OWN),
+            ),
+            actions = GameActions.None,
+            onExit = {},
+        )
+    }
 }
 
 /** Fixed game states for screenshots, all from seeded puzzles. */
@@ -290,6 +319,15 @@ private object Fixtures {
         val solved = listOf(1L, 2L, 3L) + (6L..14L) + listOf(18L, 22L, 23L)
         DailyUi(today = today, results = solved.associate { (today - it) to 300L + it * 17 })
     }
+
+    /** A few achievements earned in late October and early November 2026. */
+    val achievements: Map<Achievement, Long> = mapOf(
+        Achievement.FIRST_STAMP to LocalDate.parse("2026-10-12").toEpochDay(),
+        Achievement.STEADY_HAND to LocalDate.parse("2026-10-20").toEpochDay(),
+        Achievement.CAGE_BREAKER to LocalDate.parse("2026-11-01").toEpochDay(),
+        Achievement.WEEK_OF_INK to LocalDate.parse("2026-10-25").toEpochDay(),
+        Achievement.REGULAR to LocalDate.parse("2026-11-03").toEpochDay(),
+    )
 
     /** A Medium game partway through: some numbers placed, pencil marks, and one mistake. */
     fun midGame(): GameState {
