@@ -1,6 +1,7 @@
 package com.kiaijoe.sudoku.engine
 
 import org.junit.Assert.assertArrayEquals
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.random.Random
@@ -24,20 +25,24 @@ class GeneratorTest {
     }
 
     @Test
-    fun harderLevelsHaveFewerClues() {
-        fun averageClues(d: Difficulty) =
-            (0 until 5).map { seed -> Generator.generate(d, Random(seed)).givens.count { it != 0 } }.average()
+    fun everyPuzzleIsGradedAtItsLevel() {
+        for (difficulty in Difficulty.entries) {
+            repeat(8) { seed ->
+                val puzzle = Generator.generate(difficulty, Random(seed * 101 + difficulty.ordinal))
+                val grade = LogicSolver.grade(puzzle.givens)
+                assertTrue("$difficulty solvable by logic", grade.solved)
+                assertEquals("$difficulty graded level", difficulty, grade.level)
+                assertEquals(difficulty, puzzle.difficulty)
+                assertEquals(grade.hardest, puzzle.hardest)
+            }
+        }
+    }
 
-        val easy = averageClues(Difficulty.EASY)
-        val medium = averageClues(Difficulty.MEDIUM)
-        val hard = averageClues(Difficulty.HARD)
-        val expert = averageClues(Difficulty.EXPERT)
-        assertTrue("easy $easy > medium $medium", easy > medium)
-        assertTrue("medium $medium > hard $hard", medium > hard)
-        assertTrue("hard $hard > expert $expert", hard > expert)
-        for (d in Difficulty.entries) {
-            val clues = (0 until 5).map { Generator.generate(d, Random(it)).givens.count { c -> c != 0 } }
-            assertTrue("$d never goes below target", clues.all { it >= d.targetClues })
+    @Test
+    fun easyPuzzlesKeepEnoughClues() {
+        repeat(10) { seed ->
+            val clues = Generator.generate(Difficulty.EASY, Random(seed)).givens.count { it != 0 }
+            assertTrue("easy has $clues clues", clues >= Generator.EASY_CLUE_FLOOR)
         }
     }
 

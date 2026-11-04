@@ -9,6 +9,7 @@ enum class GameStatus { PLAYING, WON, LOST }
  * undo, saving and Compose recomposition simple.
  *
  * [notes] holds one 9-bit mask per cell: bit (d - 1) is set when pencil mark d is shown.
+ * [hardest] is the hardest technique the puzzle needs, when known.
  */
 data class GameState(
     val difficulty: Difficulty,
@@ -20,6 +21,7 @@ data class GameState(
     val hintsUsed: Int = 0,
     val elapsedSeconds: Long = 0,
     val status: GameStatus = GameStatus.PLAYING,
+    val hardest: Technique? = null,
 ) {
     fun isGiven(cell: Int) = givens[cell] != 0
     fun isWrong(cell: Int) = values[cell] != 0 && values[cell] != solution[cell]
@@ -111,6 +113,7 @@ data class GameState(
             solution = puzzle.solution.toList(),
             values = puzzle.givens.toList(),
             notes = List(Grid.CELLS) { 0 },
+            hardest = puzzle.hardest,
         )
     }
 }

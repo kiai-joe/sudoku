@@ -127,4 +127,16 @@ class GameStateTest {
         assertNull(GameCodec.decode("v1|EASY|123"))
         assertNull(GameCodec.decode(GameCodec.encode(TestGrids.game()).replace("v1", "v9")))
     }
+
+    @Test
+    fun codecKeepsHardestTechniqueAndReadsOlderSaves() {
+        val g = GameState.from(Puzzle(TestGrids.PUZZLE, TestGrids.SOLUTION, Difficulty.HARD, Technique.X_WING))
+        val text = GameCodec.encode(g)
+        assertEquals(Technique.X_WING, GameCodec.decode(text)?.hardest)
+
+        val older = text.substringBeforeLast("|")
+        val decoded = GameCodec.decode(older)
+        assertEquals(null, decoded?.hardest)
+        assertEquals(g.copy(hardest = null), decoded)
+    }
 }

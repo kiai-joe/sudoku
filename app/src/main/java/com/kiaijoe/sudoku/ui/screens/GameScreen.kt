@@ -246,6 +246,14 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
             add("Mistakes: ${game.mistakes}")
             add("Hints: ${game.hintsUsed}")
         }
+        game.hardest?.let { technique ->
+            Text(
+                "Hardest step: ${technique.label}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(2.dp))
+        }
         Text(
             details.joinToString("  ·  "),
             style = MaterialTheme.typography.bodyMedium,

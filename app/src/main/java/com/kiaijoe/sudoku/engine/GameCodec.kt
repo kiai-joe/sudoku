@@ -15,12 +15,16 @@ object GameCodec {
         state.hintsUsed.toString(),
         state.elapsedSeconds.toString(),
         state.status.name,
+        state.hardest?.name ?: "-",
     ).joinToString("|")
 
-    /** Returns null for anything that isn't a well-formed save. */
+    /**
+     * Returns null for anything that isn't a well-formed save. Saves from
+     * before puzzles were graded have 10 fields and no hardest technique.
+     */
     fun decode(text: String): GameState? = runCatching {
         val parts = text.split("|")
-        if (parts.size != 10 || parts[0] != VERSION) return null
+        if (parts.size !in 10..11 || parts[0] != VERSION) return null
         val givens = digits(parts[2])
         val solution = digits(parts[3])
         val values = digits(parts[4])
@@ -37,6 +41,7 @@ object GameCodec {
             hintsUsed = parts[7].toInt(),
             elapsedSeconds = parts[8].toLong(),
             status = GameStatus.valueOf(parts[9]),
+            hardest = parts.getOrNull(10)?.takeIf { it != "-" }?.let { Technique.valueOf(it) },
         )
     }.getOrNull()
 
