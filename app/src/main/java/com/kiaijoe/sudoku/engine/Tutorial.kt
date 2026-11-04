@@ -10,6 +10,7 @@ import kotlin.random.Random
  * then starts with [technique]. The generator is deterministic, so this is
  * the same position on every device; TutorialTest checks it still holds.
  * [seed] is null when the technique has no example (see HIDDEN_QUAD).
+ * Killer lessons use a Killer puzzle at [level] instead.
  */
 data class Lesson(
     val technique: Technique,
@@ -18,10 +19,15 @@ data class Lesson(
     val level: Difficulty,
     val seed: Int?,
     val moves: Int,
+    val killer: Boolean = false,
 )
 
-/** A lesson's worked example: the board, and the explained steps from it to the next number. */
-data class Example(val game: GameState, val cards: List<HintCard>)
+/**
+ * A lesson's worked example: the board, and the explained steps from it to
+ * the next number. [start] is the first step using the lesson's technique,
+ * where the lesson opens; earlier steps are there to step back through.
+ */
+data class Example(val game: GameState, val cards: List<HintCard>, val start: Int = 0)
 
 object Tutorial {
 
@@ -130,18 +136,38 @@ object Tutorial {
                 "One of the three must be C, so a cell that sees all three can't be C.",
             level = Difficulty.EXPERT, seed = 10, moves = 22,
         ),
+        Lesson(
+            Technique.CAGE,
+            summary = "Killer: what a cage's sum allows",
+            intro = "In Killer Sudoku each dashed cage shows the sum of its cells, and a number can't repeat " +
+                "inside a cage. Small sums and large sums leave few choices: two cells adding to 3 can only be " +
+                "1 and 2, and two adding to 17 can only be 8 and 9. Check which sets of numbers make the sum " +
+                "with what each cell can still hold, and cross out the rest.",
+            level = Difficulty.EASY, seed = 0, moves = 13, killer = true,
+        ),
+        Lesson(
+            Technique.FORTY_FIVE,
+            summary = "Killer: every row, column and box adds up to 45",
+            intro = "The numbers 1 to 9 add up to 45, so every row, column and box does too, and k of them " +
+                "together add up to 45 × k. Add up the cages that sit entirely inside such an area. Whatever is " +
+                "missing must come from the few cells of other cages that poke in (innies). Likewise, cells of " +
+                "crossing cages that stick out (outies) must make up the rest of those cages' sums. When there " +
+                "are only one or two such cells, this pins them down.",
+            level = Difficulty.MEDIUM, seed = 0, moves = 6, killer = true,
+        ),
     )
 
     /** Builds [lesson]'s worked example, or null if it has none. Takes up to about a tenth of a second. */
     fun example(lesson: Lesson): Example? {
         val seed = lesson.seed ?: return null
-        var game = GameState.from(Generator.generate(lesson.level, Random(seed)))
+        val puzzle = if (lesson.killer) Killer.generate(lesson.level, Random(seed)) else Generator.generate(lesson.level, Random(seed))
+        var game = GameState.from(puzzle)
         repeat(lesson.moves) {
             val cards = (Hints.forGame(game) as? HintPlan.Teach)?.cards ?: return null
             val last = cards.last()
             game = game.place(last.placeCell, last.placeDigit, mistakeLimit = null, autoRemoveNotes = true)
         }
         val cards = (Hints.forGame(game) as? HintPlan.Teach)?.cards ?: return null
-        return Example(game, cards)
+        return Example(game, cards, start = cards.indexOfFirst { it.technique == lesson.technique }.coerceAtLeast(0))
     }
 }

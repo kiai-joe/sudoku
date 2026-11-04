@@ -44,6 +44,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.data.Settings
 import com.kiaijoe.sudoku.engine.Difficulty
+import com.kiaijoe.sudoku.engine.Killer
 import com.kiaijoe.sudoku.ui.UiState
 import com.kiaijoe.sudoku.ui.formatTime
 import com.kiaijoe.sudoku.ui.theme.SealPaper
@@ -56,13 +57,13 @@ fun HomeScreen(
     onPlayDaily: () -> Unit,
     onCalendar: () -> Unit,
     onNewGame: (Difficulty) -> Unit,
-    onNewKiller: () -> Unit,
+    onNewKiller: (Difficulty) -> Unit,
     onStats: () -> Unit,
     onLearn: () -> Unit,
     onSettingsChange: (Settings) -> Unit,
 ) {
     var pending by remember { mutableStateOf<Difficulty?>(null) }
-    var pendingKiller by remember { mutableStateOf(false) }
+    var pendingKiller by remember { mutableStateOf<Difficulty?>(null) }
     var showSettings by remember { mutableStateOf(false) }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -136,19 +137,34 @@ fun HomeScreen(
                     }
                     Spacer(Modifier.height(10.dp))
                 }
-                OutlinedButton(
-                    onClick = { if (state.canContinue) pendingKiller = true else onNewKiller() },
-                    shape = RoundedCornerShape(14.dp),
-                    modifier = Modifier.fillMaxWidth().height(64.dp),
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("Killer Sudoku", style = MaterialTheme.typography.titleSmall)
-                        Text(
-                            "Cages that add up",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    "Killer Sudoku",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(bottom = 10.dp),
+                )
+                Difficulty.entries.chunked(2).forEach { pair ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        pair.forEach { d ->
+                            OutlinedButton(
+                                onClick = { if (state.canContinue) pendingKiller = d else onNewKiller(d) },
+                                shape = RoundedCornerShape(14.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                modifier = Modifier.weight(1f).height(64.dp),
+                            ) {
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(d.label, style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        Killer.describe(d),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                    )
+                                }
+                            }
+                        }
                     }
+                    Spacer(Modifier.height(10.dp))
                 }
 
                 Spacer(Modifier.height(20.dp))
@@ -185,15 +201,15 @@ fun HomeScreen(
         )
     }
 
-    if (pendingKiller) {
+    pendingKiller?.let { d ->
         AlertDialog(
-            onDismissRequest = { pendingKiller = false },
-            title = { Text("Start a Killer Sudoku game?") },
+            onDismissRequest = { pendingKiller = null },
+            title = { Text("Start a ${d.label} Killer game?") },
             text = { Text("Your game in progress will be replaced.") },
             confirmButton = {
-                Button(onClick = { pendingKiller = false; onNewKiller() }) { Text("Start") }
+                Button(onClick = { pendingKiller = null; onNewKiller(d) }) { Text("Start") }
             },
-            dismissButton = { TextButton(onClick = { pendingKiller = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { pendingKiller = null }) { Text("Cancel") } },
         )
     }
 

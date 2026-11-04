@@ -71,8 +71,8 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
                     viewModel.newGame(difficulty)
                     screen = Screen.Game
                 },
-                onNewKiller = {
-                    viewModel.newKiller()
+                onNewKiller = { difficulty ->
+                    viewModel.newKiller(difficulty)
                     screen = Screen.Game
                 },
                 onStats = { screen = Screen.Stats },
