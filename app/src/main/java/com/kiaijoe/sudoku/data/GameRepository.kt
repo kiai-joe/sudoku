@@ -19,7 +19,10 @@ data class DifficultyStats(
     val winRate: Int get() = if (played == 0) 0 else (won * 100) / played
 }
 
-/** Saves the current game, settings and stats in SharedPreferences. */
+/**
+ * Saves games, settings and stats in SharedPreferences. A regular game and
+ * the daily puzzle are kept in separate slots so neither replaces the other.
+ */
 class GameRepository(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("sudoku", Context.MODE_PRIVATE)
 
@@ -29,6 +32,29 @@ class GameRepository(context: Context) {
         prefs.edit().apply {
             if (state == null) remove(KEY_GAME) else putString(KEY_GAME, GameCodec.encode(state))
         }.apply()
+    }
+
+    fun loadDailyGame(): GameState? = prefs.getString(KEY_DAILY_GAME, null)?.let(GameCodec::decode)
+
+    fun saveDailyGame(state: GameState?) {
+        prefs.edit().apply {
+            if (state == null) remove(KEY_DAILY_GAME) else putString(KEY_DAILY_GAME, GameCodec.encode(state))
+        }.apply()
+    }
+
+    /** Solved daily puzzles: epoch day to solve time in seconds. */
+    fun loadDailyResults(): Map<Long, Long> =
+        prefs.getStringSet(KEY_DAILY_RESULTS, emptySet()).orEmpty().mapNotNull { entry ->
+            val (day, seconds) = entry.split(":").takeIf { it.size == 2 } ?: return@mapNotNull null
+            val d = day.toLongOrNull() ?: return@mapNotNull null
+            val t = seconds.toLongOrNull() ?: return@mapNotNull null
+            d to t
+        }.toMap()
+
+    fun recordDailyWin(day: Long, seconds: Long) {
+        val results = loadDailyResults().toMutableMap()
+        results[day] = minOf(seconds, results[day] ?: Long.MAX_VALUE)
+        prefs.edit().putStringSet(KEY_DAILY_RESULTS, results.map { (d, t) -> "$d:$t" }.toSet()).apply()
     }
 
     fun loadSettings() = Settings(
@@ -83,6 +109,8 @@ class GameRepository(context: Context) {
 
     private companion object {
         const val KEY_GAME = "current_game"
+        const val KEY_DAILY_GAME = "daily_game"
+        const val KEY_DAILY_RESULTS = "daily_results"
         const val KEY_MISTAKE_LIMIT = "mistake_limit"
         const val KEY_AUTO_NOTES = "auto_remove_notes"
         const val KEY_HIGHLIGHT = "highlight_same"

@@ -13,6 +13,7 @@ import com.kiaijoe.sudoku.engine.Generator
 import com.kiaijoe.sudoku.engine.HintPlan
 import com.kiaijoe.sudoku.engine.Hints
 import com.kiaijoe.sudoku.engine.Technique
+import com.kiaijoe.sudoku.ui.screens.CalendarScreen
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
 import com.kiaijoe.sudoku.ui.screens.StatsScreen
@@ -23,6 +24,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import java.time.LocalDate
 import kotlin.random.Random
 
 /**
@@ -53,8 +55,10 @@ class ScreenshotTest {
 
     private fun home(dark: Boolean) = capture(if (dark) "home_dark" else "home_light", dark) {
         HomeScreen(
-            state = UiState(game = Fixtures.midGame(), stats = Fixtures.stats),
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, stats = Fixtures.stats) },
             onContinue = {},
+            onPlayDaily = {},
+            onCalendar = {},
             onNewGame = {},
             onStats = {},
             onSettingsChange = {},
@@ -107,6 +111,16 @@ class ScreenshotTest {
         )
     }
 
+    // --- Daily calendar ------------------------------------------------------
+
+    @Test fun calendarLight() = calendar(dark = false)
+
+    @Test fun calendarDark() = calendar(dark = true)
+
+    private fun calendar(dark: Boolean) = capture(if (dark) "calendar_dark" else "calendar_light", dark) {
+        CalendarScreen(daily = Fixtures.daily, onBack = {})
+    }
+
     // --- Stats -------------------------------------------------------------
 
     @Test
@@ -124,6 +138,13 @@ private object Fixtures {
         Difficulty.HARD to DifficultyStats(played = 4, won = 2, bestSeconds = 905),
         Difficulty.EXPERT to DifficultyStats(played = 1, won = 0),
     )
+
+    /** Thursday 5 November 2026: Monday to Wednesday solved, plus a run in October. */
+    val daily: DailyUi = run {
+        val today = LocalDate.parse("2026-11-05").toEpochDay()
+        val solved = listOf(1L, 2L, 3L) + (6L..14L) + listOf(18L, 22L, 23L)
+        DailyUi(today = today, results = solved.associate { (today - it) to 300L + it * 17 })
+    }
 
     /** A Medium game partway through: some numbers placed, pencil marks, and one mistake. */
     fun midGame(): GameState {

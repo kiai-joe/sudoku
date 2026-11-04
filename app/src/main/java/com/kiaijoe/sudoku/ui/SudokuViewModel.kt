@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.kiaijoe.sudoku.data.DifficultyStats
 import com.kiaijoe.sudoku.data.GameRepository
 import com.kiaijoe.sudoku.data.Settings
+import com.kiaijoe.sudoku.engine.Daily
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.GameStatus
@@ -23,11 +24,18 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 
 const val MISTAKE_LIMIT = 3
 
+/**
+ * [game] is the game on screen, regular or daily. [savedGame] is the regular
+ * game in progress, which the home screen offers to continue.
+ */
 data class UiState(
     val game: GameState? = null,
+    val savedGame: GameState? = null,
+    val daily: DailyUi = DailyUi(),
     val selected: Int? = null,
     val notesMode: Boolean = false,
     val paused: Boolean = false,
@@ -38,7 +46,26 @@ data class UiState(
     val settings: Settings = Settings(),
     val stats: Map<Difficulty, DifficultyStats> = emptyMap(),
 ) {
-    val canContinue: Boolean get() = game?.status == GameStatus.PLAYING && !generating
+    val canContinue: Boolean get() = savedGame?.status == GameStatus.PLAYING && !generating
+}
+
+/**
+ * Today's daily puzzle and the record of past ones.
+ *
+ * @property today the current epoch day.
+ * @property results solved days (epoch day to seconds).
+ * @property inProgress today's daily game if started and not finished.
+ */
+data class DailyUi(
+    val today: Long = 0,
+    val results: Map<Long, Long> = emptyMap(),
+    val inProgress: GameState? = null,
+) {
+    val difficulty: Difficulty get() = Daily.difficultyFor(today)
+    val solvedToday: Boolean get() = today in results
+    val todaySeconds: Long? get() = results[today]
+    val streak: Int get() = Daily.streak(results.keys, today)
+    val longestStreak: Int get() = Daily.longestStreak(results.keys)
 }
 
 /** An open hint: the plan and which of its cards is showing. */
@@ -57,44 +84,106 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     private var gameScreenActive = false
 
     private val _ui = MutableStateFlow(
-        UiState(
-            game = repo.loadGame(),
-            settings = repo.loadSettings(),
-            stats = repo.loadStats(),
-        ),
+        repo.loadGame().let { saved ->
+            UiState(
+                game = saved,
+                savedGame = saved,
+                daily = loadDaily(),
+                settings = repo.loadSettings(),
+                stats = repo.loadStats(),
+            )
+        },
     )
     val ui: StateFlow<UiState> = _ui.asStateFlow()
 
     // --- Game lifecycle -------------------------------------------------
 
     override fun newGame(difficulty: Difficulty) {
-        _ui.update { it.copy(generating = true, paused = false, selected = null, notesMode = false, hint = null) }
-        updateTimer()
+        startLoading()
         viewModelScope.launch {
             val puzzle = withContext(Dispatchers.Default) { Generator.generate(difficulty) }
             val game = GameState.from(puzzle)
-            undoStack.clear()
             repo.recordStart(difficulty)
             repo.saveGame(game)
-            _ui.update {
-                it.copy(
-                    game = game,
-                    generating = false,
-                    canUndo = false,
-                    lastWinWasBest = false,
-                    stats = repo.loadStats(),
-                )
-            }
-            updateTimer()
+            show(game, savedGame = game)
         }
+    }
+
+    /** Brings back the regular game in progress, if the screen shows the daily one. */
+    fun continueGame() {
+        val s = _ui.value
+        if (s.game != null && s.game.daily == null) return // the regular game is already the one on screen
+        val saved = s.savedGame ?: return
+        show(saved, savedGame = saved)
+    }
+
+    /** Opens today's daily puzzle, resuming it if already started. */
+    fun playDaily() {
+        refreshDaily()
+        val daily = _ui.value.daily
+        if (daily.solvedToday) return
+        daily.inProgress?.let {
+            show(it, savedGame = _ui.value.savedGame)
+            return
+        }
+        startLoading()
+        viewModelScope.launch {
+            val game = withContext(Dispatchers.Default) { Daily.gameFor(daily.today) }
+            repo.saveDailyGame(game)
+            show(game, savedGame = _ui.value.savedGame)
+            refreshDaily()
+        }
+    }
+
+    /** Re-reads today's date and daily progress, in case the day has changed. */
+    fun refreshDaily() = _ui.update { it.copy(daily = loadDaily()) }
+
+    private fun loadDaily(): DailyUi {
+        val today = LocalDate.now().toEpochDay()
+        val inProgress = repo.loadDailyGame()?.takeIf { it.daily == today && it.status == GameStatus.PLAYING }
+        return DailyUi(today = today, results = repo.loadDailyResults(), inProgress = inProgress)
+    }
+
+    private fun startLoading() {
+        _ui.update { it.copy(generating = true, paused = false, selected = null, notesMode = false, hint = null) }
+        updateTimer()
+    }
+
+    /** Puts [game] on screen with a fresh undo history. */
+    private fun show(game: GameState, savedGame: GameState?) {
+        undoStack.clear()
+        _ui.update {
+            it.copy(
+                game = game,
+                savedGame = savedGame,
+                generating = false,
+                canUndo = false,
+                paused = false,
+                selected = null,
+                notesMode = false,
+                hint = null,
+                lastWinWasBest = false,
+                stats = repo.loadStats(),
+            )
+        }
+        updateTimer()
     }
 
     override fun restart() {
         val game = _ui.value.game ?: return
         undoStack.clear()
         val fresh = game.restart()
-        repo.saveGame(fresh)
-        _ui.update { it.copy(game = fresh, selected = null, canUndo = false, paused = false, hint = null) }
+        persist(fresh)
+        _ui.update {
+            it.copy(
+                game = fresh,
+                savedGame = if (fresh.daily == null) fresh else it.savedGame,
+                selected = null,
+                canUndo = false,
+                paused = false,
+                hint = null,
+            )
+        }
         updateTimer()
     }
 
@@ -102,7 +191,10 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     override fun setGameScreenActive(active: Boolean) {
         gameScreenActive = active
         updateTimer()
-        if (!active) _ui.value.game?.let(::persist)
+        if (!active) _ui.value.game?.let { game ->
+            persist(game)
+            _ui.update { synced(it, game) }
+        }
     }
 
     override fun togglePause() {
@@ -153,7 +245,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         if (plan is HintPlan.NothingLeft) return
         val counted = game.copy(hintsUsed = game.hintsUsed + 1)
         persist(counted)
-        _ui.update { it.copy(game = counted, hint = HintUi(plan), selected = null) }
+        _ui.update { synced(it, counted).copy(game = counted, hint = HintUi(plan), selected = null) }
     }
 
     override fun hintNext() = _ui.update { s ->
@@ -185,8 +277,8 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         val previous = undoStack.removeLastOrNull() ?: return
         // Undo restores the board but not the clock, mistakes or hints used.
         val restored = game.copy(values = previous.values, notes = previous.notes)
-        repo.saveGame(restored)
-        _ui.update { it.copy(game = restored, canUndo = undoStack.isNotEmpty()) }
+        persist(restored)
+        _ui.update { synced(it, restored).copy(game = restored, canUndo = undoStack.isNotEmpty()) }
     }
 
     private fun move(transform: (GameState) -> GameState) {
@@ -201,12 +293,18 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
 
         var best = s.lastWinWasBest
         if (next.status == GameStatus.WON) {
-            best = repo.recordWin(next.difficulty, next.elapsedSeconds)
+            val day = next.daily
+            if (day != null) {
+                repo.recordDailyWin(day, next.elapsedSeconds)
+                best = false
+            } else {
+                best = repo.recordWin(next.difficulty, next.elapsedSeconds)
+            }
             undoStack.clear()
         }
         persist(next)
         _ui.update {
-            it.copy(
+            synced(it, next).copy(
                 game = next,
                 canUndo = undoStack.isNotEmpty(),
                 lastWinWasBest = best,
@@ -216,8 +314,18 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         updateTimer()
     }
 
+    /** [state] with the home screen's view of [game]'s slot brought up to date. */
+    private fun synced(state: UiState, game: GameState): UiState =
+        if (game.daily == null) {
+            state.copy(savedGame = game.takeIf { it.status == GameStatus.PLAYING })
+        } else {
+            state.copy(daily = loadDaily())
+        }
+
+    /** Saves [game] to its slot. Finished games are cleared; daily wins live in the results. */
     private fun persist(game: GameState) {
-        repo.saveGame(if (game.status == GameStatus.WON) null else game)
+        val keep = if (game.status == GameStatus.WON) null else game
+        if (game.daily != null) repo.saveDailyGame(keep) else repo.saveGame(keep)
     }
 
     // --- Settings and stats ---------------------------------------------

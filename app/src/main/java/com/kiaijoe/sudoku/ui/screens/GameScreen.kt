@@ -99,7 +99,11 @@ fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
             CenterAlignedTopAppBar(
                 title = {
                     Text(
-                        if (state.generating) "New game" else game?.difficulty?.label.orEmpty(),
+                        when {
+                            state.generating -> "New game"
+                            game?.daily != null -> "Daily · ${game.difficulty.label}"
+                            else -> game?.difficulty?.label.orEmpty()
+                        },
                         style = MaterialTheme.typography.titleLarge,
                     )
                 },
@@ -330,6 +334,16 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
             if (best != null && !state.lastWinWasBest) add("Best: ${formatTime(best)}")
             add("Mistakes: ${game.mistakes}")
             add("Hints: ${game.hintsUsed}")
+        }
+        if (game.daily != null) {
+            val streak = state.daily.streak
+            Text(
+                if (streak == 1) "Daily puzzle done · streak 1 day" else "Daily puzzle done · streak $streak days",
+                style = MaterialTheme.typography.bodyMedium,
+                color = SealRed,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Spacer(Modifier.height(2.dp))
         }
         game.hardest?.let { technique ->
             Text(
