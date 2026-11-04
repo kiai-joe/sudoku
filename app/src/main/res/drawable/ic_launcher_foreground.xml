@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A 3x3 grid with one highlighted cell, sized to the adaptive icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Highlighted centre cell -->
+    <path
+        android:fillColor="#FFF2B279"
+        android:pathData="M45.5,45.5h17v17h-17z" />
+    <!-- Outer frame -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFF6F3EE"
+        android:strokeWidth="3.5"
+        android:pathData="M28,28h52v52h-52z" />
+    <!-- Inner lines -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFF6F3EE"
+        android:strokeWidth="2"
+        android:pathData="M45.33,28V80M62.67,28V80M28,45.33H80M28,62.67H80" />
+</vector>
