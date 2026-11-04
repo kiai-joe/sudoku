@@ -8,6 +8,7 @@ enum class Technique(val label: String, val level: Difficulty, val killerOnly: B
     NAKED_SINGLE("Naked single", Difficulty.EASY),
     HIDDEN_SINGLE("Hidden single", Difficulty.EASY),
     CAGE("Cage combinations", Difficulty.EASY, killerOnly = true),
+    FORTY_FIVE("45 rule", Difficulty.MEDIUM, killerOnly = true),
     POINTING("Pointing", Difficulty.MEDIUM),
     CLAIMING("Box/line reduction", Difficulty.MEDIUM),
     NAKED_PAIR("Naked pair", Difficulty.MEDIUM),
@@ -59,9 +60,27 @@ class Step(
     val houses: List<House> = emptyList(),
     val digits: Int = 0,
     val cage: Cage? = null,
+    val fortyFive: FortyFive? = null,
 ) {
     val isPlacement get() = digit != 0
 }
+
+/**
+ * The working behind a 45-rule step. The rows, columns or boxes in [houses]
+ * add up to [total] (45 each). Cages entirely inside add up to [insideSum].
+ * Cells of the other cages that cross the edge are either inside (innies)
+ * or, when [outies], outside; [cells] are the empty ones and must add up to [sum].
+ * [crossingSum] is the full sum of the crossing cages, used to explain outies.
+ */
+data class FortyFive(
+    val houses: List<House>,
+    val total: Int,
+    val insideSum: Int,
+    val crossingSum: Int,
+    val outies: Boolean,
+    val cells: List<Int>,
+    val sum: Int,
+)
 
 /**
  * The result of solving by logic alone.
@@ -92,6 +111,13 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
     private val values = IntArray(Grid.CELLS)
     private val cands = IntArray(Grid.CELLS) { Grid.ALL_DIGITS }
 
+    /**
+     * Goes up whenever a cell's value or candidates change. Killer checks
+     * remember the total for their cells when they last found nothing, and
+     * skip until it moves; cage arithmetic is the slow part of solving.
+     */
+    private val version = IntArray(Grid.CELLS)
+
     init {
         require(givens.size == Grid.CELLS)
         for (cell in 0 until Grid.CELLS) if (givens[cell] != 0) place(cell, givens[cell])
@@ -100,14 +126,17 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
     fun candidates(cell: Int) = cands[cell]
     fun value(cell: Int) = values[cell]
 
-    /** Applies easiest-first deductions until solved or nothing at or below [maxLevel] helps. */
-    fun solve(maxLevel: Difficulty = Difficulty.EXPERT): Grade {
+    /**
+     * Applies easiest-first deductions until solved or nothing at or below
+     * [maxLevel] (and, if given, no technique past [maxTechnique]) helps.
+     */
+    fun solve(maxLevel: Difficulty = Difficulty.EXPERT, maxTechnique: Technique? = null): Grade {
         val steps = ArrayList<Step>()
         var hardest: Technique? = null
         while (true) {
             if (values.all { it != 0 }) return Grade(true, hardest, steps, values.copyOf())
             if (hasContradiction()) return Grade(false, hardest, steps, values.copyOf())
-            val step = nextStep(maxLevel) ?: return Grade(false, hardest, steps, values.copyOf())
+            val step = nextStep(maxLevel, maxTechnique) ?: return Grade(false, hardest, steps, values.copyOf())
             apply(step)
             steps += step
             if (hardest == null || step.technique.ordinal > hardest.ordinal) hardest = step.technique
@@ -115,13 +144,14 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
     }
 
     /** The easiest deduction available now, or null. Does not change the grid. */
-    fun nextStep(maxLevel: Difficulty = Difficulty.EXPERT): Step? {
+    fun nextStep(maxLevel: Difficulty = Difficulty.EXPERT, maxTechnique: Technique? = null): Step? {
         for (t in Technique.entries) {
-            if (t.level > maxLevel) break
+            if (t.level > maxLevel || (maxTechnique != null && t > maxTechnique)) break
             val step = when (t) {
                 Technique.NAKED_SINGLE -> nakedSingle()
                 Technique.HIDDEN_SINGLE -> hiddenSingle()
                 Technique.CAGE -> cageCombinations()
+                Technique.FORTY_FIVE -> fortyFive()
                 Technique.POINTING -> pointing()
                 Technique.CLAIMING -> claiming()
                 Technique.NAKED_PAIR -> nakedSubset(2, t)
@@ -144,15 +174,30 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
         if (step.isPlacement) {
             place(step.cell, step.digit)
         } else {
-            for ((cell, mask) in step.eliminations) cands[cell] = cands[cell] and mask.inv()
+            for ((cell, mask) in step.eliminations) {
+                cands[cell] = cands[cell] and mask.inv()
+                version[cell]++
+            }
         }
     }
 
     private fun place(cell: Int, digit: Int) {
         values[cell] = digit
         cands[cell] = 0
+        version[cell]++
         val bit = bit(digit)
-        for (peer in Grid.peers[cell]) cands[peer] = cands[peer] and bit.inv()
+        for (peer in Grid.peers[cell]) {
+            if (cands[peer] and bit != 0) {
+                cands[peer] = cands[peer] and bit.inv()
+                version[peer]++
+            }
+        }
+    }
+
+    private fun versionOf(cells: List<Int>): Int {
+        var total = 0
+        for (cell in cells) total += version[cell]
+        return total
     }
 
     private fun hasContradiction(): Boolean {
@@ -205,8 +250,12 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
      * cage, that make up the rest of its sum. Any candidate that appears in
      * no such filling goes.
      */
+    private val cageChecked = IntArray(cages.size) { -1 }
+
     private fun cageCombinations(): Step? {
-        for (cage in cages) {
+        for ((index, cage) in cages.withIndex()) {
+            val seen = versionOf(cage.cells)
+            if (seen == cageChecked[index]) continue
             val open = cage.cells.filter { values[it] == 0 }
             if (open.isEmpty()) continue
             var used = 0
@@ -227,8 +276,109 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
                 val digits = elim.values.fold(0) { a, b -> a or b }
                 return Step(Technique.CAGE, eliminations = elim, pattern = cage.cells, digits = digits, cage = cage)
             }
+            cageChecked[index] = seen
         }
         return null
+    }
+
+    /** Which cage each cell is in, for Killer puzzles. */
+    private val cageOf: IntArray = IntArray(Grid.CELLS) { -1 }.also { o ->
+        cages.forEachIndexed { i, cage -> cage.cells.forEach { o[it] = i } }
+    }
+
+    /**
+     * The 45 rule. Every row, column and box adds up to 45, so k of them
+     * together add up to 45k. Take such an area: the cages entirely inside
+     * it add up to a known amount, so the cells of crossing cages that lie
+     * inside (innies) must make up the rest. Likewise the crossing cages'
+     * cells outside the area (outies) must add up to the crossing cages'
+     * total minus what their innies hold. When those cells are few, their sum
+     * limits their numbers, like a small cage whose cells only have to differ
+     * when they share a row, column, box or cage.
+     */
+    private val areaChecked by lazy { IntArray(areas.size) { -1 } }
+
+    private fun fortyFive(): Step? {
+        for ((index, area) in areas.withIndex()) {
+            val seen = versionOf(area.innies) + versionOf(area.outies)
+            if (seen == areaChecked[index]) continue
+            limitBySum(area.innies, area.innieSum)?.let { (elim, open, rest) ->
+                return fortyFiveStep(area, elim, open, rest, outies = false)
+            }
+            limitBySum(area.outies, area.outieSum)?.let { (elim, open, rest) ->
+                return fortyFiveStep(area, elim, open, rest, outies = true)
+            }
+            areaChecked[index] = seen
+        }
+        return null
+    }
+
+    private fun fortyFiveStep(area: Area, elim: Map<Int, Int>, open: List<Int>, rest: Int, outies: Boolean) = Step(
+        Technique.FORTY_FIVE, eliminations = elim, pattern = open, houses = area.houses,
+        digits = elim.values.fold(0) { a, b -> a or b },
+        fortyFive = FortyFive(area.houses, area.total, area.insideSum, area.crossingSum, outies, open, rest),
+    )
+
+    /** An area for the 45 rule, with the parts that only depend on the cages worked out once. */
+    private class Area(
+        val houses: List<House>,
+        val total: Int,
+        val insideSum: Int,
+        val crossingSum: Int,
+        val innies: List<Int>,
+        val outies: List<Int>,
+    ) {
+        val innieSum get() = total - insideSum
+        val outieSum get() = crossingSum - innieSum
+    }
+
+    /** The areas worth checking: those with a few innies or outies (at most 4 cells either way). */
+    private val areas: List<Area> by lazy {
+        if (cages.isEmpty()) return@lazy emptyList()
+        REGIONS.mapNotNull { region ->
+            val inside = BooleanArray(Grid.CELLS)
+            for (house in region) for (cell in house.cells) inside[cell] = true
+            var insideSum = 0
+            var crossingSum = 0
+            val innies = ArrayList<Int>()
+            val outies = ArrayList<Int>()
+            for (cage in cages) {
+                val count = cage.cells.count { inside[it] }
+                when (count) {
+                    0 -> Unit
+                    cage.cells.size -> insideSum += cage.sum
+                    else -> {
+                        crossingSum += cage.sum
+                        for (cell in cage.cells) if (inside[cell]) innies += cell else outies += cell
+                    }
+                }
+            }
+            if (innies.isEmpty() || (innies.size > 4 && outies.size > 4)) {
+                null
+            } else {
+                Area(region, 45 * region.size, insideSum, crossingSum, innies, outies)
+            }
+        }
+    }
+
+    /**
+     * If [cells] must add up to [sum] and at most four of them are empty,
+     * the candidates that fit no such filling. Returns the eliminations, the
+     * empty cells and what they must add up to, or null if nothing goes.
+     */
+    private fun limitBySum(cells: List<Int>, sum: Int): Triple<Map<Int, Int>, List<Int>, Int>? {
+        val open = cells.filter { values[it] == 0 }
+        if (open.isEmpty() || open.size > 4) return null
+        val rest = sum - cells.sumOf { values[it] }
+        val possible = Killer.possibleDigits(open.map { cands[it] }, rest, used = 0) { i, j ->
+            Grid.arePeers(open[i], open[j]) || cageOf[open[i]] == cageOf[open[j]]
+        }
+        val elim = HashMap<Int, Int>()
+        for ((i, cell) in open.withIndex()) {
+            val extra = cands[cell] and possible[i].inv()
+            if (extra != 0) elim[cell] = extra
+        }
+        return if (elim.isEmpty()) null else Triple(elim, open, rest)
     }
 
     // --- Intersections ---------------------------------------------------
@@ -454,6 +604,17 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
         private fun digitOf(mask: Int) = Integer.numberOfTrailingZeros(mask) + 1
 
         private val ALL_UNITS: List<House> = House.ROWS + House.COLUMNS + House.BOXES
+
+        /**
+         * Areas the 45 rule looks at, smallest first: each box, then runs of
+         * one to four whole rows, and of one to four whole columns.
+         */
+        private val REGIONS: List<List<House>> = buildList {
+            for (box in House.BOXES) add(listOf(box))
+            for (lines in listOf(House.ROWS, House.COLUMNS)) {
+                for (length in 1..4) for (start in 0..9 - length) add(lines.subList(start, start + length))
+            }
+        }.sortedBy { it.size }
         private val BOXES_FIRST: List<House> = House.BOXES + House.ROWS + House.COLUMNS
 
         private val comboCache = HashMap<Long, List<IntArray>>()

@@ -37,37 +37,74 @@ class KillerTest {
         }
     }
 
-    /** Generated puzzles solve by logic alone, every step agrees with the solution, and hints finish them. */
+    /**
+     * At every level, generated puzzles solve by logic, every step (cage
+     * combinations and the 45 rule included) agrees with the solution, the
+     * level matches the Killer ladder, and hints alone finish the game.
+     */
     @Test
     fun generatedPuzzlesSolveByLogicAndHints() {
-        repeat(8) { seed ->
-            val puzzle = Killer.generate(Random(seed))
-            val grade = LogicSolver.grade(puzzle.givens, puzzle.cages)
-            assertTrue(grade.solved)
-            assertArrayEquals(puzzle.solution, grade.stuckValues)
-            for (step in grade.steps) {
-                if (step.isPlacement) {
-                    assertEquals(puzzle.solution[step.cell], step.digit)
-                } else {
-                    for ((cell, m) in step.eliminations) assertEquals(0, m and (1 shl (puzzle.solution[cell] - 1)))
+        for (level in Difficulty.entries) {
+            repeat(3) { seed ->
+                val puzzle = Killer.generate(level, Random(seed * 31 + level.ordinal))
+                assertEquals("$level", level, puzzle.difficulty)
+                val grade = LogicSolver.grade(puzzle.givens, puzzle.cages)
+                assertTrue(grade.solved)
+                assertArrayEquals(puzzle.solution, grade.stuckValues)
+                assertEquals(level, Killer.levelOf(grade.hardest, puzzle.givens.count { it != 0 }))
+                if (level == Difficulty.EXPERT) assertEquals("Expert has no printed numbers", 0, puzzle.givens.count { it != 0 })
+                for (step in grade.steps) {
+                    if (step.isPlacement) {
+                        assertEquals(puzzle.solution[step.cell], step.digit)
+                    } else {
+                        for ((cell, m) in step.eliminations) {
+                            assertEquals("${step.technique} removed the answer", 0, m and (1 shl (puzzle.solution[cell] - 1)))
+                        }
+                    }
                 }
-            }
-            var game = GameState.from(puzzle)
-            assertTrue(game.isKiller)
-            var moves = 0
-            while (game.status == GameStatus.PLAYING) {
-                val cards = (Hints.forGame(game) as HintPlan.Teach).cards
-                assertTrue("Killer hints use logic, not reveals", cards.all { it.technique != null })
-                val last = cards.last()
-                game = game.place(last.placeCell, last.placeDigit, mistakeLimit = null, autoRemoveNotes = true)
-                assertTrue(++moves <= 81)
+                var game = GameState.from(puzzle)
+                assertTrue(game.isKiller)
+                var moves = 0
+                while (game.status == GameStatus.PLAYING) {
+                    val cards = (Hints.forGame(game) as HintPlan.Teach).cards
+                    assertTrue("Killer hints use logic, not reveals", cards.all { it.technique != null })
+                    val last = cards.last()
+                    game = game.place(last.placeCell, last.placeDigit, mistakeLimit = null, autoRemoveNotes = true)
+                    assertTrue(++moves <= 81)
+                }
             }
         }
     }
 
+    /** The 45 rule is sound on many random cage layouts, not just generated puzzles. */
+    @Test
+    fun fortyFiveRuleNeverRulesOutTheAnswer() {
+        var used = 0
+        repeat(40) { seed ->
+            val solution = Solver.randomFilledGrid(Random(seed))
+            val cages = Killer.cagesFor(solution, Random(seed))
+            for (step in LogicSolver.grade(IntArray(81), cages).steps) {
+                if (step.technique != Technique.FORTY_FIVE) continue
+                used++
+                for ((cell, m) in step.eliminations) assertEquals(0, m and (1 shl (solution[cell] - 1)))
+                assertTrue(Hints.explain(step, { Grid.ALL_DIGITS }).contains("45"))
+            }
+        }
+        assertTrue("the 45 rule was used", used > 0)
+    }
+
+    @Test
+    fun killerLevelsFollowTheLadder() {
+        assertEquals(Difficulty.EASY, Killer.levelOf(Technique.CAGE, 2))
+        assertEquals(Difficulty.MEDIUM, Killer.levelOf(Technique.FORTY_FIVE, 1))
+        assertEquals(Difficulty.HARD, Killer.levelOf(Technique.POINTING, 1))
+        assertEquals(Difficulty.EXPERT, Killer.levelOf(Technique.POINTING, 0))
+        assertEquals(Difficulty.EXPERT, Killer.levelOf(Technique.X_WING, 3))
+    }
+
     @Test
     fun cagesSurviveSaving() {
-        val puzzle = Killer.generate(Random(3))
+        val puzzle = Killer.generate(Difficulty.MEDIUM, Random(3))
         val game = GameState.from(puzzle)
         assertEquals(puzzle.cages, GameCodec.decode(GameCodec.encode(game))?.cages)
     }

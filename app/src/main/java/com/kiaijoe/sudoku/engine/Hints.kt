@@ -39,7 +39,8 @@ sealed interface HintPlan {
  * through any candidate eliminations until a number can be placed.
  */
 object Hints {
-    private const val MAX_STEPS = 40
+    // Killer hints can take many routine cage steps before a number is placed (they are condensed afterwards).
+    private const val MAX_STEPS = 200
 
     fun forGame(game: GameState): HintPlan {
         if (game.status != GameStatus.PLAYING) return HintPlan.NothingLeft
@@ -54,7 +55,7 @@ object Hints {
             val step = solver.nextStep() ?: break
             cards += card(step, solver)
             solver.apply(step)
-            if (step.isPlacement) return HintPlan.Teach(cards)
+            if (step.isPlacement) return HintPlan.Teach(condense(cards))
         }
         // Logic ran out (only possible with puzzles from before grading): reveal a cell.
         val cell = (0 until Grid.CELLS).first { known[it] == 0 }
@@ -71,6 +72,47 @@ object Hints {
                     placeDigit = digit,
                 ),
             ),
+        )
+    }
+
+    /**
+     * In Killer, a hint re-derives many routine cage eliminations before the
+     * step that matters. Runs of two or more such cards become one, so the
+     * player sees the bookkeeping once and the interesting steps in full.
+     */
+    private fun condense(cards: List<HintCard>): List<HintCard> {
+        val out = ArrayList<HintCard>()
+        var i = 0
+        while (i < cards.size) {
+            var j = i
+            while (j < cards.size && cards[j].technique == Technique.CAGE && !cards[j].isPlacement) j++
+            if (j - i >= 2) {
+                out += mergeCages(cards.subList(i, j))
+                i = j
+            } else {
+                out += cards[i]
+                i++
+            }
+        }
+        return out
+    }
+
+    private fun mergeCages(run: List<HintCard>): HintCard {
+        val eliminations = HashMap<Int, Int>()
+        val candidates = HashMap<Int, Int>()
+        for (card in run) {
+            for ((cell, m) in card.eliminations) eliminations[cell] = (eliminations[cell] ?: 0) or m
+            for ((cell, m) in card.candidates) candidates.putIfAbsent(cell, m)
+        }
+        return HintCard(
+            technique = Technique.CAGE,
+            title = "Cage combinations",
+            text = "First, the cage sums narrow down ${run.size} cages. For example: ${run.first().text} " +
+                "The others work the same way, and every number they rule out is crossed out.",
+            focus = run.flatMap { it.focus }.toSet(),
+            area = emptySet(),
+            eliminations = eliminations,
+            candidates = candidates,
         )
     }
 
@@ -120,6 +162,8 @@ object Hints {
                     "$d from ${houseName(h[0])}, and $d can't go anywhere else in that box."
 
             Technique.CAGE -> cageText(step, cands, value)
+
+            Technique.FORTY_FIVE -> fortyFiveText(step)
 
             Technique.NAKED_PAIR, Technique.NAKED_TRIPLE, Technique.NAKED_QUAD ->
                 "These ${countWord(k)} cells in ${houseName(h[0])} can only hold $d. Between them they must take " +
@@ -188,13 +232,53 @@ object Hints {
         return "$start$combosText So ${digitList(step.digits)} can't go where they're crossed out."
     }
 
+    /**
+     * "Rows 1 to 3 add up to 135 (45 each). The cages entirely inside add up
+     * to 121, so the 2 cells of other cages that poke in must make up the
+     * other 14. ..."
+     */
+    private fun fortyFiveText(step: Step): String {
+        val f = step.fortyFive ?: return "The 45 rule rules out the crossed-out numbers."
+        val single = f.houses.size == 1
+        val area = areaName(f.houses).replaceFirstChar { it.uppercase() }
+        val verb = if (single) "adds" else "add"
+        val each = if (single) "" else " (45 each)"
+        val n = f.cells.size
+        val cellWord = if (n == 1) "cell" else "$n cells"
+        val inside = f.total - f.insideSum
+        val reason = if (!f.outies) {
+            "$area $verb up to ${f.total}$each. The cages entirely inside add up to ${f.insideSum}, " +
+                "so the ${if (n == 1) "one empty cell" else "$n empty cells"} of other cages poking in must make up " +
+                "the rest" + if (f.sum == inside) ", $inside." else ": with the filled ones counted, they need ${f.sum}."
+        } else {
+            "$area $verb up to ${f.total}$each, and the cages entirely inside add up to ${f.insideSum}, so the cages " +
+                "crossing its edge put $inside inside it. Those cages add up to ${f.crossingSum} in all, so their " +
+                "empty $cellWord sticking out must add up to ${f.sum}."
+        }
+        val conclusion = if (n == 1) {
+            " So that cell is ${f.sum}."
+        } else {
+            " So ${digitList(step.digits)} can't go where they're crossed out."
+        }
+        return reason + conclusion
+    }
+
+    /** "row 3", "rows 1 to 3", "columns 4 and 5", "the top-left box". */
+    private fun areaName(houses: List<House>): String {
+        if (houses.size == 1) return houseName(houses[0])
+        val word = if (houses[0].kind == HouseKind.ROW) "rows" else "columns"
+        val first = houses.first().index + 1
+        val last = houses.last().index + 1
+        return if (houses.size == 2) "$word $first and $last" else "$word $first to $last"
+    }
+
     // --- Wording ----------------------------------------------------------
 
     private val Technique.showsAllCandidates: Boolean
         get() = when (this) {
             Technique.NAKED_PAIR, Technique.NAKED_TRIPLE, Technique.NAKED_QUAD,
             Technique.HIDDEN_PAIR, Technique.HIDDEN_TRIPLE, Technique.HIDDEN_QUAD,
-            Technique.XY_WING, Technique.XYZ_WING, Technique.CAGE,
+            Technique.XY_WING, Technique.XYZ_WING, Technique.CAGE, Technique.FORTY_FIVE,
             -> true
             else -> false
         }

@@ -126,10 +126,10 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     }
 
     /** Starts a Killer Sudoku game. It takes the regular game's slot, like any new game. */
-    override fun newKiller() {
+    override fun newKiller(difficulty: Difficulty) {
         startLoading()
         viewModelScope.launch {
-            val game = GameState.from(withContext(Dispatchers.Default) { Killer.generate() })
+            val game = GameState.from(withContext(Dispatchers.Default) { Killer.generate(difficulty) })
             repo.recordKillerStart()
             repo.saveGame(game)
             show(game, savedGame = game)
