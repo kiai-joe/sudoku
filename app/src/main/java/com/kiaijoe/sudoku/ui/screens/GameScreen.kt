@@ -107,7 +107,8 @@ fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
                     Text(
                         when {
                             state.generating -> "New game"
-                            game?.daily != null -> "Daily · ${game.difficulty.label}"
+                            game?.daily != null ->
+                                "Daily · ${if (game.isKiller) "Killer " else ""}${game.difficulty.label}"
                             game?.isKiller == true -> "Killer · ${game.difficulty.label}"
                             else -> game?.difficulty?.label.orEmpty()
                         },

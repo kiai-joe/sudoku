@@ -68,6 +68,7 @@ data class DailyUi(
     val inProgress: GameState? = null,
 ) {
     val difficulty: Difficulty get() = Daily.difficultyFor(today)
+    val label: String get() = Daily.label(today)
     val solvedToday: Boolean get() = today in results
     val todaySeconds: Long? get() = results[today]
     val streak: Int get() = Daily.streak(results.keys, today)
