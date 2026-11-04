@@ -156,12 +156,13 @@ private fun DayMark(daily: DailyUi, day: Long, modifier: Modifier, label: String
             ),
         contentAlignment = Alignment.Center,
     ) {
-        if (solved) HanamaruStamp(SealRed, Modifier.fillMaxSize(), animate = false)
+        // With a day number on top, a faded stamp keeps the number readable.
+        if (solved) HanamaruStamp(SealRed.copy(alpha = if (label != null) 0.35f else 1f), Modifier.fillMaxSize(), animate = false)
         if (label != null) {
             Text(
                 label,
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = if (day == daily.today) FontWeight.Bold else FontWeight.Normal,
+                fontWeight = if (day == daily.today || solved) FontWeight.Bold else FontWeight.Normal,
                 color = when {
                     day > daily.today -> scheme.onSurfaceVariant.copy(alpha = 0.5f)
                     else -> scheme.onSurface
