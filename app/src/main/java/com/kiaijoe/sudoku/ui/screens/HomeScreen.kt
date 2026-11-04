@@ -52,6 +52,8 @@ import com.kiaijoe.sudoku.ui.theme.SealRed
 fun HomeScreen(
     state: UiState,
     onContinue: () -> Unit,
+    onPlayDaily: () -> Unit,
+    onCalendar: () -> Unit,
     onNewGame: (Difficulty) -> Unit,
     onStats: () -> Unit,
     onSettingsChange: (Settings) -> Unit,
@@ -79,7 +81,10 @@ fun HomeScreen(
             Spacer(Modifier.height(40.dp))
 
             Column(Modifier.widthIn(max = 420.dp).fillMaxWidth()) {
-                val game = state.game
+                DailyCard(state.daily, onPlay = onPlayDaily, onCalendar = onCalendar)
+                Spacer(Modifier.height(20.dp))
+
+                val game = state.savedGame
                 if (state.canContinue && game != null) {
                     Button(
                         onClick = onContinue,

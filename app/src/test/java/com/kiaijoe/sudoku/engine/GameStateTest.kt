@@ -112,7 +112,7 @@ class GameStateTest {
         val text = GameCodec.encode(g)
         assertEquals(Technique.X_WING, GameCodec.decode(text)?.hardest)
 
-        val older = text.substringBeforeLast("|")
+        val older = text.split("|").take(10).joinToString("|")
         val decoded = GameCodec.decode(older)
         assertEquals(null, decoded?.hardest)
         assertEquals(g.copy(hardest = null), decoded)

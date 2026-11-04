@@ -13,6 +13,7 @@ Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi bla
 - Undo and erase.
 - Teaching hints: a hint finds the easiest next step on your board, highlights the cells involved, and explains it in plain words ("In the centre box, 4 can only go in row 5…"). Steps that only rule out candidates show them crossed out on the board, and you step through to the number they lead to. A wrong number on the board is pointed out first.
 - Timer that pauses when you leave the app, plus a manual pause that hides the board.
+- Daily puzzle: the same puzzle for everyone each day, made from the date so it works offline. It runs from Easy on Monday to Expert on Sunday. A streak counts the days in a row you solve it, and a calendar marks each solved day with a hanamaru. It's saved separately, so it never replaces your regular game.
 - The current game is saved after every move and can be resumed.
 - Statistics per level: games played, wins, win rate and best time.
 - Light and dark themes in the Sumi palette.
@@ -60,6 +61,7 @@ app/src/main/java/com/kiaijoe/sudoku/
 │   ├── Solver.kt      Bitmask backtracking solver and solution counter
 │   ├── LogicSolver.kt Human-style solver that grades puzzles by technique
 │   ├── Hints.kt       Turns solver steps into explained, step-by-step hints
+│   ├── Daily.kt       Daily puzzle from the date, weekly levels, streaks
 │   ├── Generator.kt   Graded, unique-solution puzzle generator and levels
 │   ├── GameState.kt   Immutable game state and moves
 │   └── GameCodec.kt   Save format
@@ -71,7 +73,7 @@ The engine has unit tests in `app/src/test`.
 
 ## Screenshots
 
-`ScreenshotTest` renders the main screens (home, a game in progress, a hint, the win stamp and stats, in light and dark) to `app/src/test/screenshots` using [Roborazzi](https://github.com/takahirom/roborazzi) on Robolectric, so no device or emulator is needed. On every pull request CI re-renders them and commits any changes back to the branch, so visual changes show up as image diffs in the review. To render them yourself:
+`ScreenshotTest` renders the main screens (home, a game in progress, a hint, the win stamp, the daily calendar and stats, in light and dark) to `app/src/test/screenshots` using [Roborazzi](https://github.com/takahirom/roborazzi) on Robolectric, so no device or emulator is needed. On every pull request CI re-renders them and commits any changes back to the branch, so visual changes show up as image diffs in the review. To render them yourself:
 
 ```bash
 ./gradlew recordRoborazziDebug
