@@ -44,7 +44,9 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -m "Update screenshots"
+          # [skip ci]: this commit only adds the images this run just made, and runs
+          # started by the bot would otherwise wait for manual approval.
+          git commit -m "Update screenshots [skip ci]"
           git push
 
       - name: Build debug APK
