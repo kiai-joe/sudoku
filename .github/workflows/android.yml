@@ -6,6 +6,10 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Pull requests get updated screenshots committed back to their branch.
+permissions:
+  contents: write
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
@@ -15,6 +19,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # On a pull request, check out the branch itself so screenshots can be pushed to it.
+          ref: ${{ github.head_ref || github.ref }}
 
       - uses: actions/setup-java@v4
         with:
@@ -23,8 +30,24 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      - name: Unit tests
-        run: ./gradlew testDebugUnitTest --stacktrace
+      - name: Unit and screenshot tests
+        # Runs every unit test and re-renders the screenshots in app/src/test/screenshots.
+        run: ./gradlew recordRoborazziDebug --stacktrace
+
+      - name: Commit updated screenshots
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          git add app/src/test/screenshots
+          if git diff --cached --quiet; then
+            echo "Screenshots unchanged"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # [skip ci]: this commit only adds the images this run just made, and runs
+          # started by the bot would otherwise wait for manual approval.
+          git commit -m "Update screenshots [skip ci]"
+          git push
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --stacktrace
@@ -41,4 +64,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-report
-          path: app/build/reports/tests/
+          path: |
+            app/build/reports/tests/
+            app/build/outputs/roborazzi/

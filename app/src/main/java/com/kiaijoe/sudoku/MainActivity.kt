@@ -49,7 +49,7 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
         )
         Screen.Game -> GameScreen(
             state = state,
-            viewModel = viewModel,
+            actions = viewModel,
             onExit = { screen = Screen.Home },
         )
         Screen.Stats -> StatsScreen(

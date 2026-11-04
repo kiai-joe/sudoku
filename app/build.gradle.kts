@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.roborazzi)
 }
 
 android {
@@ -50,6 +51,16 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        // Screenshot tests render real resources (fonts, colours) under Robolectric.
+        unitTests.isIncludeAndroidResources = true
+    }
+}
+
+roborazzi {
+    // Screenshots are committed here so changes show up as image diffs in pull requests.
+    outputDir.set(file("src/test/screenshots"))
 }
 
 kotlin {
@@ -72,5 +83,13 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.extended)
     debugImplementation(libs.androidx.compose.ui.tooling)
 
+    debugImplementation(libs.androidx.compose.ui.test.manifest)
+
     testImplementation(libs.junit)
+    testImplementation(platform(libs.androidx.compose.bom))
+    testImplementation(libs.androidx.compose.ui.test.junit4)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.roborazzi)
+    testImplementation(libs.roborazzi.compose)
+    testImplementation(libs.roborazzi.junit.rule)
 }

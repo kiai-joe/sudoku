@@ -57,7 +57,7 @@ import com.kiaijoe.sudoku.engine.GameStatus
 import com.kiaijoe.sudoku.engine.HintPlan
 import com.kiaijoe.sudoku.ui.HintUi
 import com.kiaijoe.sudoku.ui.MISTAKE_LIMIT
-import com.kiaijoe.sudoku.ui.SudokuViewModel
+import com.kiaijoe.sudoku.ui.GameActions
 import com.kiaijoe.sudoku.ui.UiState
 import com.kiaijoe.sudoku.ui.components.GameToolbar
 import com.kiaijoe.sudoku.ui.components.HanamaruStamp
@@ -69,20 +69,20 @@ import com.kiaijoe.sudoku.ui.theme.SealRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GameScreen(state: UiState, viewModel: SudokuViewModel, onExit: () -> Unit) {
+fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
-                Lifecycle.Event.ON_RESUME -> viewModel.setGameScreenActive(true)
-                Lifecycle.Event.ON_PAUSE -> viewModel.setGameScreenActive(false)
+                Lifecycle.Event.ON_RESUME -> actions.setGameScreenActive(true)
+                Lifecycle.Event.ON_PAUSE -> actions.setGameScreenActive(false)
                 else -> Unit
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            viewModel.setGameScreenActive(false)
+            actions.setGameScreenActive(false)
         }
     }
     BackHandler(onBack = onExit)
@@ -110,7 +110,7 @@ fun GameScreen(state: UiState, viewModel: SudokuViewModel, onExit: () -> Unit) {
                 },
                 actions = {
                     if (game != null && game.status == GameStatus.PLAYING && !state.generating) {
-                        IconButton(onClick = viewModel::togglePause) {
+                        IconButton(onClick = actions::togglePause) {
                             Icon(
                                 if (state.paused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
                                 contentDescription = if (state.paused) "Resume" else "Pause",
@@ -132,13 +132,13 @@ fun GameScreen(state: UiState, viewModel: SudokuViewModel, onExit: () -> Unit) {
         ) {
             when {
                 state.generating || game == null -> Generating()
-                else -> Play(state, game, viewModel, onExit)
+                else -> Play(state, game, actions, onExit)
             }
         }
     }
 
     if (game != null && !state.generating) {
-        EndDialogs(game, viewModel)
+        EndDialogs(game, actions)
     }
 }
 
@@ -156,7 +156,7 @@ private fun Generating() {
 }
 
 @Composable
-private fun Play(state: UiState, game: GameState, viewModel: SudokuViewModel, onExit: () -> Unit) {
+private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: () -> Unit) {
     val won = game.status == GameStatus.WON
     // Draw the stamp in only for a win seen happen, not when reopening a won game.
     var sawPlaying by remember { mutableStateOf(false) }
@@ -179,12 +179,12 @@ private fun Play(state: UiState, game: GameState, viewModel: SudokuViewModel, on
                 game = game,
                 selected = state.selected,
                 highlightSameNumbers = state.settings.highlightSameNumbers,
-                onSelect = viewModel::select,
+                onSelect = actions::select,
                 modifier = Modifier.fillMaxSize(),
                 hint = state.hint?.card,
                 mistakeCell = (state.hint?.plan as? HintPlan.FixMistake)?.cell,
             )
-            if (state.paused) PausedOverlay(onResume = viewModel::togglePause)
+            if (state.paused) PausedOverlay(onResume = actions::togglePause)
             if (won) {
                 Box(
                     Modifier
@@ -206,29 +206,29 @@ private fun Play(state: UiState, game: GameState, viewModel: SudokuViewModel, on
         Spacer(Modifier.height(18.dp))
         val hint = state.hint
         if (won) {
-            WinPanel(state, game, onNewGame = { viewModel.newGame(game.difficulty) }, onHome = onExit)
+            WinPanel(state, game, onNewGame = { actions.newGame(game.difficulty) }, onHome = onExit)
         } else if (hint != null) {
             HintPanel(
                 hint = hint,
-                onNext = viewModel::hintNext,
-                onPlace = viewModel::hintPlace,
-                onErase = viewModel::hintEraseMistake,
-                onClose = viewModel::closeHint,
+                onNext = actions::hintNext,
+                onPlace = actions::hintPlace,
+                onErase = actions::hintEraseMistake,
+                onClose = actions::closeHint,
             )
         } else {
             GameToolbar(
                 canUndo = state.canUndo,
                 notesMode = state.notesMode,
-                onUndo = viewModel::undo,
-                onErase = viewModel::erase,
-                onToggleNotes = viewModel::toggleNotesMode,
-                onHint = viewModel::hint,
+                onUndo = actions::undo,
+                onErase = actions::erase,
+                onToggleNotes = actions::toggleNotesMode,
+                onHint = actions::hint,
             )
             Spacer(Modifier.height(14.dp))
             NumberPad(
                 remaining = game::remaining,
                 notesMode = state.notesMode,
-                onDigit = viewModel::input,
+                onDigit = actions::input,
             )
         }
         Spacer(Modifier.height(16.dp))
@@ -404,16 +404,16 @@ private fun PausedOverlay(onResume: () -> Unit) {
 }
 
 @Composable
-private fun EndDialogs(game: GameState, viewModel: SudokuViewModel) {
+private fun EndDialogs(game: GameState, actions: GameActions) {
     when (game.status) {
         GameStatus.WON -> Unit // Shown in place by the stamp and WinPanel.
         GameStatus.LOST -> AlertDialog(
             onDismissRequest = {},
             title = { Text("Out of mistakes") },
             text = { Text("That was $MISTAKE_LIMIT wrong numbers. Try this puzzle again or start a fresh one.") },
-            confirmButton = { Button(onClick = viewModel::restart) { Text("Try again") } },
+            confirmButton = { Button(onClick = actions::restart) { Text("Try again") } },
             dismissButton = {
-                FilledTonalButton(onClick = { viewModel.newGame(game.difficulty) }) { Text("New puzzle") }
+                FilledTonalButton(onClick = { actions.newGame(game.difficulty) }) { Text("New puzzle") }
             },
         )
         GameStatus.PLAYING -> Unit

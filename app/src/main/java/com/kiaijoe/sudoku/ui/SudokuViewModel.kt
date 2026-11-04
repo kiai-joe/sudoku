@@ -49,7 +49,7 @@ data class HintUi(val plan: HintPlan, val index: Int = 0) {
     val hasNext: Boolean get() = index < total - 1
 }
 
-class SudokuViewModel(application: Application) : AndroidViewModel(application) {
+class SudokuViewModel(application: Application) : AndroidViewModel(application), GameActions {
 
     private val repo = GameRepository(application)
     private val undoStack = ArrayDeque<GameState>()
@@ -67,7 +67,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
 
     // --- Game lifecycle -------------------------------------------------
 
-    fun newGame(difficulty: Difficulty) {
+    override fun newGame(difficulty: Difficulty) {
         _ui.update { it.copy(generating = true, paused = false, selected = null, notesMode = false, hint = null) }
         updateTimer()
         viewModelScope.launch {
@@ -89,7 +89,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun restart() {
+    override fun restart() {
         val game = _ui.value.game ?: return
         undoStack.clear()
         val fresh = game.restart()
@@ -99,13 +99,13 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /** Called by the game screen as it resumes and pauses, so the clock only runs while visible. */
-    fun setGameScreenActive(active: Boolean) {
+    override fun setGameScreenActive(active: Boolean) {
         gameScreenActive = active
         updateTimer()
         if (!active) _ui.value.game?.let(::persist)
     }
 
-    fun togglePause() {
+    override fun togglePause() {
         val s = _ui.value
         if (s.game?.status != GameStatus.PLAYING) return
         _ui.update { it.copy(paused = !it.paused) }
@@ -114,14 +114,14 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
 
     // --- Input ----------------------------------------------------------
 
-    fun select(cell: Int) {
+    override fun select(cell: Int) {
         if (_ui.value.paused) return
         _ui.update { it.copy(selected = cell) }
     }
 
-    fun toggleNotesMode() = _ui.update { it.copy(notesMode = !it.notesMode) }
+    override fun toggleNotesMode() = _ui.update { it.copy(notesMode = !it.notesMode) }
 
-    fun input(digit: Int) {
+    override fun input(digit: Int) {
         val s = _ui.value
         val cell = s.selected ?: return
         val settings = s.settings
@@ -139,13 +139,13 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
         }
     }
 
-    fun erase() {
+    override fun erase() {
         val cell = _ui.value.selected ?: return
         move { it.erase(cell) }
     }
 
     /** Opens a teaching hint for the board as it stands. Opening one counts as a hint used. */
-    fun hint() {
+    override fun hint() {
         val s = _ui.value
         val game = s.game ?: return
         if (game.status != GameStatus.PLAYING || s.paused || s.generating) return
@@ -156,13 +156,13 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
         _ui.update { it.copy(game = counted, hint = HintUi(plan), selected = null) }
     }
 
-    fun hintNext() = _ui.update { s ->
+    override fun hintNext() = _ui.update { s ->
         val h = s.hint ?: return@update s
         if (h.hasNext) s.copy(hint = h.copy(index = h.index + 1)) else s
     }
 
     /** Places the number the hint's last step arrives at. */
-    fun hintPlace() {
+    override fun hintPlace() {
         val card = _ui.value.hint?.card ?: return
         if (!card.isPlacement) return
         _ui.update { it.copy(hint = null, selected = card.placeCell) }
@@ -170,15 +170,15 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     /** Erases the wrong number a hint pointed out. */
-    fun hintEraseMistake() {
+    override fun hintEraseMistake() {
         val plan = _ui.value.hint?.plan as? HintPlan.FixMistake ?: return
         _ui.update { it.copy(hint = null, selected = plan.cell) }
         move { it.erase(plan.cell) }
     }
 
-    fun closeHint() = _ui.update { it.copy(hint = null) }
+    override fun closeHint() = _ui.update { it.copy(hint = null) }
 
-    fun undo() {
+    override fun undo() {
         val s = _ui.value
         val game = s.game ?: return
         if (game.status != GameStatus.PLAYING || s.paused) return
