@@ -39,6 +39,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.data.DifficultyStats
@@ -162,8 +164,13 @@ private fun AchievementsCard(earned: Map<Achievement, Long>) {
             Spacer(Modifier.height(8.dp))
             for (achievement in Achievement.entries) {
                 val day = earned[achievement]
+                val spoken = achievement.title + ". " + achievement.description + ". " +
+                    if (day != null) "Earned ${LocalDate.ofEpochDay(day).format(dates)}" else "Not earned yet"
                 Row(
-                    Modifier.fillMaxWidth().padding(vertical = 7.dp),
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 7.dp)
+                        .clearAndSetSemantics { contentDescription = spoken },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {

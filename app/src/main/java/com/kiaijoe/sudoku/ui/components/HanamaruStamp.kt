@@ -34,6 +34,10 @@ import kotlin.math.sin
  */
 @Composable
 fun HanamaruStamp(color: Color, modifier: Modifier = Modifier, animate: Boolean = true) {
+    if (animate && rememberReduceMotion()) {
+        HanamaruStamp(color, modifier, animate = false)
+        return
+    }
     val draw = remember { Animatable(if (animate) 0f else 1f) }
     val pulse = remember { Animatable(1f) }
     LaunchedEffect(animate) {

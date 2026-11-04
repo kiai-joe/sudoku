@@ -48,6 +48,12 @@ fun SettingsDialog(settings: Settings, onChange: (Settings) -> Unit, onDismiss: 
                 ThemePicker(selected = settings.theme, onSelect = { onChange(settings.copy(theme = it)) })
                 Spacer(Modifier.height(8.dp))
                 SettingRow(
+                    title = "Larger numbers",
+                    subtitle = "Bigger digits on the board and number pad",
+                    checked = settings.largeNumbers,
+                    onCheckedChange = { onChange(settings.copy(largeNumbers = it)) },
+                )
+                SettingRow(
                     title = "Show mistakes right away",
                     subtitle = if (settings.instantCheck) {
                         "Wrong numbers turn red as you place them"

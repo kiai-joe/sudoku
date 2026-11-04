@@ -13,6 +13,7 @@ import com.kiaijoe.sudoku.ui.theme.InkTheme
  *   and the mistake limit doesn't apply.
  * @property haptics short vibrations when placing numbers and finishing groups.
  * @property theme the ink palette.
+ * @property largeNumbers bigger digits on the board and number pad.
  */
 data class Settings(
     val mistakeLimit: Boolean = true,
@@ -21,6 +22,7 @@ data class Settings(
     val instantCheck: Boolean = true,
     val haptics: Boolean = true,
     val theme: InkTheme = InkTheme.SUMI,
+    val largeNumbers: Boolean = false,
 )
 
 data class DifficultyStats(
@@ -95,6 +97,7 @@ class GameRepository(context: Context) {
         theme = prefs.getString(KEY_THEME, null)
             ?.let { name -> InkTheme.entries.firstOrNull { it.name == name } }
             ?: InkTheme.SUMI,
+        largeNumbers = prefs.getBoolean(KEY_LARGE_NUMBERS, false),
     )
 
     fun saveSettings(settings: Settings) {
@@ -105,6 +108,7 @@ class GameRepository(context: Context) {
             .putBoolean(KEY_INSTANT_CHECK, settings.instantCheck)
             .putBoolean(KEY_HAPTICS, settings.haptics)
             .putString(KEY_THEME, settings.theme.name)
+            .putBoolean(KEY_LARGE_NUMBERS, settings.largeNumbers)
             .apply()
     }
 
@@ -169,5 +173,6 @@ class GameRepository(context: Context) {
         const val KEY_INSTANT_CHECK = "instant_check"
         const val KEY_HAPTICS = "haptics"
         const val KEY_THEME = "theme"
+        const val KEY_LARGE_NUMBERS = "large_numbers"
     }
 }

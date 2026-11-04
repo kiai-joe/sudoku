@@ -120,6 +120,7 @@ fun NumberPad(
     notesMode: Boolean,
     onDigit: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    largeNumbers: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -149,7 +150,12 @@ fun NumberPad(
                 ) {
                     Text(
                         text = digit.toString(),
-                        fontSize = if (notesMode) 20.sp else 26.sp,
+                        fontSize = when {
+                            largeNumbers && notesMode -> 24.sp
+                            largeNumbers -> 32.sp
+                            notesMode -> 20.sp
+                            else -> 26.sp
+                        },
                         fontWeight = if (notesMode) FontWeight.Normal else FontWeight.Medium,
                         color = when {
                             done -> scheme.onSurfaceVariant.copy(alpha = 0.3f)

@@ -168,6 +168,17 @@ class ScreenshotTest {
         GameScreen(state = UiState(game = g, hint = HintUi(plan)), actions = GameActions.None, onExit = {})
     }
 
+    /** Larger numbers on, for low vision. */
+    @Test
+    fun gameLargeNumbersLight() = capture("game_large_light", dark = false) {
+        val g = Fixtures.midGame()
+        GameScreen(
+            state = UiState(game = g, selected = Fixtures.selectedCell(g), settings = Settings(largeNumbers = true)),
+            actions = GameActions.None,
+            onExit = {},
+        )
+    }
+
     // --- Hints -------------------------------------------------------------
 
     @Test fun hintLight() = hint(dark = false)
