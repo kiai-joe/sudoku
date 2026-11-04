@@ -1,7 +1,5 @@
 package com.kiaijoe.sudoku.engine
 
-import kotlin.random.Random
-
 enum class GameStatus { PLAYING, WON, LOST }
 
 /**
@@ -73,25 +71,6 @@ data class GameState(
             values = values.toMutableList().also { it[cell] = 0 },
             notes = notes.toMutableList().also { it[cell] = 0 },
         )
-    }
-
-    /**
-     * Which cell a hint should fill: [preferred] if it still needs a value,
-     * otherwise a random unsolved cell. Null when nothing is left to fill.
-     */
-    fun hintTarget(preferred: Int?, random: Random = Random.Default): Int? {
-        if (status != GameStatus.PLAYING) return null
-        if (preferred != null && !isGiven(preferred) && !isCorrect(preferred)) return preferred
-        val open = values.indices.filter { !isCorrect(it) && !isGiven(it) }
-        return if (open.isEmpty()) null else open.random(random)
-    }
-
-    /** Fills [cell] with its solution value without counting a mistake. */
-    fun reveal(cell: Int, autoRemoveNotes: Boolean): GameState {
-        if (status != GameStatus.PLAYING || isGiven(cell) || isCorrect(cell)) return this
-        val digit = solution[cell]
-        val placed = place(cell, digit, mistakeLimit = null, autoRemoveNotes = autoRemoveNotes)
-        return placed.copy(hintsUsed = hintsUsed + 1)
     }
 
     /** Back to the starting grid. Time, mistakes and hints are reset. */

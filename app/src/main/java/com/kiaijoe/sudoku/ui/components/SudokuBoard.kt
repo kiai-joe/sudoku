@@ -25,10 +25,12 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.engine.GameState
+import com.kiaijoe.sudoku.engine.HintCard
 import com.kiaijoe.sudoku.engine.Grid
 import com.kiaijoe.sudoku.ui.theme.BoardColors
 import com.kiaijoe.sudoku.ui.theme.LocalBoardColors
@@ -40,6 +42,8 @@ fun SudokuBoard(
     highlightSameNumbers: Boolean,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    hint: HintCard? = null,
+    mistakeCell: Int? = null,
 ) {
     val colors = LocalBoardColors.current
     val shape = RoundedCornerShape(10.dp)
@@ -68,7 +72,13 @@ fun SudokuBoard(
                         Cell(
                             game = game,
                             index = index,
-                            background = cellBackground(game, index, selected, selectedDigit, colors),
+                            background = if (hint != null || mistakeCell != null) {
+                                hintBackground(index, hint, mistakeCell, colors)
+                            } else {
+                                cellBackground(game, index, selected, selectedDigit, colors)
+                            },
+                            hintShown = hint?.candidates?.get(index) ?: 0,
+                            hintStruck = hint?.eliminations?.get(index) ?: 0,
                             selectedDigit = selectedDigit,
                             digitSize = digitSize,
                             noteSize = noteSize,
@@ -105,6 +115,16 @@ fun SudokuBoard(
     }
 }
 
+/** While a hint is open, the board shows its pattern instead of the selection. */
+private fun hintBackground(index: Int, hint: HintCard?, mistakeCell: Int?, colors: BoardColors): Color = when {
+    index == mistakeCell -> colors.hintFocus
+    hint == null -> Color.Transparent
+    index in hint.focus -> colors.hintFocus
+    index in hint.eliminations -> colors.wrongBackground
+    index in hint.area -> colors.hintArea
+    else -> Color.Transparent
+}
+
 private fun cellBackground(
     game: GameState,
     index: Int,
@@ -130,6 +150,8 @@ private fun Cell(
     colors: BoardColors,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    hintShown: Int = 0,
+    hintStruck: Int = 0,
 ) {
     val value = game.values[index]
     val description = buildString {
@@ -162,6 +184,8 @@ private fun Cell(
                     else -> colors.entered
                 },
             )
+        } else if (hintShown != 0 || hintStruck != 0) {
+            HintNotes(hintShown, hintStruck, noteSize, colors)
         } else if (game.notes[index] != 0) {
             Notes(game, index, selectedDigit, noteSize, colors)
         }
@@ -195,6 +219,48 @@ private fun Notes(game: GameState, index: Int, selectedDigit: Int?, size: TextUn
                                 textAlign = TextAlign.Center,
                                 fontWeight = if (match) FontWeight.Bold else FontWeight.Normal,
                                 color = if (match) colors.entered else colors.given.copy(alpha = 0.6f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A hint's candidates for one cell: [shown] digits in ink, [struck] digits
+ * (the ones the hint rules out) in vermilion and crossed through.
+ */
+@Composable
+private fun HintNotes(shown: Int, struck: Int, size: TextUnit, colors: BoardColors) {
+    Column(Modifier.fillMaxSize()) {
+        for (r in 0 until 3) {
+            Row(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth(),
+            ) {
+                for (c in 0 until 3) {
+                    val digit = r * 3 + c + 1
+                    val bit = 1 shl (digit - 1)
+                    val isStruck = struck and bit != 0
+                    val isShown = shown and bit != 0
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (isStruck || isShown) {
+                            Text(
+                                text = digit.toString(),
+                                fontSize = size,
+                                lineHeight = size,
+                                textAlign = TextAlign.Center,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isStruck) colors.wrong else colors.entered,
+                                textDecoration = if (isStruck) TextDecoration.LineThrough else null,
                             )
                         }
                     }

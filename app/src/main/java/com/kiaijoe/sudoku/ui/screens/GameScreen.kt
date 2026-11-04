@@ -54,6 +54,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.GameStatus
+import com.kiaijoe.sudoku.engine.HintPlan
+import com.kiaijoe.sudoku.ui.HintUi
 import com.kiaijoe.sudoku.ui.MISTAKE_LIMIT
 import com.kiaijoe.sudoku.ui.SudokuViewModel
 import com.kiaijoe.sudoku.ui.UiState
@@ -179,6 +181,8 @@ private fun Play(state: UiState, game: GameState, viewModel: SudokuViewModel, on
                 highlightSameNumbers = state.settings.highlightSameNumbers,
                 onSelect = viewModel::select,
                 modifier = Modifier.fillMaxSize(),
+                hint = state.hint?.card,
+                mistakeCell = (state.hint?.plan as? HintPlan.FixMistake)?.cell,
             )
             if (state.paused) PausedOverlay(onResume = viewModel::togglePause)
             if (won) {
@@ -200,8 +204,17 @@ private fun Play(state: UiState, game: GameState, viewModel: SudokuViewModel, on
         }
 
         Spacer(Modifier.height(18.dp))
+        val hint = state.hint
         if (won) {
             WinPanel(state, game, onNewGame = { viewModel.newGame(game.difficulty) }, onHome = onExit)
+        } else if (hint != null) {
+            HintPanel(
+                hint = hint,
+                onNext = viewModel::hintNext,
+                onPlace = viewModel::hintPlace,
+                onErase = viewModel::hintEraseMistake,
+                onClose = viewModel::closeHint,
+            )
         } else {
             GameToolbar(
                 canUndo = state.canUndo,
@@ -219,6 +232,78 @@ private fun Play(state: UiState, game: GameState, viewModel: SudokuViewModel, on
             )
         }
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun HintPanel(
+    hint: HintUi,
+    onNext: () -> Unit,
+    onPlace: () -> Unit,
+    onErase: () -> Unit,
+    onClose: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    val mistake = hint.plan as? HintPlan.FixMistake
+    val card = hint.card
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = scheme.surface,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(horizontal = 18.dp, vertical = 16.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    when {
+                        mistake != null -> "Check this cell"
+                        card != null -> card.title
+                        else -> "Hint"
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                if (hint.total > 1) {
+                    Text(
+                        "Step ${hint.index + 1} of ${hint.total}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = scheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Spacer(Modifier.height(8.dp))
+            Text(
+                when {
+                    mistake != null ->
+                        "The ${mistake.digit} here doesn't match the solution. Erase it, then ask for a hint again."
+                    card != null -> card.text
+                    else -> ""
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            if (card != null && !card.isPlacement && card.eliminations.isNotEmpty()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Crossed-out numbers on the board are the ones this rules out.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = scheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(onClick = onClose, modifier = Modifier.weight(1f).height(48.dp)) { Text("Close") }
+                when {
+                    mistake != null ->
+                        Button(onClick = onErase, modifier = Modifier.weight(1f).height(48.dp)) { Text("Erase it") }
+                    card != null && card.isPlacement ->
+                        Button(onClick = onPlace, modifier = Modifier.weight(1f).height(48.dp)) {
+                            Text("Place ${card.placeDigit}")
+                        }
+                    hint.hasNext ->
+                        Button(onClick = onNext, modifier = Modifier.weight(1f).height(48.dp)) { Text("Next step") }
+                }
+            }
+        }
     }
 }
 

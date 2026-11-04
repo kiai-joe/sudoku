@@ -2,12 +2,10 @@ package com.kiaijoe.sudoku.engine
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.random.Random
 
 class GameStateTest {
 
@@ -76,30 +74,10 @@ class GameStateTest {
     }
 
     @Test
-    fun hintRevealsWithoutMistake() {
-        val g = TestGrids.game()
-        val target = g.hintTarget(empty)
-        assertEquals(empty, target)
-        val after = g.reveal(empty, true)
-        assertTrue(after.isCorrect(empty))
-        assertEquals(1, after.hintsUsed)
-        assertEquals(0, after.mistakes)
-    }
-
-    @Test
-    fun hintPicksAnotherCellWhenSelectionIsDone() {
-        val g = TestGrids.game()
-        val target = g.hintTarget(0, Random(1))
-        assertNotNull(target)
-        assertFalse(g.isGiven(target!!))
-    }
-
-    @Test
     fun fillingEverythingWins() {
         var g = TestGrids.game()
         for (cell in 0 until 81) if (!g.isGiven(cell)) g = g.place(cell, TestGrids.SOLUTION[cell], 3, true)
         assertEquals(GameStatus.WON, g.status)
-        assertNull(g.hintTarget(null))
         for (d in 1..9) assertEquals(0, g.remaining(d))
     }
 
@@ -116,7 +94,7 @@ class GameStateTest {
         val g = TestGrids.game()
             .place(empty, 1, 3, true)
             .toggleNote(3, 2)
-            .reveal(5, true)
+            .copy(hintsUsed = 1)
             .copy(elapsedSeconds = 1234)
         assertEquals(g, GameCodec.decode(GameCodec.encode(g)))
     }

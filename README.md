@@ -10,7 +10,8 @@ Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi bla
 - Pencil notes, with matching notes cleared automatically when you place a number.
 - Highlighting for the selected cell's row, column, box and matching numbers.
 - Mistake limit of 3, which you can turn off in Settings.
-- Undo, erase and hints.
+- Undo and erase.
+- Teaching hints: a hint finds the easiest next step on your board, highlights the cells involved, and explains it in plain words ("In the centre box, 4 can only go in row 5…"). Steps that only rule out candidates show them crossed out on the board, and you step through to the number they lead to. A wrong number on the board is pointed out first.
 - Timer that pauses when you leave the app, plus a manual pause that hides the board.
 - The current game is saved after every move and can be resumed.
 - Statistics per level: games played, wins, win rate and best time.
@@ -58,6 +59,7 @@ app/src/main/java/com/kiaijoe/sudoku/
 │   ├── Grid.kt        Cell indexing, peers, solution check
 │   ├── Solver.kt      Bitmask backtracking solver and solution counter
 │   ├── LogicSolver.kt Human-style solver that grades puzzles by technique
+│   ├── Hints.kt       Turns solver steps into explained, step-by-step hints
 │   ├── Generator.kt   Graded, unique-solution puzzle generator and levels
 │   ├── GameState.kt   Immutable game state and moves
 │   └── GameCodec.kt   Save format
