@@ -4,6 +4,15 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import kotlin.random.Random
 
+/** How a player does on one weekday's puzzles. Times are null until one is solved. */
+data class WeekdayStats(
+    val day: DayOfWeek,
+    val difficulty: Difficulty,
+    val solved: Int,
+    val averageSeconds: Long?,
+    val bestSeconds: Long?,
+)
+
 /**
  * The daily puzzle. Days are epoch days (days since 1970-01-01, as from
  * LocalDate.toEpochDay), so they store as plain numbers.
@@ -53,5 +62,22 @@ object Daily {
             if (length > best) best = length
         }
         return best
+    }
+
+    /** Solves, average and best time for each weekday, Monday first. [results] maps day to seconds. */
+    fun weekdayStats(results: Map<Long, Long>): List<WeekdayStats> {
+        val byWeekday = results.entries.groupBy { LocalDate.ofEpochDay(it.key).dayOfWeek }
+        return DayOfWeek.entries.map { dow ->
+            val times = byWeekday[dow].orEmpty().map { it.value }
+            WeekdayStats(
+                day = dow,
+                // Any date with this weekday gives its level. Epoch day 4 (1970-01-05)
+                // was a Monday, and DayOfWeek.value runs 1 (Monday) to 7 (Sunday).
+                difficulty = difficultyFor(3L + dow.value),
+                solved = times.size,
+                averageSeconds = if (times.isEmpty()) null else times.sum() / times.size,
+                bestSeconds = times.minOrNull(),
+            )
+        }
     }
 }

@@ -140,6 +140,13 @@ class ScreenshotTest {
         CalendarScreen(daily = Fixtures.daily, onBack = {})
     }
 
+    /** The whole daily page, including the weekday chart below the fold, on a tall screen. */
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun calendarFullLight() = capture("calendar_full_light", dark = false) {
+        CalendarScreen(daily = Fixtures.daily, onBack = {})
+    }
+
     // --- Stats -------------------------------------------------------------
 
     @Test

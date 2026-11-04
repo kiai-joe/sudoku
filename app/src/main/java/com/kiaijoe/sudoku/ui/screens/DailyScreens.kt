@@ -2,6 +2,7 @@ package com.kiaijoe.sudoku.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,11 +10,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
@@ -41,10 +44,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.kiaijoe.sudoku.engine.Daily
 import com.kiaijoe.sudoku.ui.DailyUi
 import com.kiaijoe.sudoku.ui.components.HanamaruStamp
 import com.kiaijoe.sudoku.ui.formatTime
@@ -243,6 +248,8 @@ fun CalendarScreen(daily: DailyUi, onBack: () -> Unit) {
                     MonthGrid(daily, month)
                 }
             }
+            Spacer(Modifier.height(16.dp))
+            WeekdayCard(daily)
         }
     }
 }
@@ -285,5 +292,75 @@ private fun Figure(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+/**
+ * Average solve time for each weekday as a bar, with the number solved and
+ * the best time, so a player can see how the rising levels treat them.
+ */
+@Composable
+private fun WeekdayCard(daily: DailyUi) {
+    val scheme = MaterialTheme.colorScheme
+    val stats = Daily.weekdayStats(daily.results)
+    val longest = stats.maxOf { it.averageSeconds ?: 0L }.coerceAtLeast(1L)
+    Surface(
+        shape = RoundedCornerShape(18.dp),
+        color = scheme.surface,
+        tonalElevation = 1.dp,
+        modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(18.dp)) {
+            Text("By weekday", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Average solve time. Levels rise from Easy on Monday to Expert on Sunday.",
+                style = MaterialTheme.typography.bodySmall,
+                color = scheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(12.dp))
+            for (row in stats) {
+                Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.width(76.dp)) {
+                        Text(
+                            row.day.getDisplayName(TextStyle.SHORT, Locale.getDefault()),
+                            style = MaterialTheme.typography.labelLarge,
+                        )
+                        Text(row.difficulty.label, style = MaterialTheme.typography.labelSmall, color = scheme.onSurfaceVariant)
+                    }
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .height(10.dp)
+                            .clip(RoundedCornerShape(5.dp))
+                            .background(scheme.surfaceVariant),
+                    ) {
+                        val average = row.averageSeconds
+                        if (average != null) {
+                            Box(
+                                Modifier
+                                    .fillMaxWidth(average.toFloat() / longest)
+                                    .fillMaxHeight()
+                                    .clip(RoundedCornerShape(5.dp))
+                                    .background(scheme.primary),
+                            )
+                        }
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Column(Modifier.width(104.dp), horizontalAlignment = Alignment.End) {
+                        Text(
+                            row.averageSeconds?.let(::formatTime) ?: "—",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            if (row.solved == 0) "none yet" else "${row.solved}× · best ${formatTime(row.bestSeconds!!)}",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = scheme.onSurfaceVariant,
+                            maxLines = 1,
+                        )
+                    }
+                }
+            }
+        }
     }
 }
