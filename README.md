@@ -16,9 +16,30 @@ Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi bla
 - Statistics per level: games played, wins, win rate and best time.
 - Light and dark themes in the Sumi palette.
 
-## Getting the APK
+## Install on your phone
 
-Every push and pull request runs the **Android build** workflow, which runs the unit tests and builds a debug APK. Open the workflow run in the **Actions** tab and download `sudoku-debug-apk` from the run's artifacts. Install it on a phone with "Install unknown apps" allowed.
+On your Android phone, open
+**https://github.com/kiai-joe/sudoku/releases/latest/download/Sumi.apk**
+and install it, allowing "Install unknown apps" for your browser when asked. Newer versions install over older ones and keep your saved game and stats.
+
+## Releases
+
+The **Release APK** workflow publishes a GitHub release with `Sumi.apk` attached:
+
+- every push to `main` makes a `build-N` release
+- pushing a tag such as `v0.2.0` makes a release with that version name
+
+```bash
+git tag v0.2.0
+```
+
+```bash
+git push origin v0.2.0
+```
+
+APKs are signed with the debug key in `app/signing/debug.keystore`, so every build can update the last one. This key is not secret; publishing on Google Play would need a separate private key.
+
+The **Android build** workflow also runs the tests and builds an APK on every pull request, downloadable as `sudoku-debug-apk` from the run's artifacts.
 
 ## Building locally
 

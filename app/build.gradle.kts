@@ -14,8 +14,21 @@ android {
         applicationId = "com.kiaijoe.sudoku"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        // CI passes these so each release installs over the previous one.
+        versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
+        versionName = System.getenv("VERSION_NAME") ?: "0.1.0"
+    }
+
+    signingConfigs {
+        // A debug key checked into the repo, so APKs built on any machine or
+        // CI runner share one signature and can update each other. It is not
+        // a secret; a Play Store release would need its own private key.
+        getByName("debug") {
+            storeFile = file("signing/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
     }
 
     buildTypes {
