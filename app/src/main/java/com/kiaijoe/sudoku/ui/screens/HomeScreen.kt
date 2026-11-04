@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.AlertDialog
@@ -56,6 +57,7 @@ fun HomeScreen(
     onCalendar: () -> Unit,
     onNewGame: (Difficulty) -> Unit,
     onStats: () -> Unit,
+    onLearn: () -> Unit,
     onSettingsChange: (Settings) -> Unit,
 ) {
     var pending by remember { mutableStateOf<Difficulty?>(null) }
@@ -139,6 +141,11 @@ fun HomeScreen(
                         Icon(Icons.Outlined.BarChart, contentDescription = null, modifier = Modifier.size(20.dp))
                         Spacer(Modifier.size(6.dp))
                         Text("Statistics")
+                    }
+                    TextButton(onClick = onLearn) {
+                        Icon(Icons.Outlined.School, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.size(6.dp))
+                        Text("Learn")
                     }
                     TextButton(onClick = { showSettings = true }) {
                         Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(20.dp))

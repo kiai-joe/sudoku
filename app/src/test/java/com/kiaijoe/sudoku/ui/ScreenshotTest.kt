@@ -14,9 +14,12 @@ import com.kiaijoe.sudoku.engine.Generator
 import com.kiaijoe.sudoku.engine.HintPlan
 import com.kiaijoe.sudoku.engine.Hints
 import com.kiaijoe.sudoku.engine.Technique
+import com.kiaijoe.sudoku.engine.Tutorial
 import com.kiaijoe.sudoku.ui.screens.CalendarScreen
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
+import com.kiaijoe.sudoku.ui.screens.LearnScreen
+import com.kiaijoe.sudoku.ui.screens.LessonScreen
 import com.kiaijoe.sudoku.ui.screens.StatsScreen
 import com.kiaijoe.sudoku.ui.theme.InkTheme
 import com.kiaijoe.sudoku.ui.theme.SudokuTheme
@@ -68,6 +71,7 @@ class ScreenshotTest {
             onCalendar = {},
             onNewGame = {},
             onStats = {},
+            onLearn = {},
             onSettingsChange = {},
         )
     }
@@ -83,6 +87,7 @@ class ScreenshotTest {
             onCalendar = {},
             onNewGame = {},
             onStats = {},
+            onLearn = {},
             onSettingsChange = {},
         )
     }
@@ -181,6 +186,28 @@ class ScreenshotTest {
     @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
     fun calendarFullLight() = capture("calendar_full_light", dark = false) {
         CalendarScreen(daily = Fixtures.daily, onBack = {})
+    }
+
+    // --- Learn ---------------------------------------------------------------
+
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun learnLight() = capture("learn_light", dark = false) {
+        LearnScreen(onOpen = {}, onBack = {})
+    }
+
+    /** The X-Wing lesson at its first step, with the example built up front. */
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun lessonXWingLight() = capture("lesson_xwing_light", dark = false) {
+        val index = Tutorial.lessons.indexOfFirst { it.technique == Technique.X_WING }
+        LessonScreen(
+            index = index,
+            example = Tutorial.example(Tutorial.lessons[index]),
+            loading = false,
+            onNextLesson = {},
+            onBack = {},
+        )
     }
 
     // --- Stats -------------------------------------------------------------

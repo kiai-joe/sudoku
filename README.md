@@ -15,6 +15,7 @@ Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi bla
 - Undo and erase.
 - Teaching hints: a hint finds the easiest next step on your board, highlights the cells involved, and explains it in plain words ("In the centre box, 4 can only go in row 5…"). Steps that only rule out candidates show them crossed out on the board, and you step through to the number they lead to. A wrong number on the board is pointed out first.
 - Timer that pauses when you leave the app, plus a manual pause that hides the board.
+- Learn: a lesson for every technique the puzzles are graded by, each with a worked example from a real puzzle that you step through on the board, explained the same way hints are.
 - Daily puzzle: the same puzzle for everyone each day, made from the date so it works offline. It runs from Easy on Monday to Expert on Sunday. A streak counts the days in a row you solve it, and a calendar marks each solved day with a hanamaru. It's saved separately, so it never replaces your regular game.
 - The current game is saved after every move and can be resumed.
 - Statistics per level: games played, wins, win rate and best time.
@@ -64,6 +65,7 @@ app/src/main/java/com/kiaijoe/sudoku/
 │   ├── LogicSolver.kt Human-style solver that grades puzzles by technique
 │   ├── Hints.kt       Turns solver steps into explained, step-by-step hints
 │   ├── Daily.kt       Daily puzzle from the date, weekly levels, streaks
+│   ├── Tutorial.kt    Lessons and their worked examples (stored as seed + moves)
 │   ├── Generator.kt   Graded, unique-solution puzzle generator and levels
 │   ├── GameState.kt   Immutable game state and moves
 │   └── GameCodec.kt   Save format
