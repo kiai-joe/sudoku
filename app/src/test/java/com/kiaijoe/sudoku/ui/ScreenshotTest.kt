@@ -8,6 +8,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import com.kiaijoe.sudoku.data.DifficultyStats
 import com.kiaijoe.sudoku.data.Settings
 import com.kiaijoe.sudoku.engine.Achievement
+import com.kiaijoe.sudoku.engine.Achievements
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.GameStatus
@@ -15,6 +16,7 @@ import com.kiaijoe.sudoku.engine.Generator
 import com.kiaijoe.sudoku.engine.HintPlan
 import com.kiaijoe.sudoku.engine.Hints
 import com.kiaijoe.sudoku.engine.Killer
+import com.kiaijoe.sudoku.engine.Progress
 import com.kiaijoe.sudoku.engine.Technique
 import com.kiaijoe.sudoku.engine.Tutorial
 import com.kiaijoe.sudoku.ui.screens.CalendarScreen
@@ -295,7 +297,10 @@ class ScreenshotTest {
                 game = Fixtures.wonGame(),
                 lastWinWasBest = true,
                 stats = Fixtures.stats,
-                newAchievements = listOf(Achievement.STEADY_HAND, Achievement.ON_YOUR_OWN),
+                // What this game (Hard, 1 mistake, 2 hints) would really earn as a first win.
+                newAchievements = Achievement.entries.filter {
+                    it in Achievements.earned(Progress(), Fixtures.wonGame())
+                },
             ),
             actions = GameActions.None,
             onExit = {},
