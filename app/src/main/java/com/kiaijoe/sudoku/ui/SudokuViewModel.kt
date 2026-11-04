@@ -10,6 +10,9 @@ import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.GameStatus
 import com.kiaijoe.sudoku.engine.Generator
+import com.kiaijoe.sudoku.engine.HintCard
+import com.kiaijoe.sudoku.engine.HintPlan
+import com.kiaijoe.sudoku.engine.Hints
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -31,10 +34,19 @@ data class UiState(
     val generating: Boolean = false,
     val canUndo: Boolean = false,
     val lastWinWasBest: Boolean = false,
+    val hint: HintUi? = null,
     val settings: Settings = Settings(),
     val stats: Map<Difficulty, DifficultyStats> = emptyMap(),
 ) {
     val canContinue: Boolean get() = game?.status == GameStatus.PLAYING && !generating
+}
+
+/** An open hint: the plan and which of its cards is showing. */
+data class HintUi(val plan: HintPlan, val index: Int = 0) {
+    private val cards: List<HintCard> get() = (plan as? HintPlan.Teach)?.cards.orEmpty()
+    val card: HintCard? get() = cards.getOrNull(index)
+    val total: Int get() = cards.size
+    val hasNext: Boolean get() = index < total - 1
 }
 
 class SudokuViewModel(application: Application) : AndroidViewModel(application) {
@@ -56,7 +68,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
     // --- Game lifecycle -------------------------------------------------
 
     fun newGame(difficulty: Difficulty) {
-        _ui.update { it.copy(generating = true, paused = false, selected = null, notesMode = false) }
+        _ui.update { it.copy(generating = true, paused = false, selected = null, notesMode = false, hint = null) }
         updateTimer()
         viewModelScope.launch {
             val puzzle = withContext(Dispatchers.Default) { Generator.generate(difficulty) }
@@ -82,7 +94,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
         undoStack.clear()
         val fresh = game.restart()
         repo.saveGame(fresh)
-        _ui.update { it.copy(game = fresh, selected = null, canUndo = false, paused = false) }
+        _ui.update { it.copy(game = fresh, selected = null, canUndo = false, paused = false, hint = null) }
         updateTimer()
     }
 
@@ -132,13 +144,39 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application) 
         move { it.erase(cell) }
     }
 
+    /** Opens a teaching hint for the board as it stands. Opening one counts as a hint used. */
     fun hint() {
         val s = _ui.value
         val game = s.game ?: return
-        val target = game.hintTarget(s.selected) ?: return
-        _ui.update { it.copy(selected = target) }
-        move { it.reveal(target, s.settings.autoRemoveNotes) }
+        if (game.status != GameStatus.PLAYING || s.paused || s.generating) return
+        val plan = Hints.forGame(game)
+        if (plan is HintPlan.NothingLeft) return
+        val counted = game.copy(hintsUsed = game.hintsUsed + 1)
+        persist(counted)
+        _ui.update { it.copy(game = counted, hint = HintUi(plan), selected = null) }
     }
+
+    fun hintNext() = _ui.update { s ->
+        val h = s.hint ?: return@update s
+        if (h.hasNext) s.copy(hint = h.copy(index = h.index + 1)) else s
+    }
+
+    /** Places the number the hint's last step arrives at. */
+    fun hintPlace() {
+        val card = _ui.value.hint?.card ?: return
+        if (!card.isPlacement) return
+        _ui.update { it.copy(hint = null, selected = card.placeCell) }
+        move { it.place(card.placeCell, card.placeDigit, mistakeLimit = null, autoRemoveNotes = _ui.value.settings.autoRemoveNotes) }
+    }
+
+    /** Erases the wrong number a hint pointed out. */
+    fun hintEraseMistake() {
+        val plan = _ui.value.hint?.plan as? HintPlan.FixMistake ?: return
+        _ui.update { it.copy(hint = null, selected = plan.cell) }
+        move { it.erase(plan.cell) }
+    }
+
+    fun closeHint() = _ui.update { it.copy(hint = null) }
 
     fun undo() {
         val s = _ui.value

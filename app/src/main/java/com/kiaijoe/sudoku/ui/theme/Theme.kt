@@ -91,6 +91,10 @@ data class BoardColors(
     val wrong: Color,
     val thinLine: Color,
     val thickLine: Color,
+    /** Rows, columns and boxes a hint reasons about. */
+    val hintArea: Color,
+    /** The cells that make up a hint's pattern. */
+    val hintFocus: Color,
 )
 
 private val LightBoard = BoardColors(
@@ -103,6 +107,8 @@ private val LightBoard = BoardColors(
     wrong = Shu,
     thinLine = Sumi.copy(alpha = 0.14f),
     thickLine = Sumi.copy(alpha = 0.85f),
+    hintArea = Ai.copy(alpha = 0.08f),
+    hintFocus = Kin.copy(alpha = 0.55f),
 )
 
 private val DarkBoard = BoardColors(
@@ -115,6 +121,8 @@ private val DarkBoard = BoardColors(
     wrong = ShuLight,
     thinLine = Color.White.copy(alpha = 0.11f),
     thickLine = NightPaper.copy(alpha = 0.70f),
+    hintArea = AiLight.copy(alpha = 0.10f),
+    hintFocus = Kin.copy(alpha = 0.40f),
 )
 
 val LocalBoardColors = staticCompositionLocalOf { LightBoard }
