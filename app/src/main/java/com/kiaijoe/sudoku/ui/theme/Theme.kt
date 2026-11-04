@@ -6,64 +6,77 @@ import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import com.kiaijoe.sudoku.R
 
-// Ink on paper: a deep blue for the player's marks, warm off-white paper,
-// and an amber accent for the selected cell.
-private val Ink = Color(0xFF2B4C7E)
-private val InkLight = Color(0xFF9DBBEA)
-private val Paper = Color(0xFFF6F3EE)
-private val Night = Color(0xFF12151C)
-private val Amber = Color(0xFFF2B279)
+// Sumi: printed clues in sumi ink on washi paper, the player's marks in
+// indigo (ai), a gold-leaf (kin) selection, and vermilion (shu) for
+// corrections, the colour calligraphy teachers mark work in.
+private val Washi = Color(0xFFECEAE3)
+private val WashiLight = Color(0xFFF8F7F2)
+private val Sumi = Color(0xFF1A1A1C)
+private val Ai = Color(0xFF26408B)
+private val AiLight = Color(0xFF9FB3EB)
+private val Kin = Color(0xFFE3B23C)
+private val Shu = Color(0xFFD2462E)
+private val ShuLight = Color(0xFFFF7A5C)
+private val Night = Color(0xFF141416)
+private val NightPaper = Color(0xFFE8E6DF)
+
+/** Vermilion of the hanko seal, used for the logo. Same in both themes. */
+val SealRed = Shu
+val SealPaper = WashiLight
 
 private val LightColors = lightColorScheme(
-    primary = Ink,
+    primary = Ai,
     onPrimary = Color.White,
-    primaryContainer = Color(0xFFDCE6F5),
-    onPrimaryContainer = Color(0xFF0E2547),
-    secondary = Color(0xFFB4652F),
+    primaryContainer = Color(0xFFDDE3F2),
+    onPrimaryContainer = Color(0xFF0C1C45),
+    secondary = Color(0xFF8A6410),
     onSecondary = Color.White,
-    secondaryContainer = Color(0xFFFBE3CF),
-    onSecondaryContainer = Color(0xFF3D1E06),
-    background = Paper,
-    onBackground = Color(0xFF1C2230),
-    surface = Color(0xFFFFFDFA),
-    onSurface = Color(0xFF1C2230),
-    surfaceVariant = Color(0xFFEAE5DD),
-    onSurfaceVariant = Color(0xFF545B6B),
-    surfaceContainer = Color(0xFFEFEBE4),
-    surfaceContainerHigh = Color(0xFFE9E4DC),
-    outline = Color(0xFF8A8F9C),
-    outlineVariant = Color(0xFFD3CEC6),
-    error = Color(0xFFC0392B),
+    secondaryContainer = Color(0xFFF6E6BC),
+    onSecondaryContainer = Color(0xFF3A2A00),
+    background = Washi,
+    onBackground = Sumi,
+    surface = WashiLight,
+    onSurface = Sumi,
+    surfaceVariant = Color(0xFFE2E0D8),
+    onSurfaceVariant = Color(0xFF5C5C62),
+    surfaceContainer = Color(0xFFE6E4DC),
+    surfaceContainerHigh = Color(0xFFDFDDD5),
+    outline = Color(0xFF8C8B90),
+    outlineVariant = Color(0xFFD2D0C8),
+    error = Color(0xFFC23B24),
 )
 
 private val DarkColors = darkColorScheme(
-    primary = InkLight,
-    onPrimary = Color(0xFF0E2547),
-    primaryContainer = Color(0xFF243A5E),
-    onPrimaryContainer = Color(0xFFDCE6F5),
-    secondary = Color(0xFFF2B279),
-    onSecondary = Color(0xFF3D1E06),
-    secondaryContainer = Color(0xFF5A3415),
-    onSecondaryContainer = Color(0xFFFBE3CF),
+    primary = AiLight,
+    onPrimary = Color(0xFF0C1C45),
+    primaryContainer = Color(0xFF223563),
+    onPrimaryContainer = Color(0xFFDDE3F2),
+    secondary = Kin,
+    onSecondary = Color(0xFF3A2A00),
+    secondaryContainer = Color(0xFF4F3B0C),
+    onSecondaryContainer = Color(0xFFF6E6BC),
     background = Night,
-    onBackground = Color(0xFFE6E8EE),
-    surface = Color(0xFF1A1E28),
-    onSurface = Color(0xFFE6E8EE),
-    surfaceVariant = Color(0xFF2A303D),
-    onSurfaceVariant = Color(0xFFB5BBC8),
-    surfaceContainer = Color(0xFF1F2430),
-    surfaceContainerHigh = Color(0xFF262C39),
-    outline = Color(0xFF6E7585),
-    outlineVariant = Color(0xFF3A4150),
-    error = Color(0xFFFF8A80),
+    onBackground = NightPaper,
+    surface = Color(0xFF1C1C20),
+    onSurface = NightPaper,
+    surfaceVariant = Color(0xFF2A2A30),
+    onSurfaceVariant = Color(0xFFB0AEB6),
+    surfaceContainer = Color(0xFF212126),
+    surfaceContainerHigh = Color(0xFF29292F),
+    outline = Color(0xFF706F78),
+    outlineVariant = Color(0xFF38383F),
+    error = ShuLight,
 )
 
 /** Board colours that Material's scheme has no slot for. */
@@ -81,50 +94,74 @@ data class BoardColors(
 )
 
 private val LightBoard = BoardColors(
-    selected = Amber.copy(alpha = 0.55f),
-    sameNumber = Ink.copy(alpha = 0.16f),
-    peer = Ink.copy(alpha = 0.06f),
-    wrongBackground = Color(0xFFC0392B).copy(alpha = 0.10f),
-    given = Color(0xFF1C2230),
-    entered = Ink,
-    wrong = Color(0xFFC0392B),
-    thinLine = Color(0xFF1C2230).copy(alpha = 0.16f),
-    thickLine = Color(0xFF1C2230).copy(alpha = 0.78f),
+    selected = Kin.copy(alpha = 0.50f),
+    sameNumber = Ai.copy(alpha = 0.16f),
+    peer = Ai.copy(alpha = 0.06f),
+    wrongBackground = Shu.copy(alpha = 0.10f),
+    given = Sumi,
+    entered = Ai,
+    wrong = Shu,
+    thinLine = Sumi.copy(alpha = 0.14f),
+    thickLine = Sumi.copy(alpha = 0.85f),
 )
 
 private val DarkBoard = BoardColors(
-    selected = Amber.copy(alpha = 0.38f),
-    sameNumber = InkLight.copy(alpha = 0.20f),
-    peer = InkLight.copy(alpha = 0.07f),
-    wrongBackground = Color(0xFFFF8A80).copy(alpha = 0.12f),
-    given = Color(0xFFE6E8EE),
-    entered = InkLight,
-    wrong = Color(0xFFFF8A80),
-    thinLine = Color.White.copy(alpha = 0.12f),
-    thickLine = Color.White.copy(alpha = 0.62f),
+    selected = Kin.copy(alpha = 0.34f),
+    sameNumber = AiLight.copy(alpha = 0.20f),
+    peer = AiLight.copy(alpha = 0.07f),
+    wrongBackground = ShuLight.copy(alpha = 0.12f),
+    given = NightPaper,
+    entered = AiLight,
+    wrong = ShuLight,
+    thinLine = Color.White.copy(alpha = 0.11f),
+    thickLine = NightPaper.copy(alpha = 0.70f),
 )
 
 val LocalBoardColors = staticCompositionLocalOf { LightBoard }
 
+/** Lexend, a typeface designed for easy reading, used for everything. */
+val Lexend = FontFamily(
+    Font(R.font.lexend_light, FontWeight.Light),
+    Font(R.font.lexend_regular, FontWeight.Normal),
+    Font(R.font.lexend_medium, FontWeight.Medium),
+    Font(R.font.lexend_semibold, FontWeight.SemiBold),
+    Font(R.font.lexend_bold, FontWeight.Bold),
+)
+
 private val AppTypography = Typography().run {
+    fun TextStyle.lexend(weight: FontWeight? = fontWeight) = copy(fontFamily = Lexend, fontWeight = weight)
     copy(
-        displaySmall = displaySmall.copy(fontWeight = FontWeight.Black, letterSpacing = (-1).sp),
-        headlineSmall = headlineSmall.copy(fontWeight = FontWeight.Bold),
-        titleLarge = titleLarge.copy(fontWeight = FontWeight.SemiBold),
-        labelLarge = labelLarge.copy(fontWeight = FontWeight.SemiBold),
+        displayLarge = displayLarge.lexend(),
+        displayMedium = displayMedium.lexend(),
+        displaySmall = displaySmall.lexend(FontWeight.Light).copy(letterSpacing = (-0.5).sp),
+        headlineLarge = headlineLarge.lexend(),
+        headlineMedium = headlineMedium.lexend(),
+        headlineSmall = headlineSmall.lexend(FontWeight.Medium),
+        titleLarge = titleLarge.lexend(FontWeight.Medium),
+        titleMedium = titleMedium.lexend(),
+        titleSmall = titleSmall.lexend(),
+        bodyLarge = bodyLarge.lexend(),
+        bodyMedium = bodyMedium.lexend(),
+        bodySmall = bodySmall.lexend(),
+        labelLarge = labelLarge.lexend(FontWeight.Medium),
+        labelMedium = labelMedium.lexend(),
+        labelSmall = labelSmall.lexend(),
     )
 }
 
-/** Tabular figures keep the timer from jittering as digits change. */
+/**
+ * Lexend has proportional digits only, so the timer draws each character in a
+ * fixed-width slot (see TimerText) to keep it from jittering as digits change.
+ */
 val TimerStyle = TextStyle(
-    fontFamily = FontFamily.Monospace,
+    fontFamily = Lexend,
     fontWeight = FontWeight.Medium,
     fontSize = 16.sp,
 )
 
 @Composable
 fun SudokuTheme(darkTheme: Boolean = isSystemInDarkTheme(), content: @Composable () -> Unit) {
-    androidx.compose.runtime.CompositionLocalProvider(
+    CompositionLocalProvider(
         LocalBoardColors provides if (darkTheme) DarkBoard else LightBoard,
     ) {
         MaterialTheme(

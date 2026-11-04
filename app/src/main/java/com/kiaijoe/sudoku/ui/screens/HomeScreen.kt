@@ -44,7 +44,8 @@ import com.kiaijoe.sudoku.data.Settings
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.ui.UiState
 import com.kiaijoe.sudoku.ui.formatTime
-import com.kiaijoe.sudoku.ui.theme.LocalBoardColors
+import com.kiaijoe.sudoku.ui.theme.SealPaper
+import com.kiaijoe.sudoku.ui.theme.SealRed
 
 @Composable
 fun HomeScreen(
@@ -68,7 +69,7 @@ fun HomeScreen(
             Spacer(Modifier.height(24.dp))
             Logo()
             Spacer(Modifier.height(20.dp))
-            Text("Sudoku", style = MaterialTheme.typography.displaySmall)
+            Text("Sumi", style = MaterialTheme.typography.displaySmall)
             Text(
                 "Fill every row, column and box with 1 to 9.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -158,16 +159,23 @@ fun HomeScreen(
 /** A small 3x3 grid with the centre cell lit, matching the launcher icon. */
 @Composable
 private fun Logo() {
-    val board = LocalBoardColors.current
-    val ink = MaterialTheme.colorScheme.primary
+    // A hanko seal cut as a 3x3 grid, matching the launcher icon.
     Canvas(Modifier.size(72.dp)) {
-        val step = size.width / 3f
-        val radius = CornerRadius(8.dp.toPx())
-        drawRoundRect(color = board.selected, topLeft = Offset(step, step), size = Size(step, step))
+        val inset = size.width * 0.2f
+        val inner = size.width - inset * 2
+        val step = inner / 3f
+        drawRoundRect(color = SealRed, cornerRadius = CornerRadius(14.dp.toPx()))
+        drawRect(color = SealPaper, topLeft = Offset(inset + step, inset + step), size = Size(step, step))
         for (k in 1..2) {
-            drawLine(ink, Offset(step * k, 0f), Offset(step * k, size.height), 2.dp.toPx())
-            drawLine(ink, Offset(0f, step * k), Offset(size.width, step * k), 2.dp.toPx())
+            val p = inset + step * k
+            drawLine(SealPaper, Offset(p, inset), Offset(p, inset + inner), 1.5.dp.toPx())
+            drawLine(SealPaper, Offset(inset, p), Offset(inset + inner, p), 1.5.dp.toPx())
         }
-        drawRoundRect(color = ink, cornerRadius = radius, style = Stroke(width = 3.dp.toPx()))
+        drawRect(
+            color = SealPaper,
+            topLeft = Offset(inset, inset),
+            size = Size(inner, inner),
+            style = Stroke(width = 2.5.dp.toPx()),
+        )
     }
 }

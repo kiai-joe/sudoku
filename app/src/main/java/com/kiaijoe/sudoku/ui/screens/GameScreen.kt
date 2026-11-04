@@ -54,7 +54,7 @@ import com.kiaijoe.sudoku.ui.components.GameToolbar
 import com.kiaijoe.sudoku.ui.components.NumberPad
 import com.kiaijoe.sudoku.ui.components.SudokuBoard
 import com.kiaijoe.sudoku.ui.formatTime
-import com.kiaijoe.sudoku.ui.theme.TimerStyle
+import com.kiaijoe.sudoku.ui.components.TimerText
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -210,7 +210,7 @@ private fun StatusRow(state: UiState, game: GameState) {
             style = MaterialTheme.typography.bodyMedium,
             color = scheme.onSurfaceVariant,
         )
-        Text(formatTime(game.elapsedSeconds), style = TimerStyle, color = scheme.onSurface)
+        TimerText(formatTime(game.elapsedSeconds), color = scheme.onSurface)
     }
 }
 

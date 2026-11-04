@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="paper">#FFF6F3EE</color>
-    <color name="night">#FF12151C</color>
-    <color name="ink">#FF2B4C7E</color>
-    <color name="icon_background">#FF2B4C7E</color>
+    <color name="paper">#FFECEAE3</color>
+    <color name="night">#FF141416</color>
+    <color name="ink">#FF26408B</color>
+    <!-- Shu: the vermilion of a hanko seal. -->
+    <color name="icon_background">#FFD2462E</color>
 </resources>

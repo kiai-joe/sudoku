@@ -1,6 +1,8 @@
-# Sudoku
+# Sumi
 
 An Android Sudoku game built with Kotlin and Jetpack Compose.
+
+Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi black on washi-grey paper, your own numbers in indigo, the selected cell in gold, and mistakes in vermilion, the colour calligraphy teachers correct work in. The launcher icon is a vermilion hanko seal cut as a 3×3 grid. Text is set in [Lexend](https://www.lexend.com/), licensed under the SIL Open Font License (see `licenses/Lexend-OFL.txt`).
 
 ## Features
 
@@ -12,7 +14,7 @@ An Android Sudoku game built with Kotlin and Jetpack Compose.
 - Timer that pauses when you leave the app, plus a manual pause that hides the board.
 - The current game is saved after every move and can be resumed.
 - Statistics per level: games played, wins, win rate and best time.
-- Light and dark themes.
+- Light and dark themes in the Sumi palette.
 
 ## Getting the APK
 

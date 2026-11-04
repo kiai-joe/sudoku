@@ -154,7 +154,8 @@ private fun Cell(
                 text = value.toString(),
                 fontSize = digitSize,
                 lineHeight = digitSize,
-                fontWeight = if (game.isGiven(index)) FontWeight.SemiBold else FontWeight.Normal,
+                // Printed clues in a plain weight, the player's own marks heavier, like ink over print.
+                fontWeight = if (game.isGiven(index)) FontWeight.Normal else FontWeight.SemiBold,
                 color = when {
                     game.isGiven(index) -> colors.given
                     game.isWrong(index) -> colors.wrong
