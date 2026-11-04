@@ -21,6 +21,7 @@ Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi bla
 - The current game is saved after every move and can be resumed.
 - Statistics per level: games played, wins, win rate and best time.
 - Twelve achievements, from a first solve to a 30-day daily streak and an Expert Killer with no printed numbers. New ones show on the win screen; all are listed, stamped and dated, under Statistics. Ones already earned from saved statistics are awarded on first launch.
+- Accessibility: a Larger numbers setting; wrong numbers are underlined as well as red, so they don't rely on colour; every board cell is fully described to screen readers (value, pencil marks, Killer cage, and what a hint shows or rules out), achievement and weekday rows read as one sentence, and the ink wash and stamp animation are skipped when the system's Remove animations setting is on. `AccessibilityTest` checks what TalkBack hears.
 - Three ink palettes, picked in Settings: Sumi (ink on washi paper), Indigo night (paper-white on deep indigo, always dark) and Bamboo (green-tinted paper). Sumi and Bamboo follow the system's light or dark setting.
 
 ## Install on your phone
