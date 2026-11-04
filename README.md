@@ -6,7 +6,7 @@ Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi bla
 
 ## Features
 
-- Four levels: Easy (40 clues), Medium (32), Hard (27), Expert (23). Every puzzle is generated on the device and has exactly one solution.
+- Four levels graded by the hardest solving technique a puzzle needs, not by clue count: Easy (singles only), Medium (pointing, box/line reduction, pairs, naked triples), Hard (hidden triples, X-Wing, XY-Wing, naked quads) and Expert (Swordfish, XYZ-Wing, hidden quads). Every puzzle is generated on the device, has exactly one solution and can be solved by logic without guessing.
 - Pencil notes, with matching notes cleared automatically when you place a number.
 - Highlighting for the selected cell's row, column, box and matching numbers.
 - Mistake limit of 3, which you can turn off in Settings.
@@ -57,7 +57,8 @@ app/src/main/java/com/kiaijoe/sudoku/
 ├── engine/        Pure Kotlin game logic, no Android dependencies
 │   ├── Grid.kt        Cell indexing, peers, solution check
 │   ├── Solver.kt      Bitmask backtracking solver and solution counter
-│   ├── Generator.kt   Unique-solution puzzle generator and difficulty levels
+│   ├── LogicSolver.kt Human-style solver that grades puzzles by technique
+│   ├── Generator.kt   Graded, unique-solution puzzle generator and levels
 │   ├── GameState.kt   Immutable game state and moves
 │   └── GameCodec.kt   Save format
 ├── data/          SharedPreferences storage for the game, settings and stats
@@ -66,4 +67,6 @@ app/src/main/java/com/kiaijoe/sudoku/
 
 The engine has unit tests in `app/src/test`.
 
-Difficulty is currently set by the number of clues. A later step would be to grade puzzles by the solving techniques they need.
+## How puzzles are graded
+
+`LogicSolver` solves with pencil-mark candidates the way a person does, always using the easiest technique that makes progress. The hardest technique it needs sets the level. The generator digs clues out of a random grid while the solution stays unique, grades the result, and where logic gets stuck adds back the clue that makes the puzzle land on the requested level. Easy puzzles also keep at least 34 clues. Generation takes about 0–75 ms per puzzle on a desktop JVM, with Expert the slowest.

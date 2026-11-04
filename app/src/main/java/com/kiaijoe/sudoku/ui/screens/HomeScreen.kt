@@ -3,6 +3,7 @@ package com.kiaijoe.sudoku.ui.screens
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -109,9 +110,18 @@ fun HomeScreen(
                             OutlinedButton(
                                 onClick = { if (state.canContinue) pending = d else onNewGame(d) },
                                 shape = RoundedCornerShape(14.dp),
-                                modifier = Modifier.weight(1f).height(56.dp),
+                                contentPadding = PaddingValues(horizontal = 8.dp),
+                                modifier = Modifier.weight(1f).height(64.dp),
                             ) {
-                                Text(d.label, style = MaterialTheme.typography.titleSmall)
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Text(d.label, style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        d.techniques,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                    )
+                                }
                             }
                         }
                     }
