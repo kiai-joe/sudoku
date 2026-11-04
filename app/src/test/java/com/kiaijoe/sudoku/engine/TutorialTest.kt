@@ -10,7 +10,8 @@ class TutorialTest {
 
     @Test
     fun everyTechniqueHasOneLessonInOrder() {
-        assertEquals(Technique.entries.filter { !it.killerOnly }, Tutorial.lessons.map { it.technique })
+        assertEquals(Technique.entries.toSet(), Tutorial.lessons.map { it.technique }.toSet())
+        assertEquals(Technique.entries.size, Tutorial.lessons.size)
     }
 
     /**
@@ -26,7 +27,8 @@ class TutorialTest {
                 continue
             }
             assertNotNull("${lesson.technique} example", example)
-            assertEquals("${lesson.technique} example", lesson.technique, example!!.cards.first().technique)
+            assertEquals("${lesson.technique} example", lesson.technique, example!!.cards[example.start].technique)
+            assertTrue("${lesson.technique} opens within the first few steps", example.start <= 3)
             assertTrue(example.cards.last().isPlacement)
             assertEquals(lesson.level, example.game.difficulty)
         }

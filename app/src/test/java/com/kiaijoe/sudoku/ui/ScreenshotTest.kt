@@ -235,6 +235,37 @@ class ScreenshotTest {
         )
     }
 
+    /** The 45 rule lesson, opened at its 45-rule step. */
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun lessonFortyFiveLight() = capture("lesson_45_light", dark = false) {
+        val index = Tutorial.lessons.indexOfFirst { it.technique == Technique.FORTY_FIVE }
+        LessonScreen(
+            index = index,
+            example = Tutorial.example(Tutorial.lessons[index]),
+            loading = false,
+            onNextLesson = null,
+            onBack = {},
+        )
+    }
+
+    /** The whole home screen, including the Killer levels below the fold. */
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun homeFullLight() = capture("home_full_light", dark = false) {
+        HomeScreen(
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily) },
+            onContinue = {},
+            onPlayDaily = {},
+            onCalendar = {},
+            onNewGame = {},
+            onNewKiller = {},
+            onStats = {},
+            onLearn = {},
+            onSettingsChange = {},
+        )
+    }
+
     // --- Stats -------------------------------------------------------------
 
     @Test
@@ -292,14 +323,14 @@ private object Fixtures {
 
     /** A Killer game a few moves in. */
     fun killerGame(): GameState {
-        var g = GameState.from(Killer.generate(Random(11)))
+        var g = GameState.from(Killer.generate(Difficulty.MEDIUM, Random(11)))
         repeat(6) { g = placeNextHint(g) }
         return g.copy(elapsedSeconds = 184)
     }
 
     /** A Killer game at the point where the next hint is a cage combination. */
     fun killerCageHint(): Pair<GameState, HintPlan> {
-        var g = GameState.from(Killer.generate(Random(11)))
+        var g = GameState.from(Killer.generate(Difficulty.MEDIUM, Random(11)))
         repeat(81) {
             val plan = Hints.forGame(g)
             if (plan is HintPlan.Teach && plan.cards.first().technique == Technique.CAGE && it >= 4) {

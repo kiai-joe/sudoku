@@ -84,16 +84,21 @@ fun LearnScreen(onOpen: (Int) -> Unit, onBack: () -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
         )
-        for (level in Difficulty.entries) {
+        val groups = Difficulty.entries.map { level ->
+            "${level.label} · ${level.techniques}" to Tutorial.lessons.withIndex().filter {
+                !it.value.killer && it.value.technique.level == level
+            }
+        } + listOf("Killer Sudoku" to Tutorial.lessons.withIndex().filter { it.value.killer })
+        for ((heading, lessons) in groups) {
             Spacer(Modifier.height(18.dp))
             Text(
-                "${level.label} · ${level.techniques}",
+                heading,
                 style = MaterialTheme.typography.titleSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
             )
             Spacer(Modifier.height(6.dp))
-            Tutorial.lessons.withIndex().filter { it.value.technique.level == level }.forEach { (index, lesson) ->
+            lessons.forEach { (index, lesson) ->
                 Surface(
                     onClick = { onOpen(index) },
                     shape = RoundedCornerShape(14.dp),
@@ -130,7 +135,8 @@ fun LessonScreen(
     onBack: () -> Unit,
 ) {
     val lesson = Tutorial.lessons[index]
-    var step by remember(index) { mutableIntStateOf(0) }
+    // Open at the step that uses this lesson's technique; earlier steps are a tap back.
+    var step by remember(index, example) { mutableIntStateOf(example?.start ?: 0) }
     LearnScaffold(lesson.technique.label, onBack) {
         val width = Modifier.widthIn(max = 520.dp).fillMaxWidth()
         Text(lesson.intro, style = MaterialTheme.typography.bodyLarge, modifier = width)
@@ -150,7 +156,7 @@ fun LessonScreen(
                     example.game
                 }
                 Text(
-                    "Worked example · ${lesson.level.label} puzzle",
+                    "Worked example · ${if (lesson.killer) "Killer " else ""}${lesson.level.label} puzzle",
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                     modifier = width,

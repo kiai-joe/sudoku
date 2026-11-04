@@ -423,7 +423,8 @@ private fun StatusRow(state: UiState, game: GameState) {
 }
 
 /** Starts another game of the same kind as [game]. */
-private fun GameActions.newLike(game: GameState) = if (game.isKiller) newKiller() else newGame(game.difficulty)
+private fun GameActions.newLike(game: GameState) =
+    if (game.isKiller) newKiller(game.difficulty) else newGame(game.difficulty)
 
 /** A short vibration for each input, through the system's own haptic feedback settings. */
 @Composable
