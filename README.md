@@ -69,6 +69,14 @@ app/src/main/java/com/kiaijoe/sudoku/
 
 The engine has unit tests in `app/src/test`.
 
+## Screenshots
+
+`ScreenshotTest` renders the main screens (home, a game in progress, a hint, the win stamp and stats, in light and dark) to `app/src/test/screenshots` using [Roborazzi](https://github.com/takahirom/roborazzi) on Robolectric, so no device or emulator is needed. On every pull request CI re-renders them and commits any changes back to the branch, so visual changes show up as image diffs in the review. To render them yourself:
+
+```bash
+./gradlew recordRoborazziDebug
+```
+
 ## How puzzles are graded
 
 `LogicSolver` solves with pencil-mark candidates the way a person does, always using the easiest technique that makes progress. The hardest technique it needs sets the level. The generator digs clues out of a random grid while the solution stays unique, grades the result, and where logic gets stuck adds back the clue that makes the puzzle land on the requested level. Easy puzzles also keep at least 34 clues. Generation takes about 0–75 ms per puzzle on a desktop JVM, with Expert the slowest.
