@@ -18,6 +18,7 @@ import com.kiaijoe.sudoku.ui.screens.CalendarScreen
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
 import com.kiaijoe.sudoku.ui.screens.StatsScreen
+import com.kiaijoe.sudoku.ui.theme.InkTheme
 import com.kiaijoe.sudoku.ui.theme.SudokuTheme
 import org.junit.Rule
 import org.junit.Test
@@ -43,8 +44,13 @@ class ScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun capture(name: String, dark: Boolean, content: @Composable () -> Unit) {
-        compose.setContent { SudokuTheme(darkTheme = dark) { content() } }
+    private fun capture(
+        name: String,
+        dark: Boolean,
+        theme: InkTheme = InkTheme.SUMI,
+        content: @Composable () -> Unit,
+    ) {
+        compose.setContent { SudokuTheme(darkTheme = dark, theme = theme) { content() } }
         compose.onRoot().captureRoboImage("src/test/screenshots/$name.png")
     }
 
@@ -63,6 +69,36 @@ class ScreenshotTest {
             onNewGame = {},
             onStats = {},
             onSettingsChange = {},
+        )
+    }
+
+    // --- Other ink palettes ----------------------------------------------------
+
+    @Test
+    fun homeIndigoNight() = capture("home_indigo_night", dark = false, theme = InkTheme.INDIGO_NIGHT) {
+        HomeScreen(
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily) },
+            onContinue = {},
+            onPlayDaily = {},
+            onCalendar = {},
+            onNewGame = {},
+            onStats = {},
+            onSettingsChange = {},
+        )
+    }
+
+    @Test fun gameIndigoNight() = themedGame("game_indigo_night", dark = false, theme = InkTheme.INDIGO_NIGHT)
+
+    @Test fun gameBambooLight() = themedGame("game_bamboo_light", dark = false, theme = InkTheme.BAMBOO)
+
+    @Test fun gameBambooDark() = themedGame("game_bamboo_dark", dark = true, theme = InkTheme.BAMBOO)
+
+    private fun themedGame(name: String, dark: Boolean, theme: InkTheme) = capture(name, dark, theme) {
+        val g = Fixtures.midGame()
+        GameScreen(
+            state = UiState(game = g, selected = Fixtures.selectedCell(g)),
+            actions = GameActions.None,
+            onExit = {},
         )
     }
 

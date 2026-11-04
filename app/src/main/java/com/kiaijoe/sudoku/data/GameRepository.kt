@@ -4,12 +4,14 @@ import android.content.Context
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameCodec
 import com.kiaijoe.sudoku.engine.GameState
+import com.kiaijoe.sudoku.ui.theme.InkTheme
 
 /**
  * @property instantCheck mark wrong numbers as soon as they're placed. When
  *   off, nothing shows whether a number is right until the player taps Check,
  *   and the mistake limit doesn't apply.
  * @property haptics short vibrations when placing numbers and finishing groups.
+ * @property theme the ink palette.
  */
 data class Settings(
     val mistakeLimit: Boolean = true,
@@ -17,6 +19,7 @@ data class Settings(
     val highlightSameNumbers: Boolean = true,
     val instantCheck: Boolean = true,
     val haptics: Boolean = true,
+    val theme: InkTheme = InkTheme.SUMI,
 )
 
 data class DifficultyStats(
@@ -71,6 +74,9 @@ class GameRepository(context: Context) {
         highlightSameNumbers = prefs.getBoolean(KEY_HIGHLIGHT, true),
         instantCheck = prefs.getBoolean(KEY_INSTANT_CHECK, true),
         haptics = prefs.getBoolean(KEY_HAPTICS, true),
+        theme = prefs.getString(KEY_THEME, null)
+            ?.let { name -> InkTheme.entries.firstOrNull { it.name == name } }
+            ?: InkTheme.SUMI,
     )
 
     fun saveSettings(settings: Settings) {
@@ -80,6 +86,7 @@ class GameRepository(context: Context) {
             .putBoolean(KEY_HIGHLIGHT, settings.highlightSameNumbers)
             .putBoolean(KEY_INSTANT_CHECK, settings.instantCheck)
             .putBoolean(KEY_HAPTICS, settings.haptics)
+            .putString(KEY_THEME, settings.theme.name)
             .apply()
     }
 
@@ -128,5 +135,6 @@ class GameRepository(context: Context) {
         const val KEY_HIGHLIGHT = "highlight_same"
         const val KEY_INSTANT_CHECK = "instant_check"
         const val KEY_HAPTICS = "haptics"
+        const val KEY_THEME = "theme"
     }
 }

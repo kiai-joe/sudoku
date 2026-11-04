@@ -18,7 +18,7 @@ Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi bla
 - Daily puzzle: the same puzzle for everyone each day, made from the date so it works offline. It runs from Easy on Monday to Expert on Sunday. A streak counts the days in a row you solve it, and a calendar marks each solved day with a hanamaru. It's saved separately, so it never replaces your regular game.
 - The current game is saved after every move and can be resumed.
 - Statistics per level: games played, wins, win rate and best time.
-- Light and dark themes in the Sumi palette.
+- Three ink palettes, picked in Settings: Sumi (ink on washi paper), Indigo night (paper-white on deep indigo, always dark) and Bamboo (green-tinted paper). Sumi and Bamboo follow the system's light or dark setting.
 
 ## Install on your phone
 
