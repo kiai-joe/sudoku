@@ -24,6 +24,10 @@ Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi bla
 - Accessibility: a Larger numbers setting; wrong numbers are underlined as well as red, so they don't rely on colour; every board cell is fully described to screen readers (value, pencil marks, Killer cage, and what a hint shows or rules out), achievement and weekday rows read as one sentence, and the ink wash and stamp animation are skipped when the system's Remove animations setting is on. `AccessibilityTest` checks what TalkBack hears.
 - Three ink palettes, picked in Settings: Sumi (ink on washi paper), Indigo night (paper-white on deep indigo, always dark) and Bamboo (green-tinted paper). Sumi and Bamboo follow the system's light or dark setting.
 
+## Privacy
+
+Sumi collects nothing, works entirely offline and has no ads. It asks for no Android permissions, not even internet access. See the [privacy policy](docs/privacy-policy.md); `PrivacyTest` fails if a permission is ever added, so the policy stays true.
+
 ## Install on your phone
 
 On your Android phone, open

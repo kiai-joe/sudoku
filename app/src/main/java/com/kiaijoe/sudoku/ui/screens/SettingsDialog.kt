@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -35,6 +36,8 @@ import com.kiaijoe.sudoku.data.Settings
 import com.kiaijoe.sudoku.ui.MISTAKE_LIMIT
 import com.kiaijoe.sudoku.ui.theme.InkTheme
 import com.kiaijoe.sudoku.ui.theme.swatch
+
+const val PRIVACY_POLICY_URL = "https://github.com/kiai-joe/sudoku/blob/main/docs/privacy-policy.md"
 
 @Composable
 fun SettingsDialog(settings: Settings, onChange: (Settings) -> Unit, onDismiss: () -> Unit) {
@@ -95,6 +98,11 @@ fun SettingsDialog(settings: Settings, onChange: (Settings) -> Unit, onDismiss: 
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+        dismissButton = {
+            // Opens in the browser; Sumi itself has no internet access.
+            val uriHandler = LocalUriHandler.current
+            TextButton(onClick = { uriHandler.openUri(PRIVACY_POLICY_URL) }) { Text("Privacy policy") }
+        },
     )
 }
 
