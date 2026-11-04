@@ -1,5 +1,7 @@
 package com.kiaijoe.sudoku.ui.screens
 
+import android.os.Build
+import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +36,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -46,6 +49,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -55,16 +59,18 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.GameStatus
 import com.kiaijoe.sudoku.engine.HintPlan
+import com.kiaijoe.sudoku.ui.Feedback
+import com.kiaijoe.sudoku.ui.FeedbackKind
+import com.kiaijoe.sudoku.ui.GameActions
 import com.kiaijoe.sudoku.ui.HintUi
 import com.kiaijoe.sudoku.ui.MISTAKE_LIMIT
-import com.kiaijoe.sudoku.ui.GameActions
 import com.kiaijoe.sudoku.ui.UiState
 import com.kiaijoe.sudoku.ui.components.GameToolbar
 import com.kiaijoe.sudoku.ui.components.HanamaruStamp
 import com.kiaijoe.sudoku.ui.components.NumberPad
 import com.kiaijoe.sudoku.ui.components.SudokuBoard
-import com.kiaijoe.sudoku.ui.formatTime
 import com.kiaijoe.sudoku.ui.components.TimerText
+import com.kiaijoe.sudoku.ui.formatTime
 import com.kiaijoe.sudoku.ui.theme.SealRed
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -114,6 +120,9 @@ fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
                 },
                 actions = {
                     if (game != null && game.status == GameStatus.PLAYING && !state.generating) {
+                        if (!state.settings.instantCheck && !state.paused) {
+                            TextButton(onClick = actions::check) { Text("Check") }
+                        }
                         IconButton(onClick = actions::togglePause) {
                             Icon(
                                 if (state.paused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
@@ -167,6 +176,9 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
     LaunchedEffect(game.status) {
         if (game.status == GameStatus.PLAYING) sawPlaying = true
     }
+    // Only react to inputs made while this screen is open, not one left over from before.
+    val staleFeedbackId = remember { state.feedback?.id }
+    val feedback = state.feedback?.takeIf { it.id != staleFeedbackId }
     Column(
         Modifier
             .widthIn(max = 560.dp)
@@ -176,6 +188,16 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         StatusRow(state, game)
+        state.checkMessage?.let { message ->
+            Spacer(Modifier.height(6.dp))
+            Text(
+                message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (state.flagged.isEmpty()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+            )
+        }
+        Haptics(feedback, enabled = state.settings.haptics)
         Spacer(Modifier.height(10.dp))
 
         Box(Modifier.fillMaxWidth().aspectRatio(1f)) {
@@ -187,6 +209,9 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
                 modifier = Modifier.fillMaxSize(),
                 hint = state.hint?.card,
                 mistakeCell = (state.hint?.plan as? HintPlan.FixMistake)?.cell,
+                revealWrong = state.settings.instantCheck,
+                flagged = state.flagged,
+                flash = feedback,
             )
             if (state.paused) PausedOverlay(onResume = actions::togglePause)
             if (won) {
@@ -226,11 +251,12 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
                 onUndo = actions::undo,
                 onErase = actions::erase,
                 onToggleNotes = actions::toggleNotesMode,
+                onFill = actions::fillCandidates,
                 onHint = actions::hint,
             )
             Spacer(Modifier.height(14.dp))
             NumberPad(
-                remaining = game::remaining,
+                remaining = { game.remaining(it, checking = state.settings.instantCheck) },
                 notesMode = state.notesMode,
                 onDigit = actions::input,
             )
@@ -375,15 +401,16 @@ private fun StatusRow(state: UiState, game: GameState) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        val mistakesText = if (state.settings.mistakeLimit) {
-            "Mistakes ${game.mistakes}/$MISTAKE_LIMIT"
-        } else {
-            "Mistakes ${game.mistakes}"
+        val checking = state.settings.instantCheck
+        val mistakesText = when {
+            !checking -> "Checks ${state.checks}"
+            state.settings.mistakeLimit -> "Mistakes ${game.mistakes}/$MISTAKE_LIMIT"
+            else -> "Mistakes ${game.mistakes}"
         }
         Text(
             mistakesText,
             style = MaterialTheme.typography.bodyMedium,
-            color = if (game.mistakes > 0) scheme.error else scheme.onSurfaceVariant,
+            color = if (checking && game.mistakes > 0) scheme.error else scheme.onSurfaceVariant,
         )
         Text(
             "Hints ${game.hintsUsed}",
@@ -391,6 +418,23 @@ private fun StatusRow(state: UiState, game: GameState) {
             color = scheme.onSurfaceVariant,
         )
         TimerText(formatTime(game.elapsedSeconds), color = scheme.onSurface)
+    }
+}
+
+/** A short vibration for each input, through the system's own haptic feedback settings. */
+@Composable
+private fun Haptics(feedback: Feedback?, enabled: Boolean) {
+    val view = LocalView.current
+    LaunchedEffect(feedback?.id) {
+        if (feedback == null || !enabled) return@LaunchedEffect
+        val modern = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
+        val constant = when (feedback.kind) {
+            FeedbackKind.PLACE -> HapticFeedbackConstants.KEYBOARD_TAP
+            FeedbackKind.NOTE -> HapticFeedbackConstants.CLOCK_TICK
+            FeedbackKind.WRONG -> if (modern) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
+            FeedbackKind.COMPLETE -> if (modern) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.CONTEXT_CLICK
+        }
+        view.performHapticFeedback(constant)
     }
 }
 

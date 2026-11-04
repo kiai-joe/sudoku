@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Backspace
 import androidx.compose.material.icons.automirrored.outlined.Undo
+import androidx.compose.material.icons.outlined.Apps
 import androidx.compose.material.icons.outlined.Edit
 import androidx.compose.material.icons.outlined.Lightbulb
 import androidx.compose.material3.Icon
@@ -39,6 +40,7 @@ fun GameToolbar(
     onUndo: () -> Unit,
     onErase: () -> Unit,
     onToggleNotes: () -> Unit,
+    onFill: () -> Unit,
     onHint: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -52,6 +54,7 @@ fun GameToolbar(
             badge = if (notesMode) "ON" else "OFF",
             onClick = onToggleNotes,
         )
+        ToolButton(Icons.Outlined.Apps, "Fill", onClick = onFill, description = "Fill in all candidates")
         ToolButton(Icons.Outlined.Lightbulb, "Hint", onClick = onHint)
     }
 }
@@ -64,6 +67,7 @@ private fun ToolButton(
     enabled: Boolean = true,
     active: Boolean = false,
     badge: String? = null,
+    description: String = label,
 ) {
     val scheme = MaterialTheme.colorScheme
     val tint = when {
@@ -77,11 +81,11 @@ private fun ToolButton(
         shape = RoundedCornerShape(14.dp),
         color = if (active) scheme.primaryContainer else androidx.compose.ui.graphics.Color.Transparent,
         modifier = Modifier.semantics {
-            contentDescription = if (badge != null) "$label $badge" else label
+            contentDescription = if (badge != null) "$description $badge" else description
         },
     ) {
         Column(
-            Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+            Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Box {

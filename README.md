@@ -7,9 +7,11 @@ Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi bla
 ## Features
 
 - Four levels graded by the hardest solving technique a puzzle needs, not by clue count: Easy (singles only), Medium (pointing, box/line reduction, pairs, naked triples), Hard (hidden triples, X-Wing, XY-Wing, naked quads) and Expert (Swordfish, XYZ-Wing, hidden quads). Every puzzle is generated on the device, has exactly one solution and can be solved by logic without guessing.
-- Pencil notes, with matching notes cleared automatically when you place a number.
+- Pencil notes, with matching notes cleared automatically when you place a number. **Fill** pencils in every number still possible in each empty cell.
 - Highlighting for the selected cell's row, column, box and matching numbers.
 - Mistake limit of 3, which you can turn off in Settings.
+- Optional "check when I ask" mode: turn off *Show mistakes right away* and nothing reveals whether a number is right (no red numbers, no mistake count, correct cells stay editable, the number pad counts every placed copy) until you tap **Check**.
+- Finishing a row, column or box sends a brief vermilion ink wash across it, and placing numbers gives a light vibration (both can be turned off).
 - Undo and erase.
 - Teaching hints: a hint finds the easiest next step on your board, highlights the cells involved, and explains it in plain words ("In the centre box, 4 can only go in row 5…"). Steps that only rule out candidates show them crossed out on the board, and you step through to the number they lead to. A wrong number on the board is pointed out first.
 - Timer that pauses when you leave the app, plus a manual pause that hides the board.
