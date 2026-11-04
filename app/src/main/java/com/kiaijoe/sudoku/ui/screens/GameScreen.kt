@@ -1,6 +1,7 @@
 package com.kiaijoe.sudoku.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,16 +30,22 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -51,10 +58,12 @@ import com.kiaijoe.sudoku.ui.MISTAKE_LIMIT
 import com.kiaijoe.sudoku.ui.SudokuViewModel
 import com.kiaijoe.sudoku.ui.UiState
 import com.kiaijoe.sudoku.ui.components.GameToolbar
+import com.kiaijoe.sudoku.ui.components.HanamaruStamp
 import com.kiaijoe.sudoku.ui.components.NumberPad
 import com.kiaijoe.sudoku.ui.components.SudokuBoard
 import com.kiaijoe.sudoku.ui.formatTime
 import com.kiaijoe.sudoku.ui.components.TimerText
+import com.kiaijoe.sudoku.ui.theme.SealRed
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -121,13 +130,13 @@ fun GameScreen(state: UiState, viewModel: SudokuViewModel, onExit: () -> Unit) {
         ) {
             when {
                 state.generating || game == null -> Generating()
-                else -> Play(state, game, viewModel)
+                else -> Play(state, game, viewModel, onExit)
             }
         }
     }
 
     if (game != null && !state.generating) {
-        EndDialogs(state, game, viewModel, onExit)
+        EndDialogs(game, viewModel)
     }
 }
 
@@ -145,7 +154,13 @@ private fun Generating() {
 }
 
 @Composable
-private fun Play(state: UiState, game: GameState, viewModel: SudokuViewModel) {
+private fun Play(state: UiState, game: GameState, viewModel: SudokuViewModel, onExit: () -> Unit) {
+    val won = game.status == GameStatus.WON
+    // Draw the stamp in only for a win seen happen, not when reopening a won game.
+    var sawPlaying by remember { mutableStateOf(false) }
+    LaunchedEffect(game.status) {
+        if (game.status == GameStatus.PLAYING) sawPlaying = true
+    }
     Column(
         Modifier
             .widthIn(max = 560.dp)
@@ -166,24 +181,82 @@ private fun Play(state: UiState, game: GameState, viewModel: SudokuViewModel) {
                 modifier = Modifier.fillMaxSize(),
             )
             if (state.paused) PausedOverlay(onResume = viewModel::togglePause)
+            if (won) {
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.45f)),
+                )
+                HanamaruStamp(
+                    color = SealRed,
+                    animate = sawPlaying,
+                    modifier = Modifier
+                        .fillMaxSize(0.82f)
+                        .align(Alignment.Center)
+                        .rotate(-8f),
+                )
+            }
         }
 
         Spacer(Modifier.height(18.dp))
-        GameToolbar(
-            canUndo = state.canUndo,
-            notesMode = state.notesMode,
-            onUndo = viewModel::undo,
-            onErase = viewModel::erase,
-            onToggleNotes = viewModel::toggleNotesMode,
-            onHint = viewModel::hint,
-        )
-        Spacer(Modifier.height(14.dp))
-        NumberPad(
-            remaining = game::remaining,
-            notesMode = state.notesMode,
-            onDigit = viewModel::input,
-        )
+        if (won) {
+            WinPanel(state, game, onNewGame = { viewModel.newGame(game.difficulty) }, onHome = onExit)
+        } else {
+            GameToolbar(
+                canUndo = state.canUndo,
+                notesMode = state.notesMode,
+                onUndo = viewModel::undo,
+                onErase = viewModel::erase,
+                onToggleNotes = viewModel::toggleNotesMode,
+                onHint = viewModel::hint,
+            )
+            Spacer(Modifier.height(14.dp))
+            NumberPad(
+                remaining = game::remaining,
+                notesMode = state.notesMode,
+                onDigit = viewModel::input,
+            )
+        }
         Spacer(Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onHome: () -> Unit) {
+    val best = state.stats[game.difficulty]?.bestSeconds
+    Column(
+        Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            if (state.lastWinWasBest) "New best time!" else "Solved!",
+            style = MaterialTheme.typography.headlineSmall,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            "${game.difficulty.label} in ${formatTime(game.elapsedSeconds)}",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary,
+        )
+        Spacer(Modifier.height(6.dp))
+        val details = buildList {
+            if (best != null && !state.lastWinWasBest) add("Best: ${formatTime(best)}")
+            add("Mistakes: ${game.mistakes}")
+            add("Hints: ${game.hintsUsed}")
+        }
+        Text(
+            details.joinToString("  ·  "),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(20.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            OutlinedButton(onClick = onHome, modifier = Modifier.weight(1f).height(52.dp)) { Text("Home") }
+            Button(onClick = onNewGame, modifier = Modifier.weight(1f).height(52.dp)) { Text("New game") }
+        }
     }
 }
 
@@ -238,35 +311,9 @@ private fun PausedOverlay(onResume: () -> Unit) {
 }
 
 @Composable
-private fun EndDialogs(state: UiState, game: GameState, viewModel: SudokuViewModel, onExit: () -> Unit) {
+private fun EndDialogs(game: GameState, viewModel: SudokuViewModel) {
     when (game.status) {
-        GameStatus.WON -> {
-            val best = state.stats[game.difficulty]?.bestSeconds
-            AlertDialog(
-                onDismissRequest = {},
-                title = { Text(if (state.lastWinWasBest) "New best time!" else "Solved!") },
-                text = {
-                    Column {
-                        Text(
-                            "${game.difficulty.label} in ${formatTime(game.elapsedSeconds)}",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                        Spacer(Modifier.height(6.dp))
-                        val details = buildList {
-                            if (best != null && !state.lastWinWasBest) add("Best: ${formatTime(best)}")
-                            add("Mistakes: ${game.mistakes}")
-                            add("Hints: ${game.hintsUsed}")
-                        }
-                        Text(details.joinToString("  ·  "), textAlign = TextAlign.Start)
-                    }
-                },
-                confirmButton = {
-                    Button(onClick = { viewModel.newGame(game.difficulty) }) { Text("New game") }
-                },
-                dismissButton = { TextButton(onClick = onExit) { Text("Home") } },
-            )
-        }
+        GameStatus.WON -> Unit // Shown in place by the stamp and WinPanel.
         GameStatus.LOST -> AlertDialog(
             onDismissRequest = {},
             title = { Text("Out of mistakes") },
