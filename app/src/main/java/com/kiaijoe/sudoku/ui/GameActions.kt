@@ -9,6 +9,7 @@ import com.kiaijoe.sudoku.engine.Difficulty
 interface GameActions {
     fun setGameScreenActive(active: Boolean)
     fun newGame(difficulty: Difficulty)
+    fun newKiller()
     fun restart()
     fun togglePause()
     fun select(cell: Int)
@@ -28,6 +29,7 @@ interface GameActions {
     object None : GameActions {
         override fun setGameScreenActive(active: Boolean) = Unit
         override fun newGame(difficulty: Difficulty) = Unit
+        override fun newKiller() = Unit
         override fun restart() = Unit
         override fun togglePause() = Unit
         override fun select(cell: Int) = Unit

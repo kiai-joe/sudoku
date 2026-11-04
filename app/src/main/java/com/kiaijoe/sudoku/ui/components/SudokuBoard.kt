@@ -26,20 +26,26 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import com.kiaijoe.sudoku.engine.Cage
 import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.Grid
 import com.kiaijoe.sudoku.engine.HintCard
 import com.kiaijoe.sudoku.ui.Feedback
 import com.kiaijoe.sudoku.ui.theme.BoardColors
+import com.kiaijoe.sudoku.ui.theme.Lexend
 import com.kiaijoe.sudoku.ui.theme.LocalBoardColors
 import com.kiaijoe.sudoku.ui.theme.SealRed
 import kotlin.math.PI
@@ -129,6 +135,66 @@ fun SudokuBoard(
                 style = androidx.compose.ui.graphics.drawscope.Stroke(width = thick * 1.5f),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()),
             )
+        }
+
+        if (game.isKiller) CageOverlay(game.cages, colors, MaterialTheme.colorScheme.surface)
+    }
+}
+
+/**
+ * Killer cages: a dashed outline just inside each cage's edge, and its sum
+ * in the top-left corner of its first cell, on a patch of paper so the
+ * outline doesn't run through the number.
+ */
+@Composable
+private fun CageOverlay(cages: List<Cage>, colors: BoardColors, paper: Color) {
+    val measurer = rememberTextMeasurer()
+    val owner = remember(cages) {
+        IntArray(Grid.CELLS).also { o -> cages.forEachIndexed { i, cage -> cage.cells.forEach { o[it] = i } } }
+    }
+    Canvas(Modifier.fillMaxSize()) {
+        val step = size.width / 9f
+        val inset = step * 0.09f
+        val lineColor = colors.given.copy(alpha = 0.55f)
+        val width = 1.dp.toPx()
+        val dash = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 2.dp.toPx()))
+        for (cell in 0 until Grid.CELLS) {
+            val r = Grid.row(cell)
+            val c = Grid.col(cell)
+            fun same(dr: Int, dc: Int): Boolean {
+                val rr = r + dr
+                val cc = c + dc
+                return rr in 0..8 && cc in 0..8 && owner[rr * 9 + cc] == owner[cell]
+            }
+            val left = c * step
+            val top = r * step
+            // Where the cage continues, run the line to the cell edge so it joins the next one.
+            val x0 = left + if (same(0, -1)) 0f else inset
+            val x1 = left + step - if (same(0, 1)) 0f else inset
+            val y0 = top + if (same(-1, 0)) 0f else inset
+            val y1 = top + step - if (same(1, 0)) 0f else inset
+            if (!same(-1, 0)) drawLine(lineColor, Offset(x0, top + inset), Offset(x1, top + inset), width, pathEffect = dash)
+            if (!same(1, 0)) drawLine(lineColor, Offset(x0, top + step - inset), Offset(x1, top + step - inset), width, pathEffect = dash)
+            if (!same(0, -1)) drawLine(lineColor, Offset(left + inset, y0), Offset(left + inset, y1), width, pathEffect = dash)
+            if (!same(0, 1)) drawLine(lineColor, Offset(left + step - inset, y0), Offset(left + step - inset, y1), width, pathEffect = dash)
+        }
+        val style = TextStyle(
+            fontFamily = Lexend,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = (step * 0.22f).toSp(),
+            lineHeight = (step * 0.22f).toSp(),
+            color = colors.given,
+        )
+        for (cage in cages) {
+            val anchor = cage.cells.first()
+            val layout = measurer.measure(cage.sum.toString(), style)
+            val at = Offset(Grid.col(anchor) * step + inset * 0.6f, Grid.row(anchor) * step + inset * 0.4f)
+            drawRect(
+                paper,
+                topLeft = at - Offset(1.dp.toPx(), 0f),
+                size = Size(layout.size.width + 2.dp.toPx(), layout.size.height.toFloat()),
+            )
+            drawText(layout, topLeft = at)
         }
     }
 }

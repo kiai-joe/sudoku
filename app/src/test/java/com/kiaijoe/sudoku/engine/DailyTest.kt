@@ -68,4 +68,25 @@ class DailyTest {
         assertEquals(0, Daily.longestStreak(emptySet()))
         assertEquals(4, Daily.longestStreak(setOf(1L, 2L, 5L, 6L, 7L, 8L, 20L)))
     }
+
+    @Test
+    fun weekdayStatsAverageEachWeekday() {
+        val monday = day("2026-11-02")
+        val results = mapOf(
+            monday to 200L,
+            monday + 7 to 400L,
+            monday + 6 to 900L, // Sunday
+        )
+        val stats = Daily.weekdayStats(results)
+        assertEquals(7, stats.size)
+        assertEquals(java.time.DayOfWeek.MONDAY, stats[0].day)
+        assertEquals(Difficulty.EASY, stats[0].difficulty)
+        assertEquals(2, stats[0].solved)
+        assertEquals(300L, stats[0].averageSeconds)
+        assertEquals(200L, stats[0].bestSeconds)
+        assertEquals(Difficulty.EXPERT, stats[6].difficulty)
+        assertEquals(900L, stats[6].averageSeconds)
+        assertEquals(0, stats[2].solved)
+        assertNull(stats[2].averageSeconds)
+    }
 }

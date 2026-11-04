@@ -4,12 +4,14 @@ import android.content.Context
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameCodec
 import com.kiaijoe.sudoku.engine.GameState
+import com.kiaijoe.sudoku.ui.theme.InkTheme
 
 /**
  * @property instantCheck mark wrong numbers as soon as they're placed. When
  *   off, nothing shows whether a number is right until the player taps Check,
  *   and the mistake limit doesn't apply.
  * @property haptics short vibrations when placing numbers and finishing groups.
+ * @property theme the ink palette.
  */
 data class Settings(
     val mistakeLimit: Boolean = true,
@@ -17,6 +19,7 @@ data class Settings(
     val highlightSameNumbers: Boolean = true,
     val instantCheck: Boolean = true,
     val haptics: Boolean = true,
+    val theme: InkTheme = InkTheme.SUMI,
 )
 
 data class DifficultyStats(
@@ -71,6 +74,9 @@ class GameRepository(context: Context) {
         highlightSameNumbers = prefs.getBoolean(KEY_HIGHLIGHT, true),
         instantCheck = prefs.getBoolean(KEY_INSTANT_CHECK, true),
         haptics = prefs.getBoolean(KEY_HAPTICS, true),
+        theme = prefs.getString(KEY_THEME, null)
+            ?.let { name -> InkTheme.entries.firstOrNull { it.name == name } }
+            ?: InkTheme.SUMI,
     )
 
     fun saveSettings(settings: Settings) {
@@ -80,46 +86,61 @@ class GameRepository(context: Context) {
             .putBoolean(KEY_HIGHLIGHT, settings.highlightSameNumbers)
             .putBoolean(KEY_INSTANT_CHECK, settings.instantCheck)
             .putBoolean(KEY_HAPTICS, settings.haptics)
+            .putString(KEY_THEME, settings.theme.name)
             .apply()
     }
 
-    fun loadStats(): Map<Difficulty, DifficultyStats> = Difficulty.entries.associateWith { d ->
-        val best = prefs.getLong(key(d, "best"), -1L)
-        DifficultyStats(
-            played = prefs.getInt(key(d, "played"), 0),
-            won = prefs.getInt(key(d, "won"), 0),
+    fun loadStats(): Map<Difficulty, DifficultyStats> = Difficulty.entries.associateWith { loadStats(it.name) }
+
+    /** Killer games keep their own record, apart from the classic levels. */
+    fun loadKillerStats(): DifficultyStats = loadStats(KILLER)
+
+    private fun loadStats(name: String): DifficultyStats {
+        val best = prefs.getLong(key(name, "best"), -1L)
+        return DifficultyStats(
+            played = prefs.getInt(key(name, "played"), 0),
+            won = prefs.getInt(key(name, "won"), 0),
             bestSeconds = best.takeIf { it >= 0 },
         )
     }
 
-    fun recordStart(difficulty: Difficulty) {
-        val played = prefs.getInt(key(difficulty, "played"), 0)
-        prefs.edit().putInt(key(difficulty, "played"), played + 1).apply()
+    fun recordStart(difficulty: Difficulty) = recordStart(difficulty.name)
+
+    fun recordKillerStart() = recordStart(KILLER)
+
+    private fun recordStart(name: String) {
+        val played = prefs.getInt(key(name, "played"), 0)
+        prefs.edit().putInt(key(name, "played"), played + 1).apply()
     }
 
     /** Records a win and returns true when it beats the previous best time. */
-    fun recordWin(difficulty: Difficulty, seconds: Long): Boolean {
-        val won = prefs.getInt(key(difficulty, "won"), 0)
-        val best = prefs.getLong(key(difficulty, "best"), -1L)
+    fun recordWin(difficulty: Difficulty, seconds: Long): Boolean = recordWin(difficulty.name, seconds)
+
+    fun recordKillerWin(seconds: Long): Boolean = recordWin(KILLER, seconds)
+
+    private fun recordWin(name: String, seconds: Long): Boolean {
+        val won = prefs.getInt(key(name, "won"), 0)
+        val best = prefs.getLong(key(name, "best"), -1L)
         val isBest = best < 0 || seconds < best
         prefs.edit().apply {
-            putInt(key(difficulty, "won"), won + 1)
-            if (isBest) putLong(key(difficulty, "best"), seconds)
+            putInt(key(name, "won"), won + 1)
+            if (isBest) putLong(key(name, "best"), seconds)
         }.apply()
         return isBest
     }
 
     fun resetStats() {
         prefs.edit().apply {
-            Difficulty.entries.forEach { d ->
-                remove(key(d, "played")); remove(key(d, "won")); remove(key(d, "best"))
+            (Difficulty.entries.map { it.name } + KILLER).forEach { name ->
+                remove(key(name, "played")); remove(key(name, "won")); remove(key(name, "best"))
             }
         }.apply()
     }
 
-    private fun key(d: Difficulty, field: String) = "stats_${d.name}_$field"
+    private fun key(name: String, field: String) = "stats_${name}_$field"
 
     private companion object {
+        const val KILLER = "KILLER"
         const val KEY_GAME = "current_game"
         const val KEY_DAILY_GAME = "daily_game"
         const val KEY_DAILY_RESULTS = "daily_results"
@@ -128,5 +149,6 @@ class GameRepository(context: Context) {
         const val KEY_HIGHLIGHT = "highlight_same"
         const val KEY_INSTANT_CHECK = "instant_check"
         const val KEY_HAPTICS = "haptics"
+        const val KEY_THEME = "theme"
     }
 }

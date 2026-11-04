@@ -13,11 +13,16 @@ import com.kiaijoe.sudoku.engine.GameStatus
 import com.kiaijoe.sudoku.engine.Generator
 import com.kiaijoe.sudoku.engine.HintPlan
 import com.kiaijoe.sudoku.engine.Hints
+import com.kiaijoe.sudoku.engine.Killer
 import com.kiaijoe.sudoku.engine.Technique
+import com.kiaijoe.sudoku.engine.Tutorial
 import com.kiaijoe.sudoku.ui.screens.CalendarScreen
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
+import com.kiaijoe.sudoku.ui.screens.LearnScreen
+import com.kiaijoe.sudoku.ui.screens.LessonScreen
 import com.kiaijoe.sudoku.ui.screens.StatsScreen
+import com.kiaijoe.sudoku.ui.theme.InkTheme
 import com.kiaijoe.sudoku.ui.theme.SudokuTheme
 import org.junit.Rule
 import org.junit.Test
@@ -43,8 +48,13 @@ class ScreenshotTest {
     @get:Rule
     val compose = createComposeRule()
 
-    private fun capture(name: String, dark: Boolean, content: @Composable () -> Unit) {
-        compose.setContent { SudokuTheme(darkTheme = dark) { content() } }
+    private fun capture(
+        name: String,
+        dark: Boolean,
+        theme: InkTheme = InkTheme.SUMI,
+        content: @Composable () -> Unit,
+    ) {
+        compose.setContent { SudokuTheme(darkTheme = dark, theme = theme) { content() } }
         compose.onRoot().captureRoboImage("src/test/screenshots/$name.png")
     }
 
@@ -61,8 +71,42 @@ class ScreenshotTest {
             onPlayDaily = {},
             onCalendar = {},
             onNewGame = {},
+            onNewKiller = {},
             onStats = {},
+            onLearn = {},
             onSettingsChange = {},
+        )
+    }
+
+    // --- Other ink palettes ----------------------------------------------------
+
+    @Test
+    fun homeIndigoNight() = capture("home_indigo_night", dark = false, theme = InkTheme.INDIGO_NIGHT) {
+        HomeScreen(
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily) },
+            onContinue = {},
+            onPlayDaily = {},
+            onCalendar = {},
+            onNewGame = {},
+            onNewKiller = {},
+            onStats = {},
+            onLearn = {},
+            onSettingsChange = {},
+        )
+    }
+
+    @Test fun gameIndigoNight() = themedGame("game_indigo_night", dark = false, theme = InkTheme.INDIGO_NIGHT)
+
+    @Test fun gameBambooLight() = themedGame("game_bamboo_light", dark = false, theme = InkTheme.BAMBOO)
+
+    @Test fun gameBambooDark() = themedGame("game_bamboo_dark", dark = true, theme = InkTheme.BAMBOO)
+
+    private fun themedGame(name: String, dark: Boolean, theme: InkTheme) = capture(name, dark, theme) {
+        val g = Fixtures.midGame()
+        GameScreen(
+            state = UiState(game = g, selected = Fixtures.selectedCell(g)),
+            actions = GameActions.None,
+            onExit = {},
         )
     }
 
@@ -97,6 +141,28 @@ class ScreenshotTest {
             actions = GameActions.None,
             onExit = {},
         )
+    }
+
+    // --- Killer Sudoku -------------------------------------------------------
+
+    @Test fun killerLight() = killer(dark = false)
+
+    @Test fun killerDark() = killer(dark = true)
+
+    private fun killer(dark: Boolean) = capture(if (dark) "killer_dark" else "killer_light", dark) {
+        val g = Fixtures.killerGame()
+        GameScreen(
+            state = UiState(game = g, selected = (0 until 81).first { g.values[it] == 0 }),
+            actions = GameActions.None,
+            onExit = {},
+        )
+    }
+
+    /** A Killer hint explaining a cage. */
+    @Test
+    fun killerHintLight() = capture("killer_hint_light", dark = false) {
+        val (g, plan) = Fixtures.killerCageHint()
+        GameScreen(state = UiState(game = g, hint = HintUi(plan)), actions = GameActions.None, onExit = {})
     }
 
     // --- Hints -------------------------------------------------------------
@@ -138,6 +204,35 @@ class ScreenshotTest {
 
     private fun calendar(dark: Boolean) = capture(if (dark) "calendar_dark" else "calendar_light", dark) {
         CalendarScreen(daily = Fixtures.daily, onBack = {})
+    }
+
+    /** The whole daily page, including the weekday chart below the fold, on a tall screen. */
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun calendarFullLight() = capture("calendar_full_light", dark = false) {
+        CalendarScreen(daily = Fixtures.daily, onBack = {})
+    }
+
+    // --- Learn ---------------------------------------------------------------
+
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun learnLight() = capture("learn_light", dark = false) {
+        LearnScreen(onOpen = {}, onBack = {})
+    }
+
+    /** The X-Wing lesson at its first step, with the example built up front. */
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun lessonXWingLight() = capture("lesson_xwing_light", dark = false) {
+        val index = Tutorial.lessons.indexOfFirst { it.technique == Technique.X_WING }
+        LessonScreen(
+            index = index,
+            example = Tutorial.example(Tutorial.lessons[index]),
+            loading = false,
+            onNextLesson = {},
+            onBack = {},
+        )
     }
 
     // --- Stats -------------------------------------------------------------
@@ -193,6 +288,26 @@ private object Fixtures {
             g = placeNextHint(g)
         }
         error("no elimination hint found")
+    }
+
+    /** A Killer game a few moves in. */
+    fun killerGame(): GameState {
+        var g = GameState.from(Killer.generate(Random(11)))
+        repeat(6) { g = placeNextHint(g) }
+        return g.copy(elapsedSeconds = 184)
+    }
+
+    /** A Killer game at the point where the next hint is a cage combination. */
+    fun killerCageHint(): Pair<GameState, HintPlan> {
+        var g = GameState.from(Killer.generate(Random(11)))
+        repeat(81) {
+            val plan = Hints.forGame(g)
+            if (plan is HintPlan.Teach && plan.cards.first().technique == Technique.CAGE && it >= 4) {
+                return g.copy(elapsedSeconds = 241) to plan
+            }
+            g = placeNextHint(g)
+        }
+        error("no cage hint found")
     }
 
     fun wonGame(): GameState {

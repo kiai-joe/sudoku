@@ -4,9 +4,10 @@ package com.kiaijoe.sudoku.engine
  * Solving techniques a person uses, easiest first. [level] is the
  * difficulty a puzzle gets when this is the hardest technique it needs.
  */
-enum class Technique(val label: String, val level: Difficulty) {
+enum class Technique(val label: String, val level: Difficulty, val killerOnly: Boolean = false) {
     NAKED_SINGLE("Naked single", Difficulty.EASY),
     HIDDEN_SINGLE("Hidden single", Difficulty.EASY),
+    CAGE("Cage combinations", Difficulty.EASY, killerOnly = true),
     POINTING("Pointing", Difficulty.MEDIUM),
     CLAIMING("Box/line reduction", Difficulty.MEDIUM),
     NAKED_PAIR("Naked pair", Difficulty.MEDIUM),
@@ -57,6 +58,7 @@ class Step(
     val pattern: List<Int> = emptyList(),
     val houses: List<House> = emptyList(),
     val digits: Int = 0,
+    val cage: Cage? = null,
 ) {
     val isPlacement get() = digit != 0
 }
@@ -86,7 +88,7 @@ class Grade(
  * techniques in [Technique], always trying the easiest one that makes
  * progress. The hardest technique needed sets the puzzle's difficulty.
  */
-class LogicSolver(givens: IntArray) {
+class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList()) {
     private val values = IntArray(Grid.CELLS)
     private val cands = IntArray(Grid.CELLS) { Grid.ALL_DIGITS }
 
@@ -119,6 +121,7 @@ class LogicSolver(givens: IntArray) {
             val step = when (t) {
                 Technique.NAKED_SINGLE -> nakedSingle()
                 Technique.HIDDEN_SINGLE -> hiddenSingle()
+                Technique.CAGE -> cageCombinations()
                 Technique.POINTING -> pointing()
                 Technique.CLAIMING -> claiming()
                 Technique.NAKED_PAIR -> nakedSubset(2, t)
@@ -190,6 +193,39 @@ class LogicSolver(givens: IntArray) {
                 if (count == 1) {
                     return Step(Technique.HIDDEN_SINGLE, only, d, pattern = listOf(only), houses = listOf(house), digits = bit(d))
                 }
+            }
+        }
+        return null
+    }
+
+    // --- Killer cages ------------------------------------------------------
+
+    /**
+     * A cage's empty cells must hold different numbers, not already in the
+     * cage, that make up the rest of its sum. Any candidate that appears in
+     * no such filling goes.
+     */
+    private fun cageCombinations(): Step? {
+        for (cage in cages) {
+            val open = cage.cells.filter { values[it] == 0 }
+            if (open.isEmpty()) continue
+            var used = 0
+            var placed = 0
+            for (cell in cage.cells) {
+                if (values[cell] != 0) {
+                    used = used or bit(values[cell])
+                    placed += values[cell]
+                }
+            }
+            val possible = Killer.possibleDigits(open.map { cands[it] }, cage.sum - placed, used)
+            val elim = HashMap<Int, Int>()
+            for ((i, cell) in open.withIndex()) {
+                val extra = cands[cell] and possible[i].inv()
+                if (extra != 0) elim[cell] = extra
+            }
+            if (elim.isNotEmpty()) {
+                val digits = elim.values.fold(0) { a, b -> a or b }
+                return Step(Technique.CAGE, eliminations = elim, pattern = cage.cells, digits = digits, cage = cage)
             }
         }
         return null
@@ -440,6 +476,6 @@ class LogicSolver(givens: IntArray) {
         }
 
         /** Grades a puzzle using every technique. */
-        fun grade(givens: IntArray): Grade = LogicSolver(givens).solve()
+        fun grade(givens: IntArray, cages: List<Cage> = emptyList()): Grade = LogicSolver(givens, cages).solve()
     }
 }
