@@ -45,6 +45,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -319,7 +320,22 @@ private fun WeekdayCard(daily: DailyUi) {
             )
             Spacer(Modifier.height(12.dp))
             for (row in stats) {
-                Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                val spoken = buildString {
+                    append(row.day.getDisplayName(TextStyle.FULL, Locale.getDefault()))
+                    append(", ").append(if (row.killer) "Killer" else row.difficulty.label)
+                    if (row.solved == 0) {
+                        append(", none solved yet")
+                    } else {
+                        append(", average ${formatTime(row.averageSeconds!!)}, ${row.solved} solved, best ${formatTime(row.bestSeconds!!)}")
+                    }
+                }
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 5.dp)
+                        .clearAndSetSemantics { contentDescription = spoken },
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Column(Modifier.width(76.dp)) {
                         Text(
                             row.day.getDisplayName(TextStyle.SHORT, Locale.getDefault()),

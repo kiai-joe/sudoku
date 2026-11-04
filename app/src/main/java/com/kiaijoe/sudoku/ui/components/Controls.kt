@@ -120,6 +120,7 @@ fun NumberPad(
     notesMode: Boolean,
     onDigit: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    largeNumbers: Boolean = false,
 ) {
     val scheme = MaterialTheme.colorScheme
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -137,7 +138,8 @@ fun NumberPad(
                 },
                 modifier = Modifier
                     .weight(1f)
-                    .aspectRatio(0.72f)
+                    // Taller in large mode so the bigger digit still leaves room for the count under it.
+                    .aspectRatio(if (largeNumbers) 0.6f else 0.72f)
                     .semantics {
                         contentDescription = if (done) "$digit, all placed" else "$digit, $left left"
                     },
@@ -149,7 +151,12 @@ fun NumberPad(
                 ) {
                     Text(
                         text = digit.toString(),
-                        fontSize = if (notesMode) 20.sp else 26.sp,
+                        fontSize = when {
+                            largeNumbers && notesMode -> 24.sp
+                            largeNumbers -> 32.sp
+                            notesMode -> 20.sp
+                            else -> 26.sp
+                        },
                         fontWeight = if (notesMode) FontWeight.Normal else FontWeight.Medium,
                         color = when {
                             done -> scheme.onSurfaceVariant.copy(alpha = 0.3f)

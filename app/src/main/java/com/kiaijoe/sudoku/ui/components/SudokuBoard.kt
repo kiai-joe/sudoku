@@ -28,7 +28,10 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -63,7 +66,11 @@ fun SudokuBoard(
     revealWrong: Boolean = true,
     flagged: Set<Int> = emptySet(),
     flash: Feedback? = null,
+    largeNumbers: Boolean = false,
 ) {
+    val cageOf: Map<Int, Cage> = remember(game.cages) {
+        buildMap { for (cage in game.cages) for (c in cage.cells) put(c, cage) }
+    }
     // With instant checking off, a wrong number only shows once Check has flagged it.
     val wrongShown: (Int) -> Boolean = { game.isWrong(it) && (revealWrong || it in flagged) }
     val colors = LocalBoardColors.current
@@ -78,8 +85,9 @@ fun SudokuBoard(
     ) {
         val cell: Dp = maxWidth / 9
         val density = LocalDensity.current
-        val digitSize = with(density) { (cell * 0.56f).toSp() }
-        val noteSize = with(density) { (cell * 0.25f).toSp() }
+        // Sized from the cell, not the system font scale, so text can never overflow the grid.
+        val digitSize = with(density) { (cell * if (largeNumbers) 0.70f else 0.56f).toSp() }
+        val noteSize = with(density) { (cell * if (largeNumbers) 0.31f else 0.25f).toSp() }
 
         Column(Modifier.fillMaxSize()) {
             for (r in 0 until 9) {
@@ -99,6 +107,8 @@ fun SudokuBoard(
                                 cellBackground(game, index, selected, selectedDigit, colors, wrongShown(index))
                             },
                             wrongShown = wrongShown(index),
+                            isSelected = index == selected && hint == null,
+                            cage = cageOf[index],
                             hintShown = hint?.candidates?.get(index) ?: 0,
                             hintStruck = hint?.eliminations?.get(index) ?: 0,
                             selectedDigit = selectedDigit,
@@ -199,6 +209,35 @@ private fun CageOverlay(cages: List<Cage>, colors: BoardColors, paper: Color) {
     }
 }
 
+/**
+ * What a screen reader says for a cell: where it is, what's in it (given,
+ * yours, or wrong), its pencil marks, its Killer cage, and during a hint
+ * which candidates the hint shows and rules out.
+ */
+internal fun cellDescription(
+    game: GameState,
+    index: Int,
+    wrongShown: Boolean,
+    hintShown: Int = 0,
+    hintStruck: Int = 0,
+    cage: Cage? = null,
+): String = buildString {
+    val value = game.values[index]
+    append("Row ${Grid.row(index) + 1}, column ${Grid.col(index) + 1}, ")
+    when {
+        value == 0 -> append("empty")
+        game.isGiven(index) -> append("$value, given")
+        wrongShown -> append("$value, incorrect")
+        else -> append(value)
+    }
+    if (value == 0 && game.notes[index] != 0) append(", notes ${digitsText(game.notes[index])}")
+    if (cage != null) append(", cage of ${cage.cells.size} adding to ${cage.sum}")
+    if (hintShown != 0) append(", hint candidates ${digitsText(hintShown)}")
+    if (hintStruck != 0) append(", ruled out ${digitsText(hintStruck)}")
+}
+
+private fun digitsText(mask: Int) = (1..9).filter { mask and (1 shl (it - 1)) != 0 }.joinToString(", ")
+
 /** While a hint is open, the board shows its pattern instead of the selection. */
 private fun hintBackground(index: Int, hint: HintCard?, mistakeCell: Int?, colors: BoardColors): Color = when {
     index == mistakeCell -> colors.hintFocus
@@ -238,23 +277,21 @@ private fun Cell(
     wrongShown: Boolean = false,
     hintShown: Int = 0,
     hintStruck: Int = 0,
+    isSelected: Boolean = false,
+    cage: Cage? = null,
 ) {
     val value = game.values[index]
-    val description = buildString {
-        append("Row ${Grid.row(index) + 1}, column ${Grid.col(index) + 1}, ")
-        when {
-            value == 0 -> append("empty")
-            game.isGiven(index) -> append("$value, given")
-            wrongShown -> append("$value, incorrect")
-            else -> append(value)
-        }
-    }
+    val description = cellDescription(game, index, wrongShown, hintShown, hintStruck, cage)
 
     Box(
         modifier = modifier
             .background(background)
             .clickable(onClick = onClick)
-            .semantics { contentDescription = description },
+            .semantics {
+                contentDescription = description
+                selected = isSelected
+                role = Role.Button
+            },
         contentAlignment = Alignment.Center,
     ) {
         if (value != 0) {
@@ -269,6 +306,8 @@ private fun Cell(
                     wrongShown -> colors.wrong
                     else -> colors.entered
                 },
+                // Underlined as well as red, so a mistake doesn't rely on colour alone.
+                textDecoration = if (wrongShown) TextDecoration.Underline else null,
             )
         } else if (hintShown != 0 || hintStruck != 0) {
             HintNotes(hintShown, hintStruck, noteSize, colors)
@@ -362,6 +401,7 @@ private fun HintNotes(shown: Int, struck: Int, size: TextUnit, colors: BoardColo
  */
 @Composable
 private fun InkWash(flash: Feedback) {
+    if (rememberReduceMotion()) return
     val progress = remember(flash.id) { Animatable(0f) }
     LaunchedEffect(flash.id) { progress.animateTo(1f, tween(durationMillis = 900, easing = LinearEasing)) }
     val cells = flash.completed

@@ -214,6 +214,7 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
                 revealWrong = state.settings.instantCheck,
                 flagged = state.flagged,
                 flash = feedback,
+                largeNumbers = state.settings.largeNumbers,
             )
             if (state.paused) PausedOverlay(onResume = actions::togglePause)
             if (won) {
@@ -261,6 +262,7 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
                 remaining = { game.remaining(it, checking = state.settings.instantCheck) },
                 notesMode = state.notesMode,
                 onDigit = actions::input,
+                largeNumbers = state.settings.largeNumbers,
             )
         }
         Spacer(Modifier.height(16.dp))
