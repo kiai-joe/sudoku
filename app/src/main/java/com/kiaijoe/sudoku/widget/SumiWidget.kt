@@ -7,6 +7,7 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.util.TypedValue
 import android.view.View
 import android.widget.RemoteViews
 import com.kiaijoe.sudoku.MainActivity
@@ -36,9 +37,7 @@ class SumiWidget : AppWidgetProvider() {
         if (intent.action == ACTION_REFRESH) refresh(context) else super.onReceive(context, intent)
     }
 
-    override fun onDisabled(context: Context) {
-        context.getSystemService(AlarmManager::class.java)?.cancel(midnightIntent(context))
-    }
+    override fun onDisabled(context: Context) = stopMidnightIfUnused(context)
 
     companion object {
         private const val ACTION_REFRESH = "com.kiaijoe.sudoku.widget.REFRESH"
@@ -63,22 +62,30 @@ class SumiWidget : AppWidgetProvider() {
             R.id.widget_check4, R.id.widget_check5, R.id.widget_check6,
         )
 
-        /** Redraws every Sumi widget on the home screen. Cheap to call when there are none. */
+        /**
+         * Redraws every Sumi widget on the home screen, the Daily puzzle and the
+         * Streak ones. Cheap to call when there are none.
+         */
         fun refresh(context: Context) {
             val manager = AppWidgetManager.getInstance(context) ?: return
-            val ids = manager.getAppWidgetIds(ComponentName(context, SumiWidget::class.java))
-            if (ids.isEmpty()) return
-            val views = render(context)
-            for (id in ids) manager.updateAppWidget(id, views)
+            val large = manager.getAppWidgetIds(ComponentName(context, SumiWidget::class.java))
+            val small = manager.getAppWidgetIds(ComponentName(context, SumiStreakWidget::class.java))
+            if (large.isEmpty() && small.isEmpty()) return
+            val model = model(context)
+            if (large.isNotEmpty()) render(context, model).let { views -> for (id in large) manager.updateAppWidget(id, views) }
+            if (small.isNotEmpty()) renderSmall(context, model).let { views -> for (id in small) manager.updateAppWidget(id, views) }
             scheduleMidnight(context)
         }
 
-        /** The widget's views for today, from what Sumi has saved. */
-        fun render(context: Context, today: Long = LocalDate.now().toEpochDay()): RemoteViews {
+        /** What the widgets show today, from what Sumi has saved. */
+        fun model(context: Context, today: Long = LocalDate.now().toEpochDay()): DailyWidgetModel {
             val repo = GameRepository(context)
             val inProgress = repo.loadDailyGame()?.let { it.daily == today && it.status == GameStatus.PLAYING } == true
-            return render(context, dailyWidgetModel(today, repo.loadDailyResults(), inProgress))
+            return dailyWidgetModel(today, repo.loadDailyResults(), inProgress)
         }
+
+        /** The Daily puzzle widget's views for today. */
+        fun render(context: Context): RemoteViews = render(context, model(context))
 
         fun render(context: Context, model: DailyWidgetModel): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_daily)
@@ -127,6 +134,40 @@ class SumiWidget : AppWidgetProvider() {
             return views
         }
 
+        /**
+         * The 2×1 Streak widget: the streak with a flame (or, with no streak yet,
+         * today's level), and a round Play button that becomes a tick once today
+         * is solved.
+         */
+        fun renderSmall(context: Context, model: DailyWidgetModel): RemoteViews {
+            val views = RemoteViews(context.packageName, R.layout.widget_streak)
+            val streak = model.streak > 0
+            views.setViewVisibility(R.id.widget_small_flame, if (streak) View.VISIBLE else View.GONE)
+            views.setTextViewText(R.id.widget_small_value, if (streak) model.streak.toString() else model.title)
+            views.setTextViewTextSize(R.id.widget_small_value, TypedValue.COMPLEX_UNIT_SP, if (streak) 22f else 17f)
+            views.setTextViewText(R.id.widget_small_caption, if (streak) "day streak" else "Daily puzzle")
+            if (model.solved) {
+                views.setInt(R.id.widget_small_action, "setBackgroundResource", R.drawable.widget_circle_matcha_soft)
+                views.setImageViewResource(R.id.widget_small_icon, R.drawable.ic_widget_check_matcha)
+            } else {
+                views.setInt(R.id.widget_small_action, "setBackgroundResource", R.drawable.widget_circle_ai)
+                views.setImageViewResource(R.id.widget_small_icon, R.drawable.ic_widget_play)
+            }
+            views.setContentDescription(android.R.id.background, model.description)
+            views.setContentDescription(R.id.widget_small_action, if (model.solved) "Open Sumi" else "${model.action} today's puzzle")
+            views.setOnClickPendingIntent(android.R.id.background, launch(context, openDaily = false))
+            views.setOnClickPendingIntent(R.id.widget_small_action, launch(context, openDaily = !model.solved))
+            return views
+        }
+
+        /** Stops the midnight redraw once neither kind of widget is on the home screen. */
+        internal fun stopMidnightIfUnused(context: Context) {
+            val manager = AppWidgetManager.getInstance(context) ?: return
+            val any = manager.getAppWidgetIds(ComponentName(context, SumiWidget::class.java)).isNotEmpty() ||
+                manager.getAppWidgetIds(ComponentName(context, SumiStreakWidget::class.java)).isNotEmpty()
+            if (!any) context.getSystemService(AlarmManager::class.java)?.cancel(midnightIntent(context))
+        }
+
         private fun launch(context: Context, openDaily: Boolean): PendingIntent {
             val intent = Intent(context, MainActivity::class.java)
                 .setAction(if (openDaily) "com.kiaijoe.sudoku.OPEN_DAILY" else Intent.ACTION_MAIN)
@@ -151,7 +192,7 @@ class SumiWidget : AppWidgetProvider() {
          * Redraws a minute after the next midnight, so the new day shows. Inexact,
          * so it needs no alarm permission; the hourly update covers any delay.
          */
-        private fun scheduleMidnight(context: Context) {
+        internal fun scheduleMidnight(context: Context) {
             val alarms = context.getSystemService(AlarmManager::class.java) ?: return
             val zone = ZoneId.systemDefault()
             val next = LocalDate.now(zone).plusDays(1).atStartOfDay(zone).plusMinutes(1).toInstant().toEpochMilli()

@@ -26,14 +26,19 @@ class SumiWidgetTest {
     private val thursday = LocalDate.parse("2026-11-05").toEpochDay()
     private val results = mapOf(thursday - 3 to 300L, thursday - 2 to 320L, thursday - 1 to 290L)
 
-    /** The widget at a typical 4×2 home-screen size, 320 by 140dp, on a margin of wallpaper. */
-    private fun show(model: DailyWidgetModel): ViewGroup {
+    /**
+     * The widget on a margin of wallpaper, at a typical home-screen size: 320 by
+     * 140dp for the 4×2 Daily puzzle widget, 150 by 56dp for the 2×1 Streak one.
+     */
+    private fun show(model: DailyWidgetModel, small: Boolean = false): ViewGroup {
         val activity = Robolectric.buildActivity(ComponentActivity::class.java).setup().get()
         val density = activity.resources.displayMetrics.density
         val frame = FrameLayout(activity)
         frame.setPadding((16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt(), (16 * density).toInt())
-        activity.setContentView(frame, ViewGroup.LayoutParams((352 * density).toInt(), (172 * density).toInt()))
-        val widget = SumiWidget.render(activity, model).apply(activity, frame)
+        val (w, h) = if (small) 182 to 88 else 352 to 172
+        activity.setContentView(frame, ViewGroup.LayoutParams((w * density).toInt(), (h * density).toInt()))
+        val views = if (small) SumiWidget.renderSmall(activity, model) else SumiWidget.render(activity, model)
+        val widget = views.apply(activity, frame)
         frame.addView(widget, FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT))
         return frame
     }
@@ -68,5 +73,36 @@ class SumiWidgetTest {
         val frame = show(dailyWidgetModel(thursday, emptyMap(), inProgress = true, locale = Locale.UK))
         assertEquals(View.GONE, frame.findViewById<View>(R.id.widget_streak_pill).visibility)
         assertEquals("Continue", frame.text(R.id.widget_action_text))
+    }
+
+    // --- The 2×1 Streak widget ------------------------------------------------
+
+    @Test
+    fun smallShowsTheStreakAndPlay() {
+        val frame = show(dailyWidgetModel(thursday, results, inProgress = false, locale = Locale.UK), small = true)
+        assertEquals("3", frame.text(R.id.widget_small_value))
+        assertEquals("day streak", frame.text(R.id.widget_small_caption))
+        assertEquals(View.VISIBLE, frame.findViewById<View>(R.id.widget_small_flame).visibility)
+        assertEquals("Play today's puzzle", frame.findViewById<View>(R.id.widget_small_action).contentDescription)
+        frame.captureRoboImage("src/test/screenshots/widget_small_light.png")
+    }
+
+    @Test
+    @Config(qualifiers = "+night")
+    fun smallSolvedInTheDark() {
+        val frame = show(dailyWidgetModel(thursday, results + (thursday to 312L), inProgress = false, locale = Locale.UK), small = true)
+        assertEquals("4", frame.text(R.id.widget_small_value))
+        assertEquals("Open Sumi", frame.findViewById<View>(R.id.widget_small_action).contentDescription)
+        frame.captureRoboImage("src/test/screenshots/widget_small_dark.png")
+    }
+
+    /** With no streak yet it shows today's level instead, and no flame. */
+    @Test
+    fun smallWithNoStreakShowsTodaysLevel() {
+        val frame = show(dailyWidgetModel(thursday, emptyMap(), inProgress = false, locale = Locale.UK), small = true)
+        assertEquals("Medium", frame.text(R.id.widget_small_value))
+        assertEquals("Daily puzzle", frame.text(R.id.widget_small_caption))
+        assertEquals(View.GONE, frame.findViewById<View>(R.id.widget_small_flame).visibility)
+        frame.captureRoboImage("src/test/screenshots/widget_small_new_light.png")
     }
 }
