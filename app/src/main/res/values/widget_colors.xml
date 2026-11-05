@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home-screen widget colours: Sumi's Washi palette. values-night has Sumi night. -->
+<resources>
+    <color name="widget_surface">#FFFFFF</color>
+    <color name="widget_ink">#1D1F26</color>
+    <color name="widget_ink_muted">#5E6270</color>
+    <color name="widget_sunk">#ECE9E2</color>
+    <color name="widget_ai">#3552C7</color>
+    <color name="widget_on_ai">#FFFFFF</color>
+    <color name="widget_shu">#C63D22</color>
+    <color name="widget_shu_soft">#FBE3DC</color>
+    <color name="widget_on_shu">#FFFFFF</color>
+    <color name="widget_matcha">#2F7A4A</color>
+    <color name="widget_matcha_soft">#DDF0E3</color>
+</resources>

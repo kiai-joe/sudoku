@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Home-screen widget colours in the dark: Sumi night. -->
+<resources>
+    <color name="widget_surface">#1B1D23</color>
+    <color name="widget_ink">#ECEDF2</color>
+    <color name="widget_ink_muted">#A3A8B6</color>
+    <color name="widget_sunk">#24272F</color>
+    <color name="widget_ai">#8EA6FF</color>
+    <color name="widget_on_ai">#0D1640</color>
+    <color name="widget_shu">#FF7A5C</color>
+    <color name="widget_shu_soft">#4A2219</color>
+    <color name="widget_on_shu">#2A0B04</color>
+    <color name="widget_matcha">#7FCF97</color>
+    <color name="widget_matcha_soft">#1E3A27</color>
+</resources>
