@@ -24,6 +24,7 @@ import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
 import com.kiaijoe.sudoku.ui.screens.LearnScreen
 import com.kiaijoe.sudoku.ui.screens.LessonScreen
+import com.kiaijoe.sudoku.ui.screens.SettingsScreen
 import com.kiaijoe.sudoku.ui.screens.StatsScreen
 import com.kiaijoe.sudoku.ui.theme.InkTheme
 import com.kiaijoe.sudoku.ui.theme.SudokuTheme
@@ -75,9 +76,8 @@ class ScreenshotTest {
             onCalendar = {},
             onNewGame = {},
             onNewKiller = {},
-            onStats = {},
-            onLearn = {},
-            onSettingsChange = {},
+            onSettings = {},
+            onTab = {},
         )
     }
 
@@ -92,9 +92,8 @@ class ScreenshotTest {
             onCalendar = {},
             onNewGame = {},
             onNewKiller = {},
-            onStats = {},
-            onLearn = {},
-            onSettingsChange = {},
+            onSettings = {},
+            onTab = {},
         )
     }
 
@@ -217,14 +216,14 @@ class ScreenshotTest {
     @Test fun calendarDark() = calendar(dark = true)
 
     private fun calendar(dark: Boolean) = capture(if (dark) "calendar_dark" else "calendar_light", dark) {
-        CalendarScreen(daily = Fixtures.daily, onBack = {})
+        CalendarScreen(daily = Fixtures.daily, onBack = {}, onTab = {})
     }
 
     /** The whole daily page, including the weekday chart below the fold, on a tall screen. */
     @Test
     @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
     fun calendarFullLight() = capture("calendar_full_light", dark = false) {
-        CalendarScreen(daily = Fixtures.daily, onBack = {})
+        CalendarScreen(daily = Fixtures.daily, onBack = {}, onTab = {})
     }
 
     // --- Learn ---------------------------------------------------------------
@@ -232,7 +231,7 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
     fun learnLight() = capture("learn_light", dark = false) {
-        LearnScreen(onOpen = {}, onBack = {})
+        LearnScreen(onOpen = {}, onBack = {}, onTab = {})
     }
 
     /** The X-Wing lesson at its first step, with the example built up front. */
@@ -263,7 +262,7 @@ class ScreenshotTest {
         )
     }
 
-    /** The whole home screen, including the Killer levels below the fold. */
+    /** The whole home screen, on a tall screen. */
     @Test
     @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
     fun homeFullLight() = capture("home_full_light", dark = false) {
@@ -274,9 +273,30 @@ class ScreenshotTest {
             onCalendar = {},
             onNewGame = {},
             onNewKiller = {},
-            onStats = {},
-            onLearn = {},
-            onSettingsChange = {},
+            onSettings = {},
+            onTab = {},
+        )
+    }
+
+    // --- Settings ----------------------------------------------------------
+
+    @Test fun settingsLight() = settings(dark = false)
+
+    @Test fun settingsDark() = settings(dark = true)
+
+    private fun settings(dark: Boolean) = capture(if (dark) "settings_dark" else "settings_light", dark) {
+        SettingsScreen(settings = Settings(), onChange = {}, onBack = {})
+    }
+
+    /** Progress in the dark palette, with the floating bar. */
+    @Test
+    fun statsDark() = capture("stats_dark", dark = true) {
+        StatsScreen(
+            stats = Fixtures.stats,
+            achievements = Fixtures.achievements,
+            onReset = {},
+            onBack = {},
+            onTab = {},
         )
     }
 
@@ -284,7 +304,7 @@ class ScreenshotTest {
 
     @Test
     fun statsLight() = capture("stats_light", dark = false) {
-        StatsScreen(stats = Fixtures.stats, onReset = {}, onBack = {})
+        StatsScreen(stats = Fixtures.stats, onReset = {}, onBack = {}, onTab = {})
     }
 
     /** The whole statistics page with some achievements earned. */
@@ -297,6 +317,7 @@ class ScreenshotTest {
             achievements = Fixtures.achievements,
             onReset = {},
             onBack = {},
+            onTab = {},
         )
     }
 

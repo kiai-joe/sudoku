@@ -1,54 +1,63 @@
 package com.kiaijoe.sudoku.ui.screens
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.BarChart
-import androidx.compose.material.icons.outlined.School
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
-import com.kiaijoe.sudoku.data.Settings
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.Killer
 import com.kiaijoe.sudoku.ui.UiState
+import com.kiaijoe.sudoku.ui.components.ButtonTone
+import com.kiaijoe.sudoku.ui.components.CardShape
+import com.kiaijoe.sudoku.ui.components.ChipTone
+import com.kiaijoe.sudoku.ui.components.IconBadge
+import com.kiaijoe.sudoku.ui.components.IconTile
+import com.kiaijoe.sudoku.ui.components.Overline
+import com.kiaijoe.sudoku.ui.components.PillButton
+import com.kiaijoe.sudoku.ui.components.SealLogo
+import com.kiaijoe.sudoku.ui.components.SumiChip
+import com.kiaijoe.sudoku.ui.components.Tab
+import com.kiaijoe.sudoku.ui.components.TabPage
+import com.kiaijoe.sudoku.ui.components.card
+import com.kiaijoe.sudoku.ui.components.icon
 import com.kiaijoe.sudoku.ui.formatTime
-import com.kiaijoe.sudoku.ui.theme.SealPaper
-import com.kiaijoe.sudoku.ui.theme.SealRed
+import com.kiaijoe.sudoku.ui.icons.Lucide
+import com.kiaijoe.sudoku.ui.theme.Sumi
 
 @Composable
 fun HomeScreen(
@@ -58,190 +67,255 @@ fun HomeScreen(
     onCalendar: () -> Unit,
     onNewGame: (Difficulty) -> Unit,
     onNewKiller: (Difficulty) -> Unit,
-    onStats: () -> Unit,
-    onLearn: () -> Unit,
-    onSettingsChange: (Settings) -> Unit,
+    onSettings: () -> Unit,
+    onTab: ((Tab) -> Unit)? = null,
 ) {
     var pending by remember { mutableStateOf<Difficulty?>(null) }
     var pendingKiller by remember { mutableStateOf<Difficulty?>(null) }
-    var showSettings by remember { mutableStateOf(false) }
+    val c = Sumi.colors
 
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-        Column(
-            Modifier
-                .safeDrawingPadding()
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 24.dp, vertical = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Spacer(Modifier.height(24.dp))
-            Logo()
-            Spacer(Modifier.height(20.dp))
-            Text("Sumi", style = MaterialTheme.typography.displaySmall)
+    TabPage(Tab.Home, onTab) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SealLogo(size = 38.dp)
+            Spacer(Modifier.width(10.dp))
             Text(
-                "Fill every row, column and box with 1 to 9.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                "Sumi",
+                style = MaterialTheme.typography.headlineMedium,
+                color = c.ink,
+                modifier = Modifier.weight(1f).semantics { heading() },
             )
-            Spacer(Modifier.height(40.dp))
-
-            Column(Modifier.widthIn(max = 420.dp).fillMaxWidth()) {
-                DailyCard(state.daily, onPlay = onPlayDaily, onCalendar = onCalendar)
-                Spacer(Modifier.height(20.dp))
-
-                val game = state.savedGame
-                if (state.canContinue && game != null) {
-                    Button(
-                        onClick = onContinue,
-                        shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.fillMaxWidth().height(64.dp),
-                    ) {
-                        Icon(Icons.Rounded.PlayArrow, contentDescription = null)
-                        Spacer(Modifier.size(8.dp))
-                        Column(horizontalAlignment = Alignment.Start) {
-                            Text("Continue", fontWeight = FontWeight.SemiBold)
-                            Text(
-                                "${if (game.isKiller) "Killer · " else ""}${game.difficulty.label} · ${formatTime(game.elapsedSeconds)}",
-                                style = MaterialTheme.typography.bodySmall,
-                            )
-                        }
-                    }
-                    Spacer(Modifier.height(28.dp))
-                }
-
-                Text(
-                    "New game",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 10.dp),
+            val streak = state.daily.streak
+            if (streak > 0) {
+                SumiChip(
+                    streak.toString(),
+                    tone = ChipTone.Shu,
+                    icon = Lucide.Flame,
+                    modifier = Modifier.clearAndSetSemantics {
+                        contentDescription = if (streak == 1) "1-day streak" else "$streak-day streak"
+                    },
                 )
-                Difficulty.entries.chunked(2).forEach { pair ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        pair.forEach { d ->
-                            OutlinedButton(
-                                onClick = { if (state.canContinue) pending = d else onNewGame(d) },
-                                shape = RoundedCornerShape(14.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp),
-                                modifier = Modifier.weight(1f).height(64.dp),
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(d.label, style = MaterialTheme.typography.titleSmall)
-                                    Text(
-                                        d.techniques,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                }
-                Spacer(Modifier.height(10.dp))
-                Text(
-                    "Killer Sudoku",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 10.dp),
-                )
-                Difficulty.entries.chunked(2).forEach { pair ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        pair.forEach { d ->
-                            OutlinedButton(
-                                onClick = { if (state.canContinue) pendingKiller = d else onNewKiller(d) },
-                                shape = RoundedCornerShape(14.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp),
-                                modifier = Modifier.weight(1f).height(64.dp),
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(d.label, style = MaterialTheme.typography.titleSmall)
-                                    Text(
-                                        Killer.describe(d),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(10.dp))
-                }
+                Spacer(Modifier.width(8.dp))
+            }
+            IconTile(Lucide.Settings, "Settings", onClick = onSettings)
+        }
+        Spacer(Modifier.height(18.dp))
 
-                Spacer(Modifier.height(20.dp))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                    TextButton(onClick = onStats) {
-                        Icon(Icons.Outlined.BarChart, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text("Statistics")
-                    }
-                    TextButton(onClick = onLearn) {
-                        Icon(Icons.Outlined.School, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text("Learn")
-                    }
-                    TextButton(onClick = { showSettings = true }) {
-                        Icon(Icons.Outlined.Settings, contentDescription = null, modifier = Modifier.size(20.dp))
-                        Spacer(Modifier.size(6.dp))
-                        Text("Settings")
-                    }
+        DailyCard(state.daily, onPlay = onPlayDaily, onCalendar = onCalendar)
+        Spacer(Modifier.height(14.dp))
+
+        val game = state.savedGame
+        if (state.canContinue && game != null) {
+            ContinueCard(
+                title = "${if (game.isKiller) "Killer · " else ""}${game.difficulty.label}",
+                detail = "${formatTime(game.elapsedSeconds)} · ${game.values.count { it != 0 }} of 81 filled",
+                onClick = onContinue,
+            )
+            Spacer(Modifier.height(14.dp))
+        }
+
+        Spacer(Modifier.height(6.dp))
+        Overline("New game")
+        Spacer(Modifier.height(10.dp))
+        Difficulty.entries.chunked(2).forEach { pair ->
+            Row(
+                Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                pair.forEach { d ->
+                    LevelTile(
+                        name = d.label,
+                        detail = d.techniques,
+                        icon = d.icon,
+                        onClick = { if (state.canContinue) pending = d else onNewGame(d) },
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    )
                 }
             }
+            Spacer(Modifier.height(12.dp))
         }
+        KillerCard(onPick = { d -> if (state.canContinue) pendingKiller = d else onNewKiller(d) })
     }
 
     pending?.let { d ->
-        AlertDialog(
-            onDismissRequest = { pending = null },
-            title = { Text("Start a new ${d.label} game?") },
-            text = { Text("Your game in progress will be replaced.") },
-            confirmButton = {
-                Button(onClick = { pending = null; onNewGame(d) }) { Text("Start") }
-            },
-            dismissButton = { TextButton(onClick = { pending = null }) { Text("Cancel") } },
+        ConfirmDialog(
+            title = "Start a new ${d.label} game?",
+            onConfirm = { pending = null; onNewGame(d) },
+            onDismiss = { pending = null },
         )
     }
-
     pendingKiller?.let { d ->
-        AlertDialog(
-            onDismissRequest = { pendingKiller = null },
-            title = { Text("Start a ${d.label} Killer game?") },
-            text = { Text("Your game in progress will be replaced.") },
-            confirmButton = {
-                Button(onClick = { pendingKiller = null; onNewKiller(d) }) { Text("Start") }
-            },
-            dismissButton = { TextButton(onClick = { pendingKiller = null }) { Text("Cancel") } },
-        )
-    }
-
-    if (showSettings) {
-        SettingsDialog(
-            settings = state.settings,
-            onChange = onSettingsChange,
-            onDismiss = { showSettings = false },
+        ConfirmDialog(
+            title = "Start a ${d.label} Killer game?",
+            onConfirm = { pendingKiller = null; onNewKiller(d) },
+            onDismiss = { pendingKiller = null },
         )
     }
 }
 
-/** A small 3x3 grid with the centre cell lit, matching the launcher icon. */
 @Composable
-private fun Logo() {
-    // A hanko seal cut as a 3x3 grid, matching the launcher icon.
-    Canvas(Modifier.size(72.dp)) {
-        val inset = size.width * 0.2f
-        val inner = size.width - inset * 2
-        val step = inner / 3f
-        drawRoundRect(color = SealRed, cornerRadius = CornerRadius(14.dp.toPx()))
-        drawRect(color = SealPaper, topLeft = Offset(inset + step, inset + step), size = Size(step, step))
-        for (k in 1..2) {
-            val p = inset + step * k
-            drawLine(SealPaper, Offset(p, inset), Offset(p, inset + inner), 1.5.dp.toPx())
-            drawLine(SealPaper, Offset(inset, p), Offset(inset + inner, p), 1.5.dp.toPx())
+private fun ConfirmDialog(title: String, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = Sumi.colors.surface,
+        title = { Text(title, style = MaterialTheme.typography.titleLarge) },
+        text = { Text("Your game in progress will be replaced.", style = MaterialTheme.typography.bodyLarge) },
+        confirmButton = { PillButton("Start", onConfirm, height = 44.dp) },
+        dismissButton = { PillButton("Cancel", onDismiss, tone = ButtonTone.Ghost, height = 44.dp) },
+    )
+}
+
+/** The indigo card that picks up the game in progress. */
+@Composable
+private fun ContinueCard(title: String, detail: String, onClick: () -> Unit) {
+    val c = Sumi.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .card(c, color = c.ai)
+            .clip(CardShape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) {}
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            Modifier
+                .size(46.dp)
+                .clip(CircleShape)
+                .background(c.onAi.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Lucide.Play, contentDescription = null, tint = c.onAi, modifier = Modifier.size(22.dp))
         }
-        drawRect(
-            color = SealPaper,
-            topLeft = Offset(inset, inset),
-            size = Size(inner, inner),
-            style = Stroke(width = 2.5.dp.toPx()),
-        )
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Continue", style = MaterialTheme.typography.titleLarge, color = c.onAi)
+            Text("$title · $detail", style = MaterialTheme.typography.bodySmall, color = c.onAi.copy(alpha = 0.85f))
+        }
+        Icon(Lucide.ChevronRight, contentDescription = null, tint = c.onAi, modifier = Modifier.size(22.dp))
+    }
+}
+
+@Composable
+private fun LevelTile(
+    name: String,
+    detail: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val c = Sumi.colors
+    Row(
+        modifier
+            .card(c)
+            .clip(CardShape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) {}
+            .padding(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconBadge(icon, tint = c.ai, background = c.aiSoft, size = 40.dp)
+        Spacer(Modifier.width(10.dp))
+        Column {
+            Text(name, style = MaterialTheme.typography.titleMedium, color = c.ink)
+            Text(detail, style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
+        }
+    }
+}
+
+/** Killer Sudoku: one card that opens to its four levels. */
+@Composable
+private fun KillerCard(onPick: (Difficulty) -> Unit) {
+    val c = Sumi.colors
+    var open by rememberSaveable { mutableStateOf(false) }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .card(c)
+            .clip(CardShape),
+    ) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clickable(role = Role.Button) { open = !open }
+                .semantics(mergeDescendants = true) {
+                    stateDescription = if (open) "Expanded" else "Collapsed"
+                }
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconBadge(Lucide.SquareDashed, tint = c.shu, background = c.shuSoft, size = 44.dp)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Killer Sudoku", style = MaterialTheme.typography.titleMedium, color = c.ink)
+                Text("Four levels · cages that add up", style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
+            }
+            Icon(
+                Lucide.ChevronRight,
+                contentDescription = null,
+                tint = c.inkMuted,
+                modifier = Modifier.size(20.dp).rotate(if (open) 90f else 0f),
+            )
+        }
+        if (open) {
+            for (d in Difficulty.entries) {
+                HorizontalDivider(thickness = 1.dp, color = c.line)
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable(role = Role.Button) { onPick(d) }
+                        .semantics(mergeDescendants = true) {}
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Icon(d.icon, contentDescription = null, tint = c.shu, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(14.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Killer · ${d.label}", style = MaterialTheme.typography.labelLarge, color = c.ink)
+                        Text(Killer.describe(d), style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
+                    }
+                    Icon(Lucide.Play, contentDescription = null, tint = c.inkMuted, modifier = Modifier.size(18.dp))
+                }
+            }
+        }
+    }
+}
+
+/** A day in a week strip or calendar: vermilion when solved, ringed in indigo when it's today. */
+@Composable
+internal fun DayDot(
+    label: String?,
+    solved: Boolean,
+    today: Boolean,
+    future: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val c = Sumi.colors
+    val bg: Color = when {
+        solved -> c.shu
+        today -> c.surface
+        else -> c.surfaceSunk
+    }
+    Box(
+        modifier
+            .clip(CircleShape)
+            .background(bg)
+            .then(if (today && !solved) Modifier.border(2.5.dp, c.ai, CircleShape) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        when {
+            solved && label == null ->
+                Icon(Lucide.CheckCheck, contentDescription = null, tint = c.onShu, modifier = Modifier.size(16.dp))
+            label != null -> Text(
+                label,
+                style = MaterialTheme.typography.labelMedium,
+                color = when {
+                    solved -> c.onShu
+                    today -> c.ai
+                    future -> c.inkMuted.copy(alpha = 0.55f)
+                    else -> c.inkMuted
+                },
+            )
+        }
     }
 }

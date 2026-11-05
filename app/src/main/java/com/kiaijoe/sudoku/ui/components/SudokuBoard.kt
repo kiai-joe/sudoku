@@ -1,6 +1,7 @@
 package com.kiaijoe.sudoku.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -14,8 +15,9 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -23,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -42,17 +46,40 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
 import com.kiaijoe.sudoku.engine.Cage
 import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.Grid
 import com.kiaijoe.sudoku.engine.HintCard
 import com.kiaijoe.sudoku.ui.Feedback
 import com.kiaijoe.sudoku.ui.theme.BoardColors
-import com.kiaijoe.sudoku.ui.theme.Lexend
+import com.kiaijoe.sudoku.ui.theme.Inter
 import com.kiaijoe.sudoku.ui.theme.LocalBoardColors
-import com.kiaijoe.sudoku.ui.theme.SealRed
+import com.kiaijoe.sudoku.ui.theme.Sora
 import kotlin.math.PI
 import kotlin.math.sin
+
+/**
+ * Where every cell sits on a board [width] wide: nine rounded boxes on a sunk
+ * well with [gap] between them, and cells inside a box split by [hair] lines.
+ * The well replaces the heavy 3×3 rules of a printed grid.
+ */
+private class BoardGeometry(width: Dp) {
+    val pad = 6.dp
+    val gap = 6.dp
+    val hair = 1.dp
+    val box = (width - pad * 2 - gap * 2) / 3
+    val cell = (box - hair * 2) / 3
+
+    /** Offset of row or column [k] of cells from the board's edge. */
+    fun origin(k: Int): Dp = pad + (box + gap) * (k / 3) + (cell + hair) * (k % 3)
+
+    /** Offset of box row or column [k]. */
+    fun boxOrigin(k: Int): Dp = pad + (box + gap) * k
+
+    /** Offset of cell [k] within its box. */
+    fun inBox(k: Int): Dp = (cell + hair) * (k % 3)
+}
 
 @Composable
 fun SudokuBoard(
@@ -74,96 +101,82 @@ fun SudokuBoard(
     // With instant checking off, a wrong number only shows once Check has flagged it.
     val wrongShown: (Int) -> Boolean = { game.isWrong(it) && (revealWrong || it in flagged) }
     val colors = LocalBoardColors.current
-    val shape = RoundedCornerShape(10.dp)
     val selectedDigit = selected?.let { game.values[it] }?.takeIf { it != 0 && highlightSameNumbers }
+    val wash = rememberInkWash(flash)
 
     BoxWithConstraints(
         modifier = modifier
             .aspectRatio(1f)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surface),
+            .clip(RoundedCornerShape(24.dp))
+            .background(colors.well),
     ) {
-        val cell: Dp = maxWidth / 9
+        val geo = BoardGeometry(maxWidth)
         val density = LocalDensity.current
         // Sized from the cell, not the system font scale, so text can never overflow the grid.
-        val digitSize = with(density) { (cell * if (largeNumbers) 0.70f else 0.56f).toSp() }
-        val noteSize = with(density) { (cell * if (largeNumbers) 0.31f else 0.25f).toSp() }
+        val digitSize = with(density) { (geo.cell * if (largeNumbers) 0.68f else 0.54f).toSp() }
+        val noteSize = with(density) { (geo.cell * if (largeNumbers) 0.30f else 0.25f).toSp() }
+        val boxShape = RoundedCornerShape(min(16.dp, geo.box * 0.14f))
 
-        Column(Modifier.fillMaxSize()) {
-            for (r in 0 until 9) {
-                Row(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                ) {
-                    for (c in 0 until 9) {
-                        val index = r * 9 + c
-                        Cell(
-                            game = game,
-                            index = index,
-                            background = if (hint != null || mistakeCell != null) {
-                                hintBackground(index, hint, mistakeCell, colors)
-                            } else {
-                                cellBackground(game, index, selected, selectedDigit, colors, wrongShown(index))
-                            },
-                            wrongShown = wrongShown(index),
-                            isSelected = index == selected && hint == null,
-                            cage = cageOf[index],
-                            hintShown = hint?.candidates?.get(index) ?: 0,
-                            hintStruck = hint?.eliminations?.get(index) ?: 0,
-                            selectedDigit = selectedDigit,
-                            digitSize = digitSize,
-                            noteSize = noteSize,
-                            colors = colors,
-                            onClick = { onSelect(index) },
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                        )
-                    }
+        for (b in 0 until 9) {
+            val br = b / 3
+            val bc = b % 3
+            Box(
+                Modifier
+                    .offset(geo.boxOrigin(bc), geo.boxOrigin(br))
+                    .size(geo.box)
+                    .clip(boxShape)
+                    .background(colors.line),
+            ) {
+                for (k in 0 until 9) {
+                    val r = br * 3 + k / 3
+                    val c = bc * 3 + k % 3
+                    val index = r * 9 + c
+                    Cell(
+                        game = game,
+                        index = index,
+                        background = if (hint != null || mistakeCell != null) {
+                            hintBackground(index, hint, mistakeCell, colors)
+                        } else {
+                            cellBackground(game, index, selected, selectedDigit, colors, wrongShown(index))
+                        },
+                        wrongShown = wrongShown(index),
+                        isSelected = index == selected && hint == null,
+                        cage = cageOf[index],
+                        hintShown = hint?.candidates?.get(index) ?: 0,
+                        hintStruck = hint?.eliminations?.get(index) ?: 0,
+                        selectedDigit = selectedDigit,
+                        digitSize = digitSize,
+                        noteSize = noteSize,
+                        colors = colors,
+                        washAlpha = { wash?.alpha(index) ?: 0f },
+                        onClick = { onSelect(index) },
+                        modifier = Modifier
+                            .offset(geo.inBox(c), geo.inBox(r))
+                            .size(geo.cell),
+                    )
                 }
             }
         }
 
-        if (flash != null && flash.completed.isNotEmpty()) InkWash(flash)
-
-        // Grid lines are drawn on top so cell backgrounds never cover them.
-        Canvas(Modifier.fillMaxSize()) {
-            val step = size.width / 9f
-            val thin = 1.dp.toPx()
-            val thick = 2.dp.toPx()
-            for (k in 1 until 9) {
-                val major = k % 3 == 0
-                val color = if (major) colors.thickLine else colors.thinLine
-                val stroke = if (major) thick else thin
-                val p = step * k
-                drawLine(color, Offset(p, 0f), Offset(p, size.height), stroke)
-                drawLine(color, Offset(0f, p), Offset(size.width, p), stroke)
-            }
-            drawRoundRect(
-                color = colors.thickLine,
-                style = androidx.compose.ui.graphics.drawscope.Stroke(width = thick * 1.5f),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(10.dp.toPx()),
-            )
-        }
-
-        if (game.isKiller) CageOverlay(game.cages, colors, MaterialTheme.colorScheme.surface)
+        if (game.isKiller) CageOverlay(game.cages, geo, colors)
     }
 }
 
 /**
  * Killer cages: a dashed outline just inside each cage's edge, and its sum
  * in the top-left corner of its first cell, on a patch of paper so the
- * outline doesn't run through the number.
+ * outline doesn't run through the number. Where a cage crosses into the next
+ * box, the line bridges the gap.
  */
 @Composable
-private fun CageOverlay(cages: List<Cage>, colors: BoardColors, paper: Color) {
+private fun CageOverlay(cages: List<Cage>, geo: BoardGeometry, colors: BoardColors) {
     val measurer = rememberTextMeasurer()
     val owner = remember(cages) {
         IntArray(Grid.CELLS).also { o -> cages.forEachIndexed { i, cage -> cage.cells.forEach { o[it] = i } } }
     }
     Canvas(Modifier.fillMaxSize()) {
-        val step = size.width / 9f
+        val step = geo.cell.toPx()
+        fun at(k: Int) = geo.origin(k).toPx()
         val inset = step * 0.09f
         val lineColor = colors.given.copy(alpha = 0.55f)
         val width = 1.dp.toPx()
@@ -176,35 +189,38 @@ private fun CageOverlay(cages: List<Cage>, colors: BoardColors, paper: Color) {
                 val cc = c + dc
                 return rr in 0..8 && cc in 0..8 && owner[rr * 9 + cc] == owner[cell]
             }
-            val left = c * step
-            val top = r * step
-            // Where the cage continues, run the line to the cell edge so it joins the next one.
-            val x0 = left + if (same(0, -1)) 0f else inset
-            val x1 = left + step - if (same(0, 1)) 0f else inset
-            val y0 = top + if (same(-1, 0)) 0f else inset
-            val y1 = top + step - if (same(1, 0)) 0f else inset
+            val left = at(c)
+            val top = at(r)
+            val right = left + step
+            val bottom = top + step
+            // Where the cage continues, run the line on to the next cell so they join.
+            val x0 = if (same(0, -1)) left else left + inset
+            val x1 = if (same(0, 1)) at(c + 1) else right - inset
+            val y0 = if (same(-1, 0)) top else top + inset
+            val y1 = if (same(1, 0)) at(r + 1) else bottom - inset
             if (!same(-1, 0)) drawLine(lineColor, Offset(x0, top + inset), Offset(x1, top + inset), width, pathEffect = dash)
-            if (!same(1, 0)) drawLine(lineColor, Offset(x0, top + step - inset), Offset(x1, top + step - inset), width, pathEffect = dash)
+            if (!same(1, 0)) drawLine(lineColor, Offset(x0, bottom - inset), Offset(x1, bottom - inset), width, pathEffect = dash)
             if (!same(0, -1)) drawLine(lineColor, Offset(left + inset, y0), Offset(left + inset, y1), width, pathEffect = dash)
-            if (!same(0, 1)) drawLine(lineColor, Offset(left + step - inset, y0), Offset(left + step - inset, y1), width, pathEffect = dash)
+            if (!same(0, 1)) drawLine(lineColor, Offset(right - inset, y0), Offset(right - inset, y1), width, pathEffect = dash)
         }
         val style = TextStyle(
-            fontFamily = Lexend,
-            fontWeight = FontWeight.SemiBold,
-            fontSize = (step * 0.22f).toSp(),
-            lineHeight = (step * 0.22f).toSp(),
+            fontFamily = Inter,
+            fontWeight = FontWeight.Bold,
+            fontSize = (step * 0.21f).toSp(),
+            lineHeight = (step * 0.21f).toSp(),
             color = colors.given,
         )
         for (cage in cages) {
             val anchor = cage.cells.first()
             val layout = measurer.measure(cage.sum.toString(), style)
-            val at = Offset(Grid.col(anchor) * step + inset * 0.6f, Grid.row(anchor) * step + inset * 0.4f)
-            drawRect(
-                paper,
-                topLeft = at - Offset(1.dp.toPx(), 0f),
-                size = Size(layout.size.width + 2.dp.toPx(), layout.size.height.toFloat()),
+            val pos = Offset(at(Grid.col(anchor)) + inset * 0.7f, at(Grid.row(anchor)) + inset * 0.4f)
+            drawRoundRect(
+                colors.cell,
+                topLeft = pos - Offset(2.dp.toPx(), 0f),
+                size = Size(layout.size.width + 4.dp.toPx(), layout.size.height.toFloat()),
+                cornerRadius = CornerRadius(3.dp.toPx()),
             )
-            drawText(layout, topLeft = at)
+            drawText(layout, topLeft = pos)
         }
     }
 }
@@ -241,11 +257,11 @@ private fun digitsText(mask: Int) = (1..9).filter { mask and (1 shl (it - 1)) !=
 /** While a hint is open, the board shows its pattern instead of the selection. */
 private fun hintBackground(index: Int, hint: HintCard?, mistakeCell: Int?, colors: BoardColors): Color = when {
     index == mistakeCell -> colors.hintFocus
-    hint == null -> Color.Transparent
+    hint == null -> colors.cell
     index in hint.focus -> colors.hintFocus
     index in hint.eliminations -> colors.wrongBackground
     index in hint.area -> colors.hintArea
-    else -> Color.Transparent
+    else -> colors.cell
 }
 
 private fun cellBackground(
@@ -260,7 +276,7 @@ private fun cellBackground(
     wrongShown -> colors.wrongBackground
     selectedDigit != null && game.values[index] == selectedDigit -> colors.sameNumber
     selected != null && Grid.arePeers(index, selected) -> colors.peer
-    else -> Color.Transparent
+    else -> colors.cell
 }
 
 @Composable
@@ -272,6 +288,7 @@ private fun Cell(
     digitSize: TextUnit,
     noteSize: TextUnit,
     colors: BoardColors,
+    washAlpha: () -> Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     wrongShown: Boolean = false,
@@ -286,6 +303,11 @@ private fun Cell(
     Box(
         modifier = modifier
             .background(background)
+            .drawWithContent {
+                drawContent()
+                val a = washAlpha()
+                if (a > 0f) drawRect(colors.wash.copy(alpha = a))
+            }
             .clickable(onClick = onClick)
             .semantics {
                 contentDescription = description
@@ -297,13 +319,15 @@ private fun Cell(
         if (value != 0) {
             Text(
                 text = value.toString(),
+                fontFamily = Sora,
                 fontSize = digitSize,
                 lineHeight = digitSize,
-                // Printed clues in a plain weight, the player's own marks heavier, like ink over print.
+                // Printed clues in a plain weight, the player's own heavier and in indigo.
                 fontWeight = if (game.isGiven(index)) FontWeight.Normal else FontWeight.SemiBold,
                 color = when {
-                    game.isGiven(index) -> colors.given
                     wrongShown -> colors.wrong
+                    isSelected -> colors.given
+                    game.isGiven(index) -> colors.given
                     else -> colors.entered
                 },
                 // Underlined as well as red, so a mistake doesn't rely on colour alone.
@@ -318,7 +342,7 @@ private fun Cell(
 }
 
 @Composable
-private fun Notes(game: GameState, index: Int, selectedDigit: Int?, size: TextUnit, colors: BoardColors) {
+private fun NoteGrid(size: TextUnit, digit: (Int) -> NoteMark?) {
     Column(Modifier.fillMaxSize()) {
         for (r in 0 until 3) {
             Row(
@@ -327,23 +351,24 @@ private fun Notes(game: GameState, index: Int, selectedDigit: Int?, size: TextUn
                     .fillMaxWidth(),
             ) {
                 for (c in 0 until 3) {
-                    val digit = r * 3 + c + 1
-                    val shown = game.hasNote(index, digit)
-                    val match = shown && digit == selectedDigit
+                    val d = r * 3 + c + 1
                     Box(
                         Modifier
                             .weight(1f)
                             .fillMaxHeight(),
                         contentAlignment = Alignment.Center,
                     ) {
-                        if (shown) {
+                        val mark = digit(d)
+                        if (mark != null) {
                             Text(
-                                text = digit.toString(),
+                                text = d.toString(),
+                                fontFamily = Inter,
                                 fontSize = size,
                                 lineHeight = size,
                                 textAlign = TextAlign.Center,
-                                fontWeight = if (match) FontWeight.Bold else FontWeight.Normal,
-                                color = if (match) colors.entered else colors.given.copy(alpha = 0.6f),
+                                fontWeight = mark.weight,
+                                color = mark.color,
+                                textDecoration = mark.decoration,
                             )
                         }
                     }
@@ -353,72 +378,55 @@ private fun Notes(game: GameState, index: Int, selectedDigit: Int?, size: TextUn
     }
 }
 
+private class NoteMark(val color: Color, val weight: FontWeight, val decoration: TextDecoration? = null)
+
+@Composable
+private fun Notes(game: GameState, index: Int, selectedDigit: Int?, size: TextUnit, colors: BoardColors) {
+    NoteGrid(size) { d ->
+        when {
+            !game.hasNote(index, d) -> null
+            d == selectedDigit -> NoteMark(colors.entered, FontWeight.Bold)
+            else -> NoteMark(colors.notes, FontWeight.SemiBold)
+        }
+    }
+}
+
 /**
- * A hint's candidates for one cell: [shown] digits in ink, [struck] digits
+ * A hint's candidates for one cell: [shown] digits in indigo, [struck] digits
  * (the ones the hint rules out) in vermilion and crossed through.
  */
 @Composable
 private fun HintNotes(shown: Int, struck: Int, size: TextUnit, colors: BoardColors) {
-    Column(Modifier.fillMaxSize()) {
-        for (r in 0 until 3) {
-            Row(
-                Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-            ) {
-                for (c in 0 until 3) {
-                    val digit = r * 3 + c + 1
-                    val bit = 1 shl (digit - 1)
-                    val isStruck = struck and bit != 0
-                    val isShown = shown and bit != 0
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (isStruck || isShown) {
-                            Text(
-                                text = digit.toString(),
-                                fontSize = size,
-                                lineHeight = size,
-                                textAlign = TextAlign.Center,
-                                fontWeight = FontWeight.Bold,
-                                color = if (isStruck) colors.wrong else colors.entered,
-                                textDecoration = if (isStruck) TextDecoration.LineThrough else null,
-                            )
-                        }
-                    }
-                }
-            }
+    NoteGrid(size) { d ->
+        val bit = 1 shl (d - 1)
+        when {
+            struck and bit != 0 -> NoteMark(colors.wrong, FontWeight.Bold, TextDecoration.LineThrough)
+            shown and bit != 0 -> NoteMark(colors.entered, FontWeight.Bold)
+            else -> null
         }
     }
 }
 
-/**
- * A brief vermilion wash that sweeps across a just-finished row, column or
- * box, in the order its cells read.
- */
-@Composable
-private fun InkWash(flash: Feedback) {
-    if (rememberReduceMotion()) return
-    val progress = remember(flash.id) { Animatable(0f) }
-    LaunchedEffect(flash.id) { progress.animateTo(1f, tween(durationMillis = 900, easing = LinearEasing)) }
-    val cells = flash.completed
-    Canvas(Modifier.fillMaxSize()) {
-        val step = size.width / 9f
-        cells.forEachIndexed { i, cell ->
-            // Each cell starts a little after the one before, over the first half.
-            val start = i.toFloat() / cells.size * 0.5f
-            val t = ((progress.value - start) / 0.5f).coerceIn(0f, 1f)
-            val alpha = sin(t * PI.toFloat()) * 0.45f
-            if (alpha > 0f) {
-                drawRect(
-                    color = SealRed.copy(alpha = alpha),
-                    topLeft = Offset(Grid.col(cell) * step, Grid.row(cell) * step),
-                    size = Size(step, step),
-                )
-            }
-        }
+/** The matcha wash that sweeps across a just-finished row, column or box, in reading order. */
+private class InkWash(private val progress: Animatable<Float, AnimationVector1D>, cells: List<Int>) {
+    private val order: Map<Int, Int> = cells.withIndex().associate { (i, cell) -> cell to i }
+    private val count = cells.size
+
+    /** How strongly [cell] is washed right now. Read while drawing, so only drawing repeats. */
+    fun alpha(cell: Int): Float {
+        val i = order[cell] ?: return 0f
+        // Each cell starts a little after the one before, over the first half.
+        val start = i.toFloat() / count * 0.5f
+        val t = ((progress.value - start) / 0.5f).coerceIn(0f, 1f)
+        return sin(t * PI.toFloat()) * 0.40f
     }
+}
+
+@Composable
+private fun rememberInkWash(flash: Feedback?): InkWash? {
+    val reduceMotion = rememberReduceMotion()
+    if (flash == null || flash.completed.isEmpty() || reduceMotion) return null
+    val progress = remember(flash.id) { Animatable(0f) }
+    LaunchedEffect(flash.id) { progress.animateTo(1f, tween(durationMillis = 600, easing = LinearEasing)) }
+    return remember(flash.id) { InkWash(progress, flash.completed) }
 }
