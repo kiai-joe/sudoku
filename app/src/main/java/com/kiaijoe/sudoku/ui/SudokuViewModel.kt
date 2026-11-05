@@ -19,6 +19,7 @@ import com.kiaijoe.sudoku.engine.HintPlan
 import com.kiaijoe.sudoku.engine.Hints
 import com.kiaijoe.sudoku.engine.Killer
 import com.kiaijoe.sudoku.engine.Progress
+import com.kiaijoe.sudoku.widget.SumiWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -150,6 +151,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         award(won = null)
         _ui.update { it.copy(achievements = repo.loadAchievements()) }
         updateTimer()
+        refreshWidget()
         BackupResult(ok = true, message = "Restored. Your games, stats and settings are back.")
     } catch (e: BackupException) {
         BackupResult(ok = false, message = e.message ?: "This backup couldn't be restored.")
@@ -223,11 +225,15 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             repo.saveDailyGame(game)
             show(game, savedGame = _ui.value.savedGame)
             refreshDaily()
+            refreshWidget()
         }
     }
 
     /** Re-reads today's date and daily progress, in case the day has changed. */
     fun refreshDaily() = _ui.update { it.copy(daily = loadDaily()) }
+
+    /** Brings the home-screen widget up to date with the daily record. */
+    private fun refreshWidget() = SumiWidget.refresh(getApplication<Application>())
 
     private fun loadDaily(): DailyUi {
         val today = LocalDate.now().toEpochDay()
@@ -442,6 +448,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             val day = next.daily
             if (day != null) {
                 repo.recordDailyWin(day, next.elapsedSeconds)
+                refreshWidget()
                 best = false
             } else if (next.isKiller) {
                 best = repo.recordKillerWin(next.elapsedSeconds, next.hintsUsed)

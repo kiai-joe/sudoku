@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -32,15 +33,29 @@ import com.kiaijoe.sudoku.ui.screens.StatsScreen
 import com.kiaijoe.sudoku.ui.theme.InkTheme
 import com.kiaijoe.sudoku.ui.theme.SudokuTheme
 import com.kiaijoe.sudoku.ui.theme.isDark
+import com.kiaijoe.sudoku.widget.SumiWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
 class MainActivity : ComponentActivity() {
+    /** Goes up by one each time the widget asks to open today's daily puzzle. */
+    private var openDailyRequests by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent { SudokuApp() }
+        // Only a fresh launch, not one restored after rotation, acts on the widget's request.
+        if (savedInstanceState == null && intent.wantsDaily()) openDailyRequests++
+        setContent { SudokuApp(openDailyRequests = openDailyRequests) }
     }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        if (intent.wantsDaily()) openDailyRequests++
+    }
+
+    private fun Intent?.wantsDaily() = this?.getBooleanExtra(SumiWidget.EXTRA_OPEN_DAILY, false) == true
 }
 
 private enum class Screen { Home, Game, Stats, Calendar, Learn, Lesson, Settings }
@@ -55,10 +70,18 @@ private val Tab.screen: Screen
     }
 
 @Composable
-private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
+private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewModel()) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
     var screen by rememberSaveable { mutableStateOf(Screen.Home) }
     var lessonIndex by rememberSaveable { mutableIntStateOf(0) }
+
+    // The widget's Play or Continue: straight into today's puzzle, or to the
+    // Daily tab if it was solved since the widget last refreshed.
+    LaunchedEffect(openDailyRequests) {
+        if (openDailyRequests == 0) return@LaunchedEffect
+        viewModel.playDaily()
+        screen = if (viewModel.ui.value.daily.solvedToday) Screen.Calendar else Screen.Game
+    }
 
     SudokuTheme(theme = state.settings.theme) {
         SystemBars(state.settings.theme)

@@ -17,7 +17,7 @@ To let you carry on where you left off, Sumi keeps these on your device, in stor
 - your statistics, daily puzzle results and achievements
 - which lessons you have finished
 
-This information never leaves your phone through Sumi. Puzzles, including the daily puzzle, are made on your phone, so no network is needed.
+If you add Sumi's home-screen widget, it shows today's daily puzzle, your streak and this week's solved days from the same stored information. This information never leaves your phone through Sumi. Puzzles, including the daily puzzle, are made on your phone, so no network is needed.
 
 ## Backups
 

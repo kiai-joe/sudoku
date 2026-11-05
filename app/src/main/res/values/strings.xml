@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Sumi</string>
+    <string name="widget_name">Daily puzzle</string>
+    <string name="widget_description">Today's daily puzzle, your streak and this week</string>
 </resources>
