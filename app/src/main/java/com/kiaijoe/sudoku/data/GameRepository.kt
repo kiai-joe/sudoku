@@ -53,7 +53,25 @@ data class DifficultyStats(
  * the daily puzzle are kept in separate slots so neither replaces the other.
  */
 class GameRepository(context: Context) {
-    private val prefs = context.applicationContext.getSharedPreferences("sudoku", Context.MODE_PRIVATE)
+    private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+
+    /** Everything Sumi keeps, as a backup file's text. See [Backup]. */
+    fun exportBackup(): String = Backup.export(prefs)
+
+    /**
+     * Replaces everything with the backup in [text], keeping what was there if
+     * any of it can't be read back. Returns how many entries were restored.
+     */
+    fun restoreBackup(text: String): Int = Backup.restore(prefs, text) {
+        loadGame()
+        loadDailyGame()
+        loadDailyResults()
+        loadAchievements()
+        loadSettings()
+        loadStats()
+        loadKillerStats()
+        loadLessonsDone()
+    }
 
     fun loadGame(): GameState? = prefs.getString(KEY_GAME, null)?.let(GameCodec::decode)
 
@@ -188,20 +206,22 @@ class GameRepository(context: Context) {
 
     private fun key(name: String, field: String) = "stats_${name}_$field"
 
-    private companion object {
-        const val KILLER = "KILLER"
-        val STAT_FIELDS = listOf("played", "won", "best", "timed", "total", "nohint")
-        const val KEY_LESSONS_DONE = "lessons_done"
-        const val KEY_GAME = "current_game"
-        const val KEY_DAILY_GAME = "daily_game"
-        const val KEY_DAILY_RESULTS = "daily_results"
-        const val KEY_ACHIEVEMENTS = "achievements"
-        const val KEY_MISTAKE_LIMIT = "mistake_limit"
-        const val KEY_AUTO_NOTES = "auto_remove_notes"
-        const val KEY_HIGHLIGHT = "highlight_same"
-        const val KEY_INSTANT_CHECK = "instant_check"
-        const val KEY_HAPTICS = "haptics"
-        const val KEY_THEME = "theme"
-        const val KEY_LARGE_NUMBERS = "large_numbers"
+    companion object {
+        /** The one preferences file that holds everything; the backup rules in res/xml name it. */
+        const val PREFS_NAME = "sudoku"
+        private const val KILLER = "KILLER"
+        private val STAT_FIELDS = listOf("played", "won", "best", "timed", "total", "nohint")
+        private const val KEY_LESSONS_DONE = "lessons_done"
+        private const val KEY_GAME = "current_game"
+        private const val KEY_DAILY_GAME = "daily_game"
+        private const val KEY_DAILY_RESULTS = "daily_results"
+        private const val KEY_ACHIEVEMENTS = "achievements"
+        private const val KEY_MISTAKE_LIMIT = "mistake_limit"
+        private const val KEY_AUTO_NOTES = "auto_remove_notes"
+        private const val KEY_HIGHLIGHT = "highlight_same"
+        private const val KEY_INSTANT_CHECK = "instant_check"
+        private const val KEY_HAPTICS = "haptics"
+        private const val KEY_THEME = "theme"
+        private const val KEY_LARGE_NUMBERS = "large_numbers"
     }
 }
