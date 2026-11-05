@@ -1,105 +1,179 @@
 # Sumi
 
-An Android Sudoku game built with Kotlin and Jetpack Compose.
+**A calm, offline Sudoku for Android that teaches you as you play.**
 
-Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi black on washi paper, your own numbers in indigo, the selected cell in gold, mistakes in vermilion (the colour calligraphy teachers correct work in), and a finished row, column or box in matcha green. The launcher icon is a vermilion hanko seal cut as a 3×3 grid.
+Sumi is the black ink of Japanese calligraphy. Printed clues are set in sumi black on washi paper, your own numbers in indigo, the selected cell in gold, mistakes in vermilion (the colour calligraphy teachers correct work in), and a finished row, column or box in matcha green. A solved puzzle gets a hanamaru, the flower circle Japanese teachers draw on top marks.
 
-The look is soft and rounded: the board is nine rounded boxes on a sunk well instead of heavy grid lines, cards and pill buttons have one soft shadow, and a floating bar at the bottom moves between Home, Daily, Learn and Progress (only the open tab shows its name). Titles and every number are set in [Sora](https://github.com/sora-xor/sora-font) and everything you read in [Inter](https://rsms.me/inter/), both under the SIL Open Font License (`licenses/Sora-OFL.txt`, `licenses/Inter-OFL.txt`). Icons are [Lucide](https://lucide.dev) outlines (ISC licence, `licenses/Lucide-ISC.txt`), compiled into the app as vectors in `ui/icons/Lucide.kt`.
+Built with Kotlin and Jetpack Compose. No ads, no account, no permissions.
+
+<table>
+  <tr>
+    <td><img src="app/src/test/screenshots/home_light.png" width="200" alt="Home"></td>
+    <td><img src="app/src/test/screenshots/game_light.png" width="200" alt="A game in progress"></td>
+    <td><img src="app/src/test/screenshots/hint_light.png" width="200" alt="A teaching hint"></td>
+    <td><img src="app/src/test/screenshots/win_light.png" width="200" alt="The hanamaru on a solved puzzle"></td>
+  </tr>
+  <tr>
+    <td align="center">Home</td>
+    <td align="center">Playing</td>
+    <td align="center">A teaching hint</td>
+    <td align="center">Solved</td>
+  </tr>
+  <tr>
+    <td><img src="app/src/test/screenshots/killer_dark.png" width="200" alt="Killer Sudoku in the dark palette"></td>
+    <td><img src="app/src/test/screenshots/calendar_light.png" width="200" alt="The Daily tab"></td>
+    <td><img src="app/src/test/screenshots/lesson_xwing_light.png" width="200" alt="The X-Wing lesson"></td>
+    <td><img src="app/src/test/screenshots/stats_light.png" width="200" alt="Progress and achievements"></td>
+  </tr>
+  <tr>
+    <td align="center">Killer, dark</td>
+    <td align="center">Daily puzzles</td>
+    <td align="center">Learn</td>
+    <td align="center">Progress</td>
+  </tr>
+</table>
+
+## Install
+
+On your Android phone (Android 8 or newer), open
+
+**https://github.com/kiai-joe/sudoku/releases/latest/download/Sumi.apk**
+
+and install it, allowing "Install unknown apps" for your browser when asked. Newer versions install over older ones and keep your games, streaks and stats.
 
 ## Features
 
-- Four levels graded by the hardest solving technique a puzzle needs, not by clue count: Easy (singles only), Medium (pointing, box/line reduction, pairs, naked triples), Hard (hidden triples, X-Wing, XY-Wing, naked quads) and Expert (Swordfish, XYZ-Wing, hidden quads). Every puzzle is generated on the device, has exactly one solution and can be solved by logic without guessing.
-- Pencil notes, with matching notes cleared automatically when you place a number. **Fill** pencils in every number still possible in each empty cell.
-- Highlighting for the selected cell's row, column, box and matching numbers.
-- Mistake limit of 3, which you can turn off in Settings.
-- Optional "check when I ask" mode: turn off *Show mistakes right away* and nothing reveals whether a number is right (no red numbers, no mistake count, correct cells stay editable, the number pad counts every placed copy) until you tap **Check**.
-- Finishing a row, column or box sends a brief matcha ink wash across it, and placing numbers gives a light vibration, with a longer pattern when you solve a puzzle or run out of mistakes and a soft tick on each hint step (both can be turned off). Vibrations use the system's own haptic effects, so they follow the phone's touch-feedback setting and need no permission.
-- Undo and erase.
-- Teaching hints: a hint finds the easiest next step on your board, highlights the cells involved, and explains it in plain words ("In the centre box, 4 can only go in row 5…"). Steps that only rule out candidates show them crossed out on the board, and you step through to the number they lead to. A wrong number on the board is pointed out first. On a phone the hint slides up as a sheet over the tools, so the board stays in view; on a wide screen it sits beside the board.
-- Timer that pauses when you leave the app, plus a manual pause that hides the board.
-- Killer Sudoku in four levels: the grid is split into cages, each showing the sum of its cells, with no repeats inside a cage. Killer has its own ladder, because cage logic solves most puzzles before classic techniques are needed: Easy needs cage combinations, Medium the 45 rule (innies and outies), Hard classic techniques such as pointing and pairs, and Expert the same with no printed numbers at all. Every puzzle is solvable by logic, and hints explain cage combinations and the 45 rule.
-- Learn: a lesson for every technique the puzzles are graded by, each with a worked example from a real puzzle that you step through on the board, explained the same way hints are. Reaching the end of a lesson ticks it off, and Learn shows how many you've finished and which is next. Each lesson with an example has **Practise on a new puzzle**, which starts a fresh puzzle at the lesson's level whose solution needs that technique.
-- Daily puzzle: the same puzzle for everyone each day, made from the date so it works offline. It runs from Easy on Monday to Expert on Sunday. A streak counts the days in a row you solve it, and the Daily tab's calendar marks each solved day in vermilion.
-- Daily Killer: a Killer Sudoku every day as well, rising from Easy on Monday to Expert (no printed numbers) on Sunday, with its own streak and calendar. The Daily tab switches between the two. It's saved separately, so it never replaces your regular game.
-- The current game is saved after every move and can be resumed.
-- A home-screen widget (Daily puzzle, 4×2) shows today's level, your streak and this week, with a button that opens straight into today's puzzle. It updates when you start or solve the daily, just after midnight and at least hourly, and needs no permission. A 2×1 Streak widget shows just the streak (or today's level) and a round Play button.
-- Tablets and landscape: on a screen wider than it is tall, the board sits on the left at full height with the controls, hint or win summary beside it, and lessons do the same. On a tablet the number pad becomes a 3×3 grid of bigger keys. Home and the Daily tab use two columns on wide screens.
-- Your progress comes with you to a new phone: Android's backup and phone-to-phone transfer include it (see `res/xml/backup_rules.xml` and `data_extraction_rules.xml`), and Settings › Your progress saves and restores a backup file through Android's file picker, with no permission needed. A file Sumi can't read changes nothing.
-- Progress per level: games played and solved, win rate, best time, average time, and how often you solve without hints.
-- 25 achievements: solving at every level, clean and fast solves (an Easy in under 3 minutes, an Expert with no mistakes or hints, or with mistakes hidden and no Check), a Swordfish or XYZ-Wing puzzle, coming back after running out of mistakes, 100 solves, the lessons and practice, daily streaks and a full Monday-to-Sunday week, the daily Killer (10 solved, a 7-day streak, both dailies on one day) and Killer itself. New ones show on the win screen; all are shown as seals under Progress, and tapping one shows what it needs and when you earned it. Ones already earned from saved statistics are awarded on first launch.
-- Accessibility: a Larger numbers setting; wrong numbers are underlined as well as red, so they don't rely on colour; every board cell is fully described to screen readers (value, pencil marks, Killer cage, and what a hint shows or rules out), achievement and weekday rows read as one sentence, and the ink wash and stamp animation are skipped when the system's Remove animations setting is on. `AccessibilityTest` checks what TalkBack hears.
-- English and Swahili (Kiswahili): Sumi follows the phone's language, and on Android 13 or newer you can set Sumi's language on its own in the system settings. Everything is translated, including hint explanations and lessons. Each piece of text is written as `tr("English", "Kiswahili")` in the code, so a translation can be checked next to its English.
-- Three palettes, picked in Settings: Sumi (Washi by day, Sumi night after dark), Indigo night (paper-white on deep indigo, always dark) and Bamboo (green-tinted paper). Sumi and Bamboo follow the phone's light or dark setting, or you can pick Light or Dark in Settings (the home-screen widgets still follow the phone).
+### Puzzles
+
+- **Four levels graded by technique, not clue count.**
+  - Easy: singles only.
+  - Medium: pointing, box/line reduction, pairs and naked triples.
+  - Hard: hidden triples, X-Wing, XY-Wing and naked quads.
+  - Expert: Swordfish, XYZ-Wing and hidden quads.
+
+  Every puzzle is generated on the phone, has exactly one solution, and can be solved by logic without guessing.
+- **Killer Sudoku.** The grid is split into dashed cages, each showing the sum of its cells, and no number repeats inside a cage. Killer has its own four levels:
+  - Easy: cage combinations.
+  - Medium: the 45 rule, with innies and outies.
+  - Hard: classic techniques too.
+  - Expert: the same with no printed numbers at all.
+- **Daily puzzles.** There are two each day, the same for everyone, made from the date so they work offline. The classic one rises from Easy on Monday to Expert on Sunday, and so does a daily Killer. Each has its own streak and calendar, and neither replaces your regular game.
+
+### Playing
+
+- **Pencil notes.** Matching notes clear when you place a number, and **Fill** pencils in every number still possible.
+- **Help on the board.** The selected cell's row, column, box and matching numbers are highlighted. Undo and erase are always there.
+- **Mistakes.** There's a limit of 3, which you can turn off. Turn off *Show mistakes right away* and nothing gives away whether a number is right until you tap **Check**.
+- **Finishing touches.** A matcha ink wash runs across every row, column or box you finish. Gentle vibrations mark each move, with a longer pattern for a win or a loss. Vibrations use the phone's own haptics, so they need no permission.
+- **Timer.** It pauses when you leave, and a manual pause hides the board.
+- **Saving.** The game is saved after every move.
+
+### Learning
+
+- **Teaching hints.** A hint finds the easiest next step on your board, highlights the cells involved, and explains it in plain words ("In the centre box, 4 can only go in row 5…"). Candidates a step rules out are crossed out on the board. A wrong number is pointed out first. On a phone the hint slides up as a sheet, so the board stays in view.
+- **Lessons.** There's a lesson for every technique, each with a worked example from a real puzzle that you step through on the board. Learn tracks which lessons you've finished.
+- **Practice.** **Practise on a new puzzle** starts a fresh puzzle that needs the lesson's technique.
+
+### Progress
+
+- **Stats per level.** Games played and solved, win rate, best and average time, and how often you solve without hints.
+- **25 achievements, shown as seals.** They range from a first solve to a 30-day streak. There are fast and clean solves, an Expert with mistakes hidden, a Swordfish puzzle, 100 solves, every lesson, a full Monday-to-Sunday week, and daily Killer streaks.
+- **A new phone keeps your progress.** Android's backup and phone-to-phone transfer include your progress, or you can save and restore a backup file from Settings.
+
+### Home-screen widgets
+
+- **Daily puzzle (4×2).** Today's level, your streak and this week, with a button that opens straight into today's puzzle.
+- **Streak (2×1).** Your streak and a round Play button.
+
+### Look, comfort and access
+
+- **Three palettes.** Sumi (washi by day, sumi night after dark), Indigo night (always dark) and Bamboo. Light, dark or follow the phone.
+- **Tablets and landscape.** The board sits beside the controls. On a tablet the number pad is a 3×3 grid of bigger keys.
+- **Accessibility.**
+  - A Larger numbers setting.
+  - Mistakes are underlined as well as red, so they don't rely on colour.
+  - Every cell is fully described to screen readers.
+  - Animations stop when the system's Remove animations setting is on.
+
+## Languages
+
+Sumi speaks **English** and **Swahili (Kiswahili)**. It follows the phone's language, and on Android 13 or newer you can set Sumi's language on its own (Settings › Apps › Sumi › Language). Everything is translated, including hint explanations, lessons and achievements.
+
+<table>
+  <tr>
+    <td><img src="app/src/test/screenshots/home_sw_light.png" width="200" alt="Home in Swahili"></td>
+    <td><img src="app/src/test/screenshots/hint_sw_light.png" width="200" alt="A hint in Swahili"></td>
+    <td><img src="app/src/test/screenshots/lesson_xwing_sw_light.png" width="200" alt="A lesson in Swahili"></td>
+  </tr>
+</table>
+
+Each piece of text is written in the code as `tr("English", "Kiswahili")`, so a translation sits next to the English it comes from. `LangTest` plays real games in Swahili and fails if any English is left in a hint or lesson. Corrections from native speakers are very welcome.
 
 ## Privacy
 
-Sumi collects nothing, works entirely offline and has no ads. It asks for no Android permissions, not even internet access. See the [privacy policy](docs/privacy-policy.md); `PrivacyTest` fails if a permission is ever added, so the policy stays true.
+Sumi collects nothing, works entirely offline and has no ads. It asks for no Android permissions, not even internet access. See the [privacy policy](docs/privacy-policy.md). `PrivacyTest` fails if a permission is ever added, so the policy stays true.
 
-## Install on your phone
+## Development
 
-On your Android phone, open
-**https://github.com/kiai-joe/sudoku/releases/latest/download/Sumi.apk**
-and install it, allowing "Install unknown apps" for your browser when asked. Newer versions install over older ones and keep your saved game and stats.
+### Build and test
 
-## Releases
-
-The **Release APK** workflow publishes a GitHub release with `Sumi.apk` attached:
-
-- every push to `main` makes a `build-N` release
-- running the Release APK workflow by hand (Actions › Release APK › Run workflow) makes a `build-N` release from the chosen branch
-- pushing a tag such as `v0.2.0` makes a release with that version name
+You need Android Studio (Ladybug or newer), or JDK 17 with the Android SDK.
 
 ```bash
-git tag v0.2.0
+./gradlew testDebugUnitTest
 ```
 
 ```bash
-git push origin v0.2.0
+./gradlew assembleDebug
 ```
 
-APKs are signed with the debug key in `app/signing/debug.keystore`, so every build can update the last one. This key is not secret; publishing on Google Play would need a separate private key.
+The first command runs the unit tests: the engine, accessibility, backup, widgets and languages. The second builds the APK at `app/build/outputs/apk/debug/app-debug.apk`.
 
-The **Android build** workflow also runs the tests and builds an APK on every pull request, downloadable as `sudoku-debug-apk` from the run's artifacts.
+### Screenshots
 
-## Building locally
-
-Requirements: Android Studio (Ladybug or newer) or JDK 17 with the Android SDK.
-
-```bash
-./gradlew testDebugUnitTest   # engine tests
-./gradlew assembleDebug       # app/build/outputs/apk/debug/app-debug.apk
-```
-
-## Project layout
-
-```
-app/src/main/java/com/kiaijoe/sudoku/
-├── engine/        Pure Kotlin game logic, no Android dependencies
-│   ├── Grid.kt        Cell indexing, peers, solution check
-│   ├── Solver.kt      Bitmask backtracking solver and solution counter
-│   ├── LogicSolver.kt Human-style solver that grades puzzles by technique
-│   ├── Hints.kt       Turns solver steps into explained, step-by-step hints
-│   ├── Daily.kt       Daily puzzle from the date, weekly levels, streaks
-│   ├── Tutorial.kt    Lessons and their worked examples (stored as seed + moves)
-│   ├── Killer.kt      Killer cages, cage combinations and the Killer generator
-│   ├── Achievements.kt Achievements and the rules for earning them
-│   ├── Generator.kt   Graded, unique-solution puzzle generator and levels
-│   ├── GameState.kt   Immutable game state and moves
-│   └── GameCodec.kt   Save format
-├── data/          SharedPreferences storage for the game, settings and stats
-└── ui/            ViewModel, theme, board, controls and screens
-```
-
-The engine has unit tests in `app/src/test`.
-
-## Screenshots
-
-`ScreenshotTest` renders the main screens (home, a game in progress, a hint, the win stamp, the Daily tab, Progress, Learn and Settings, in light and dark) to `app/src/test/screenshots` using [Roborazzi](https://github.com/takahirom/roborazzi) on Robolectric, so no device or emulator is needed. On every pull request CI re-renders them and commits any changes back to the branch, so visual changes show up as image diffs in the review. To render them yourself:
+`ScreenshotTest` renders every main screen to `app/src/test/screenshots`, in light and dark, the other palettes, landscape, tablet and Swahili. It uses [Roborazzi](https://github.com/takahirom/roborazzi) on Robolectric, so no device is needed. On every pull request CI re-renders them and commits any changes back to the branch, so visual changes show up as image diffs in the review.
 
 ```bash
 ./gradlew recordRoborazziDebug
 ```
 
-## How puzzles are graded
+### Releases
 
-`LogicSolver` solves with pencil-mark candidates the way a person does, always using the easiest technique that makes progress. The hardest technique it needs sets the level. The generator digs clues out of a random grid while the solution stays unique, grades the result, and where logic gets stuck adds back the clue that makes the puzzle land on the requested level. Easy puzzles also keep at least 34 clues. Generation takes about 0–75 ms per puzzle on a desktop JVM, with Expert the slowest.
+The **Release APK** workflow publishes a GitHub release with `Sumi.apk` attached:
+
+- a push to `main` makes a `build-N` release
+- running the workflow by hand (Actions › Release APK › Run workflow) does the same for the chosen branch
+- a tag such as `v0.2.0` makes a release with that version name
+
+APKs are signed with the debug key in `app/signing/debug.keystore`, so every build can update the last one. This key is not secret; publishing on Google Play needs a separate private key.
+
+### Project layout
+
+```
+app/src/main/java/com/kiaijoe/sudoku/
+├── engine/          Pure Kotlin game logic, no Android dependencies
+│   ├── Grid.kt          Cell indexing, peers, solution check
+│   ├── Solver.kt        Bitmask backtracking solver and solution counter
+│   ├── LogicSolver.kt   Human-style solver that grades puzzles by technique
+│   ├── Generator.kt     Graded, unique-solution puzzle generator and levels
+│   ├── Killer.kt        Killer cages, cage combinations and the Killer generator
+│   ├── Hints.kt         Turns solver steps into explained, step-by-step hints
+│   ├── Tutorial.kt      Lessons, worked examples and practice puzzles
+│   ├── Daily.kt         Daily puzzles from the date, weekly levels, streaks
+│   ├── Achievements.kt  Achievements and the rules for earning them
+│   ├── Lang.kt          English and Swahili text
+│   ├── GameState.kt     Immutable game state and moves
+│   └── GameCodec.kt     Save format
+├── data/            Saved games, settings, stats and backup files
+├── widget/          Home-screen widgets
+└── ui/              ViewModel, theme, icons, board, controls and screens
+```
+
+### How puzzles are graded
+
+`LogicSolver` solves with pencil-mark candidates the way a person does, always using the easiest technique that makes progress. The hardest technique it needs sets the level. The generator digs clues out of a random grid while the solution stays unique, grades the result, and where logic gets stuck adds back the clue that lands the puzzle on the requested level. Easy puzzles keep at least 34 clues. A puzzle takes about 0–75 ms to generate on a desktop JVM, with Expert the slowest.
+
+## Credits
+
+- Fonts: [Sora](https://github.com/sora-xor/sora-font) for titles and numbers, and [Inter](https://rsms.me/inter/) for text. Both are under the SIL Open Font License (`licenses/Sora-OFL.txt`, `licenses/Inter-OFL.txt`).
+- Icons: [Lucide](https://lucide.dev) outlines, ISC licence (`licenses/Lucide-ISC.txt`). They're compiled into the app as vectors in `ui/icons/Lucide.kt`.
