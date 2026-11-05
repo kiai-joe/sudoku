@@ -133,7 +133,7 @@ fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
             SumiTopBar(
                 title = when {
                     state.generating || game == null -> tr("New game", "Mchezo mpya")
-                    state.practice != null && game.daily == null -> tr("Practice", "Mazoezi") + " · ${state.practice.label}"
+                    game.practice != null && game.daily == null -> tr("Practice", "Mazoezi") + " · ${game.practice.label}"
                     else -> game.title()
                 },
                 onBack = onExit,
@@ -583,7 +583,7 @@ private fun StatusRow(state: UiState, game: GameState) {
     ) {
         val checking = state.settings.instantCheck
         val mistakesText = when {
-            !checking -> tr("Checks ${state.checks}", "Ukaguzi ${state.checks}")
+            !checking -> tr("Checks ${game.checks}", "Ukaguzi ${game.checks}")
             state.settings.mistakeLimit -> tr("Mistakes ${game.mistakes} of $MISTAKE_LIMIT", "Makosa ${game.mistakes} kati ya $MISTAKE_LIMIT")
             else -> tr("Mistakes ${game.mistakes}", "Makosa ${game.mistakes}")
         }

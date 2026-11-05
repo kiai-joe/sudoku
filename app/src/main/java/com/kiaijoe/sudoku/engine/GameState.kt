@@ -10,6 +10,9 @@ enum class GameStatus { PLAYING, WON, LOST }
  * [hardest] is the hardest technique the puzzle needs, when known.
  * [daily] is the epoch day of the daily puzzle this game is, or null for a regular game.
  * [cages] are the Killer Sudoku cages, or empty for a classic game.
+ * [checks] is how many times the player asked Check (mistakes hidden).
+ * [practice] is the technique this game was started to practise, from a lesson.
+ * [afterLoss] is set when the game was restarted after running out of mistakes.
  */
 data class GameState(
     val difficulty: Difficulty,
@@ -24,6 +27,9 @@ data class GameState(
     val hardest: Technique? = null,
     val daily: Long? = null,
     val cages: List<Cage> = emptyList(),
+    val checks: Int = 0,
+    val practice: Technique? = null,
+    val afterLoss: Boolean = false,
 ) {
     val isKiller: Boolean get() = cages.isNotEmpty()
 
@@ -124,6 +130,7 @@ data class GameState(
             .filter { house -> house.cells.all { isCorrect(it) } }
 
     /** Back to the starting grid. Time, mistakes and hints are reset. */
+    /** The same puzzle from the start. Restarting a lost game marks it [afterLoss]. */
     fun restart(): GameState = copy(
         values = givens,
         notes = List(Grid.CELLS) { 0 },
@@ -131,6 +138,8 @@ data class GameState(
         hintsUsed = 0,
         elapsedSeconds = 0,
         status = GameStatus.PLAYING,
+        checks = 0,
+        afterLoss = afterLoss || status == GameStatus.LOST,
     )
 
     companion object {
