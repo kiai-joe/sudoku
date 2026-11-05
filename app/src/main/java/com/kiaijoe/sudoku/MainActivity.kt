@@ -101,6 +101,8 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
                 settings = state.settings,
                 onChange = viewModel::updateSettings,
                 onBack = { screen = Screen.Home },
+                onExportBackup = viewModel::exportBackup,
+                onRestoreBackup = viewModel::restoreBackup,
             )
             Screen.Learn -> LearnScreen(
                 onOpen = {

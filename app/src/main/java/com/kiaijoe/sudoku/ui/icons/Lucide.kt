@@ -61,6 +61,8 @@ object Lucide {
     val CalendarCheck: ImageVector by lazy { icon("calendar-check", "M8 2v4", "M16 2v4", "M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2Z", "M3 10h18", "m9 16 2 2 4-4") }
     val ListChecks: ImageVector by lazy { icon("list-checks", "m3 17 2 2 4-4", "m3 7 2 2 4-4", "M13 6h8", "M13 12h8", "M13 18h8") }
     val CircleHelp: ImageVector by lazy { icon("circle-help", "M2 12a10 10 0 1 0 20 0a10 10 0 1 0 -20 0", "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3", "M12 17h.01") }
+    val Download: ImageVector by lazy { icon("download", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M7 10L12 15L17 10", "M12 15L12 3") }
+    val Upload: ImageVector by lazy { icon("upload", "M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4", "M17 8L12 3L7 8", "M12 3L12 15") }
 }
 
 private fun icon(name: String, vararg paths: String): ImageVector =

@@ -1,6 +1,22 @@
 package com.kiaijoe.sudoku.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import com.kiaijoe.sudoku.ui.BackupResult
+import com.kiaijoe.sudoku.ui.components.ButtonTone
+import com.kiaijoe.sudoku.ui.components.PillButton
+import java.time.LocalDate
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -53,9 +69,49 @@ const val PRIVACY_POLICY_URL = "https://github.com/kiai-joe/sudoku/blob/main/doc
 
 /** Settings, a page of its own: look, play and feel, then privacy. */
 @Composable
-fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () -> Unit) {
+fun SettingsScreen(
+    settings: Settings,
+    onChange: (Settings) -> Unit,
+    onBack: () -> Unit,
+    onExportBackup: () -> String = { "" },
+    onRestoreBackup: (String) -> BackupResult = { BackupResult(ok = false, message = "") },
+) {
     BackHandler(onBack = onBack)
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val c = Sumi.colors
+    // What the last save or restore did, shown under the backup card.
+    var result by remember { mutableStateOf<BackupResult?>(null) }
+    // A backup file read and waiting for the player to confirm the restore.
+    var pending by remember { mutableStateOf<String?>(null) }
+
+    val saveFile = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        val text = onExportBackup()
+        scope.launch {
+            result = try {
+                withContext(Dispatchers.IO) {
+                    context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(text.toByteArray()) }
+                }
+                BackupResult(ok = true, message = "Backup saved. Keep it somewhere safe, like Drive or your computer.")
+            } catch (e: Exception) {
+                BackupResult(ok = false, message = "The backup couldn't be saved there. Try another place.")
+            }
+        }
+    }
+    val openFile = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        scope.launch {
+            try {
+                pending = withContext(Dispatchers.IO) {
+                    context.contentResolver.openInputStream(uri)!!.use { it.readBytes().toString(Charsets.UTF_8) }
+                }
+            } catch (e: Exception) {
+                result = BackupResult(ok = false, message = "That file couldn't be opened.")
+            }
+        }
+    }
     Page {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             SumiTopBar("Settings", onBack = onBack)
@@ -140,6 +196,40 @@ fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () 
                         }),
                     )
 
+                    Section("Your progress")
+                    ListCard(
+                        rows = listOf<@Composable () -> Unit>(
+                            {
+                                ListRow(
+                                    Lucide.Download,
+                                    "Save a backup file",
+                                    subtitle = "Games, stats, streak, achievements and settings",
+                                    onClick = { saveFile.launch("sumi-backup-${LocalDate.now()}.json") },
+                                ) { RowChevron() }
+                            },
+                            {
+                                ListRow(
+                                    Lucide.Upload,
+                                    "Restore from a backup",
+                                    subtitle = "Bring your progress over from another phone",
+                                    onClick = { openFile.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
+                                ) { RowChevron() }
+                            },
+                        ),
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        result?.message
+                            ?: "Android's own backup also brings Sumi across when you set up a new phone, if it's turned on.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = when (result?.ok) {
+                            true -> c.matcha
+                            false -> c.shu
+                            null -> c.inkMuted
+                        },
+                        modifier = Modifier.padding(horizontal = 4.dp),
+                    )
+
                     Spacer(Modifier.height(20.dp))
                     ListCard(
                         rows = listOf<@Composable () -> Unit>({
@@ -156,6 +246,24 @@ fun SettingsScreen(settings: Settings, onChange: (Settings) -> Unit, onBack: () 
                 }
             }
         }
+    }
+
+    pending?.let { text ->
+        AlertDialog(
+            onDismissRequest = { pending = null },
+            containerColor = c.surface,
+            title = { Text("Restore this backup?", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Text(
+                    "It replaces the games, stats, streak, achievements and settings on this phone.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            confirmButton = {
+                PillButton("Restore", { pending = null; result = onRestoreBackup(text) }, height = 44.dp)
+            },
+            dismissButton = { PillButton("Cancel", { pending = null }, tone = ButtonTone.Ghost, height = 44.dp) },
+        )
     }
 }
 

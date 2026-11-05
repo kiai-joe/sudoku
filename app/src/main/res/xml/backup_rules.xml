@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 11 and older: Google backup of Sumi's one preferences file, which
+     holds everything (games, daily record, stats, achievements, lessons,
+     settings). GameRepository.PREFS_NAME names it. -->
+<full-backup-content>
+    <include domain="sharedpref" path="sudoku.xml" />
+</full-backup-content>

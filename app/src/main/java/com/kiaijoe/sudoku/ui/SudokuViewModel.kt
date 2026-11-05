@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kiaijoe.sudoku.data.DifficultyStats
+import com.kiaijoe.sudoku.data.BackupException
 import com.kiaijoe.sudoku.data.GameRepository
 import com.kiaijoe.sudoku.data.Settings
 import com.kiaijoe.sudoku.engine.Achievement
@@ -98,6 +99,9 @@ data class HintUi(val plan: HintPlan, val index: Int = 0) {
     val hasNext: Boolean get() = index < total - 1
 }
 
+/** How a restore went, and what to tell the player. */
+data class BackupResult(val ok: Boolean, val message: String)
+
 class SudokuViewModel(application: Application) : AndroidViewModel(application), GameActions {
 
     private val repo = GameRepository(application)
@@ -106,25 +110,49 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     private var gameScreenActive = false
     private var feedbackId = 0L
 
-    private val _ui = MutableStateFlow(
-        repo.loadGame().let { saved ->
-            UiState(
-                game = saved,
-                savedGame = saved,
-                daily = loadDaily(),
-                settings = repo.loadSettings(),
-                stats = repo.loadStats(),
-                killerStats = repo.loadKillerStats(),
-                lessonsDone = repo.loadLessonsDone(),
-            )
-        },
-    )
+    private val _ui = MutableStateFlow(loadState())
     val ui: StateFlow<UiState> = _ui.asStateFlow()
 
     init {
         // Award anything already earned from saved statistics, such as streaks.
         award(won = null)
         _ui.update { it.copy(achievements = repo.loadAchievements()) }
+    }
+
+    /** Everything the screens show, as saved. */
+    private fun loadState(): UiState = repo.loadGame().let { saved ->
+        UiState(
+            game = saved,
+            savedGame = saved,
+            daily = loadDaily(),
+            settings = repo.loadSettings(),
+            stats = repo.loadStats(),
+            killerStats = repo.loadKillerStats(),
+            lessonsDone = repo.loadLessonsDone(),
+            achievements = repo.loadAchievements(),
+        )
+    }
+
+    // --- Backup ---------------------------------------------------------
+
+    /** Everything Sumi keeps, as the text of a backup file. */
+    fun exportBackup(): String = repo.exportBackup()
+
+    /**
+     * Restores the backup in [text], replacing everything on this phone, and
+     * reloads every screen from it. Returns a message for the player.
+     */
+    fun restoreBackup(text: String): BackupResult = try {
+        repo.restoreBackup(text)
+        undoStack.clear()
+        timerJob?.cancel()
+        _ui.value = loadState()
+        award(won = null)
+        _ui.update { it.copy(achievements = repo.loadAchievements()) }
+        updateTimer()
+        BackupResult(ok = true, message = "Restored. Your games, stats and settings are back.")
+    } catch (e: BackupException) {
+        BackupResult(ok = false, message = e.message ?: "This backup couldn't be restored.")
     }
 
     /** What the saved statistics add up to, for achievements. */
