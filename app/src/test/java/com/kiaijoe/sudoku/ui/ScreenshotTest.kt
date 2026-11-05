@@ -235,6 +235,26 @@ class ScreenshotTest {
         LearnScreen(onOpen = {}, onBack = {}, onTab = {}, done = Fixtures.lessonsDone)
     }
 
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun learnDark() = capture("learn_dark", dark = true) {
+        LearnScreen(onOpen = {}, onBack = {}, onTab = {}, done = Fixtures.lessonsDone)
+    }
+
+    /** A lesson in the dark: the step bar, chip and both buttons' icons. */
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun lessonDark() = capture("lesson_xwing_dark", dark = true) {
+        val index = Tutorial.lessons.indexOfFirst { it.technique == Technique.X_WING }
+        LessonScreen(
+            index = index,
+            example = Tutorial.example(Tutorial.lessons[index]),
+            loading = false,
+            onNextLesson = {},
+            onBack = {},
+        )
+    }
+
     /** The X-Wing lesson at its first step, with the example built up front. */
     @Test
     @Config(qualifiers = "w411dp-h1300dp-xxhdpi")

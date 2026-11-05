@@ -120,7 +120,8 @@ private val BambooNight = SumiNight.copy(
     ai = Color(0xFF8FD19B), onAi = Color(0xFF0C2412), aiSoft = Color(0xFF24452B), aiFaint = Color(0xFF1A2A1C),
 )
 
-private fun colorsFor(theme: InkTheme, dark: Boolean): SumiColors = when (theme) {
+/** The colour roles of [theme], light or [dark]. Internal so tests can check every palette. */
+internal fun colorsFor(theme: InkTheme, dark: Boolean): SumiColors = when (theme) {
     InkTheme.SUMI -> if (dark) SumiNight else Washi
     InkTheme.INDIGO_NIGHT -> IndigoNight
     InkTheme.BAMBOO -> if (dark) BambooNight else BambooDay

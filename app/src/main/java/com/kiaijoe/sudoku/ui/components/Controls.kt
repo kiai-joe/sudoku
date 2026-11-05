@@ -75,7 +75,8 @@ private fun ToolButton(
     val c = Sumi.colors
     val tap = onClick
     val tint = when {
-        !enabled -> c.inkMuted.copy(alpha = 0.45f)
+        // Greyed out, but still clearly an icon on the dark palettes too.
+        !enabled -> c.inkMuted.copy(alpha = 0.6f)
         active -> c.onAi
         else -> c.ink
     }

@@ -422,7 +422,7 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
             }
             add {
                 ListRow(
-                    icon = Lucide.Target,
+                    icon = Lucide.ListChecks,
                     title = "${plural(game.mistakes, "mistake")} · ${plural(game.hintsUsed, "hint")}",
                     subtitle = if (best != null && !state.lastWinWasBest) "Your best is ${formatTime(best)}" else null,
                 )
