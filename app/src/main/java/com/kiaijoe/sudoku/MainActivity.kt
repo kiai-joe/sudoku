@@ -21,11 +21,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kiaijoe.sudoku.engine.Example
 import com.kiaijoe.sudoku.engine.Tutorial
 import com.kiaijoe.sudoku.ui.SudokuViewModel
+import com.kiaijoe.sudoku.ui.components.Tab
 import com.kiaijoe.sudoku.ui.screens.CalendarScreen
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
 import com.kiaijoe.sudoku.ui.screens.LearnScreen
 import com.kiaijoe.sudoku.ui.screens.LessonScreen
+import com.kiaijoe.sudoku.ui.screens.SettingsScreen
 import com.kiaijoe.sudoku.ui.screens.StatsScreen
 import com.kiaijoe.sudoku.ui.theme.InkTheme
 import com.kiaijoe.sudoku.ui.theme.SudokuTheme
@@ -41,7 +43,16 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { Home, Game, Stats, Calendar, Learn, Lesson }
+private enum class Screen { Home, Game, Stats, Calendar, Learn, Lesson, Settings }
+
+/** The screen each tab of the floating bar opens. */
+private val Tab.screen: Screen
+    get() = when (this) {
+        Tab.Home -> Screen.Home
+        Tab.Daily -> Screen.Calendar
+        Tab.Learn -> Screen.Learn
+        Tab.Progress -> Screen.Stats
+    }
 
 @Composable
 private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
@@ -53,7 +64,13 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
         SystemBars(state.settings.theme)
 
         // The date may have changed since the app was last on the home screen.
-        LaunchedEffect(screen) { if (screen == Screen.Home) viewModel.refreshDaily() }
+        LaunchedEffect(screen) { if (screen == Screen.Home || screen == Screen.Calendar) viewModel.refreshDaily() }
+
+        val onTab: (Tab) -> Unit = { screen = it.screen }
+        val playDaily = {
+            viewModel.playDaily()
+            screen = Screen.Game
+        }
 
         when (screen) {
             Screen.Home -> HomeScreen(
@@ -62,10 +79,7 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
                     viewModel.continueGame()
                     screen = Screen.Game
                 },
-                onPlayDaily = {
-                    viewModel.playDaily()
-                    screen = Screen.Game
-                },
+                onPlayDaily = playDaily,
                 onCalendar = { screen = Screen.Calendar },
                 onNewGame = { difficulty ->
                     viewModel.newGame(difficulty)
@@ -75,14 +89,18 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
                     viewModel.newKiller(difficulty)
                     screen = Screen.Game
                 },
-                onStats = { screen = Screen.Stats },
-                onLearn = { screen = Screen.Learn },
-                onSettingsChange = viewModel::updateSettings,
+                onSettings = { screen = Screen.Settings },
+                onTab = onTab,
             )
             Screen.Game -> GameScreen(
                 state = state,
                 actions = viewModel,
                 onExit = { screen = Screen.Home },
+            )
+            Screen.Settings -> SettingsScreen(
+                settings = state.settings,
+                onChange = viewModel::updateSettings,
+                onBack = { screen = Screen.Home },
             )
             Screen.Learn -> LearnScreen(
                 onOpen = {
@@ -90,6 +108,7 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
                     screen = Screen.Lesson
                 },
                 onBack = { screen = Screen.Home },
+                onTab = onTab,
             )
             Screen.Lesson -> {
                 // Building an example replays a real puzzle, so do it off the main thread.
@@ -112,6 +131,8 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
             Screen.Calendar -> CalendarScreen(
                 daily = state.daily,
                 onBack = { screen = Screen.Home },
+                onPlayDaily = playDaily,
+                onTab = onTab,
             )
             Screen.Stats -> StatsScreen(
                 stats = state.stats,
@@ -119,6 +140,7 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
                 achievements = state.achievements,
                 onReset = viewModel::resetStats,
                 onBack = { screen = Screen.Home },
+                onTab = onTab,
             )
         }
     }

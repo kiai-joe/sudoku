@@ -1,59 +1,67 @@
 package com.kiaijoe.sudoku.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.data.DifficultyStats
 import com.kiaijoe.sudoku.engine.Achievement
 import com.kiaijoe.sudoku.engine.Difficulty
-import com.kiaijoe.sudoku.ui.components.HanamaruStamp
+import com.kiaijoe.sudoku.ui.components.ButtonTone
+import com.kiaijoe.sudoku.ui.components.ChipTone
+import com.kiaijoe.sudoku.ui.components.Overline
+import com.kiaijoe.sudoku.ui.components.PillButton
+import com.kiaijoe.sudoku.ui.components.ScreenTitle
+import com.kiaijoe.sudoku.ui.components.SumiCard
+import com.kiaijoe.sudoku.ui.components.SumiChip
+import com.kiaijoe.sudoku.ui.components.Tab
+import com.kiaijoe.sudoku.ui.components.TabPage
+import com.kiaijoe.sudoku.ui.components.icon
 import com.kiaijoe.sudoku.ui.formatTime
-import com.kiaijoe.sudoku.ui.theme.SealRed
+import com.kiaijoe.sudoku.ui.icons.Lucide
+import com.kiaijoe.sudoku.ui.theme.Sumi
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 
-@OptIn(ExperimentalMaterial3Api::class)
+/** Progress: statistics for each level, then every achievement as a seal. */
 @Composable
 fun StatsScreen(
     stats: Map<Difficulty, DifficultyStats>,
@@ -61,142 +69,165 @@ fun StatsScreen(
     onBack: () -> Unit,
     killerStats: DifficultyStats = DifficultyStats(),
     achievements: Map<Achievement, Long> = emptyMap(),
+    onTab: ((Tab) -> Unit)? = null,
 ) {
     BackHandler(onBack = onBack)
     var confirmReset by remember { mutableStateOf(false) }
+    // Which level the figures are for: 0..3 the classic levels, 4 Killer. Opens on the one played most.
+    var level by rememberSaveable {
+        val played = Difficulty.entries.map { stats[it]?.played ?: 0 } + killerStats.played
+        mutableStateOf(played.indices.maxBy { played[it] })
+    }
+    var open by remember { mutableStateOf<Achievement?>(null) }
+    val c = Sumi.colors
 
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = { Text("Statistics") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = { TextButton(onClick = { confirmReset = true }) { Text("Reset") } },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = MaterialTheme.colorScheme.background),
-            )
-        },
-    ) { padding ->
-        Column(
-            Modifier
-                .padding(padding)
-                .fillMaxSize()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Difficulty.entries.forEach { d ->
-                StatCard(d.label, stats[d] ?: DifficultyStats())
-                Spacer(Modifier.height(12.dp))
-            }
-            if (killerStats.played > 0) {
-                StatCard("Killer Sudoku", killerStats)
-                Spacer(Modifier.height(12.dp))
-            }
-            AchievementsCard(achievements)
-            Spacer(Modifier.height(12.dp))
+    TabPage(Tab.Progress, onTab) {
+        ScreenTitle("Progress") {
+            PillButton("Reset", { confirmReset = true }, tone = ButtonTone.Ghost, height = 40.dp)
         }
+        Spacer(Modifier.height(14.dp))
+        Row(
+            Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            val labels = Difficulty.entries.map { it.label } + "Killer"
+            labels.forEachIndexed { i, label ->
+                SumiChip(
+                    label,
+                    tone = if (i == level) ChipTone.Ai else ChipTone.Neutral,
+                    onClick = { level = i },
+                    modifier = Modifier.semantics { selected = i == level },
+                )
+            }
+        }
+        Spacer(Modifier.height(14.dp))
+        val s = if (level < Difficulty.entries.size) stats[Difficulty.entries[level]] ?: DifficultyStats() else killerStats
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatTile(s.won.toString(), "Solved of ${s.played}", Modifier.weight(1f).fillMaxHeight())
+                StatTile(s.bestSeconds?.let(::formatTime) ?: "—", "Best time", Modifier.weight(1f).fillMaxHeight())
+            }
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StatTile("${s.winRate}%", "Win rate", Modifier.weight(1f).fillMaxHeight())
+                StatTile(s.played.toString(), "Played", Modifier.weight(1f).fillMaxHeight())
+            }
+        }
+
+        Spacer(Modifier.height(22.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Overline("Achievements", Modifier.weight(1f))
+            Text(
+                "${achievements.size} of ${Achievement.entries.size}",
+                style = MaterialTheme.typography.bodySmall,
+                color = c.inkMuted,
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+        Achievement.entries.chunked(4).forEach { row ->
+            Row(Modifier.fillMaxWidth()) {
+                row.forEach { a ->
+                    Seal(a, achievements[a], onClick = { open = a }, modifier = Modifier.weight(1f))
+                }
+                repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
+            }
+            Spacer(Modifier.height(14.dp))
+        }
+    }
+
+    open?.let { a ->
+        val day = achievements[a]
+        AlertDialog(
+            onDismissRequest = { open = null },
+            containerColor = c.surface,
+            icon = { SealMark(a, earned = day != null, size = 64) },
+            title = { Text(a.title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center) },
+            text = {
+                Text(
+                    a.description + "." + if (day != null) "\nEarned ${earnedDate(day)}." else "\nNot earned yet.",
+                    style = MaterialTheme.typography.bodyLarge,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            },
+            confirmButton = { PillButton("Done", { open = null }, tone = ButtonTone.Soft, height = 44.dp) },
+        )
     }
 
     if (confirmReset) {
         AlertDialog(
             onDismissRequest = { confirmReset = false },
-            title = { Text("Reset statistics?") },
-            text = { Text("Games played, wins and best times will be cleared. Achievements you've earned stay.") },
-            confirmButton = { Button(onClick = { confirmReset = false; onReset() }) { Text("Reset") } },
-            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
+            containerColor = c.surface,
+            title = { Text("Reset statistics?", style = MaterialTheme.typography.titleLarge) },
+            text = {
+                Text(
+                    "Games played, wins and best times will be cleared. Achievements you've earned stay.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            },
+            confirmButton = { PillButton("Reset", { confirmReset = false; onReset() }, tone = ButtonTone.Seal, height = 44.dp) },
+            dismissButton = { PillButton("Cancel", { confirmReset = false }, tone = ButtonTone.Ghost, height = 44.dp) },
+        )
+    }
+}
+
+private fun earnedDate(day: Long): String =
+    LocalDate.ofEpochDay(day).format(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
+
+@Composable
+private fun StatTile(value: String, label: String, modifier: Modifier = Modifier) {
+    val c = Sumi.colors
+    SumiCard(modifier.clearAndSetSemantics { contentDescription = "$label: $value" }) {
+        Text(value, style = MaterialTheme.typography.headlineMedium, color = c.ink)
+        Text(label, style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
+    }
+}
+
+/** An achievement's round seal: vermilion and stamped when earned, a lock on the sunk well when not. */
+@Composable
+private fun SealMark(a: Achievement, earned: Boolean, size: Int) {
+    val c = Sumi.colors
+    Box(
+        Modifier
+            .size(size.dp)
+            .clip(CircleShape)
+            .background(if (earned) c.shu else c.surfaceSunk)
+            .then(if (earned) Modifier.padding(3.dp).border(2.dp, c.onShu, CircleShape) else Modifier),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            if (earned) a.icon else Lucide.Lock,
+            contentDescription = null,
+            tint = if (earned) c.onShu else c.inkMuted,
+            modifier = Modifier.size((size * 0.42f).dp),
         )
     }
 }
 
 @Composable
-private fun StatCard(title: String, stats: DifficultyStats) {
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp,
-        modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
+private fun Seal(a: Achievement, day: Long?, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val c = Sumi.colors
+    val tap = onClick
+    val spoken = a.title + ". " + a.description + ". " + if (day != null) "Earned ${earnedDate(day)}" else "Not earned yet"
+    Column(
+        modifier
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(role = Role.Button, onClick = onClick)
+            .clearAndSetSemantics {
+                contentDescription = spoken
+                role = Role.Button
+                this.onClick { tap(); true }
+            }
+            .padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Column(Modifier.padding(18.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Stat("Played", stats.played.toString())
-                Stat("Won", stats.won.toString())
-                Stat("Win rate", "${stats.winRate}%")
-                Stat("Best", stats.bestSeconds?.let(::formatTime) ?: "—")
-            }
-        }
-    }
-}
-
-@Composable
-private fun Stat(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-        Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
-}
-
-/** Every achievement: earned ones stamped with the date, the rest faded with what they need. */
-@Composable
-private fun AchievementsCard(earned: Map<Achievement, Long>) {
-    val scheme = MaterialTheme.colorScheme
-    val dates = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = scheme.surface,
-        tonalElevation = 1.dp,
-        modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth(),
-    ) {
-        Column(Modifier.padding(18.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("Achievements", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                Text(
-                    "${earned.size} of ${Achievement.entries.size}",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = scheme.onSurfaceVariant,
-                )
-            }
-            Spacer(Modifier.height(8.dp))
-            for (achievement in Achievement.entries) {
-                val day = earned[achievement]
-                val spoken = achievement.title + ". " + achievement.description + ". " +
-                    if (day != null) "Earned ${LocalDate.ofEpochDay(day).format(dates)}" else "Not earned yet"
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 7.dp)
-                        .clearAndSetSemantics { contentDescription = spoken },
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
-                        if (day != null) {
-                            HanamaruStamp(SealRed, Modifier.fillMaxSize(), animate = false)
-                        } else {
-                            Box(Modifier.fillMaxSize().border(1.dp, scheme.outlineVariant, CircleShape))
-                        }
-                    }
-                    Spacer(Modifier.width(12.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            achievement.title,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (day != null) FontWeight.SemiBold else FontWeight.Normal,
-                            color = if (day != null) scheme.onSurface else scheme.onSurfaceVariant,
-                        )
-                        Text(
-                            achievement.description +
-                                if (day != null) " · ${LocalDate.ofEpochDay(day).format(dates)}" else "",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = scheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-        }
+        SealMark(a, earned = day != null, size = 54)
+        Spacer(Modifier.height(6.dp))
+        Text(
+            a.title,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (day != null) c.ink else c.inkMuted,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
     }
 }

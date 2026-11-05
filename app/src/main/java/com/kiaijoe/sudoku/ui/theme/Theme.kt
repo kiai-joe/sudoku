@@ -1,30 +1,35 @@
 package com.kiaijoe.sudoku.ui.theme
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kiaijoe.sudoku.R
 
 /**
- * The ink palettes the player can pick in Settings. Each is drawn from a few
- * base tones (see [Tones]); the seal vermilion stays the same in all of them.
+ * The palettes the player can pick in Settings. Each is drawn from the same
+ * colour roles (see [SumiColors]); the seal vermilion and the gold selection
+ * stay in all of them.
  *
  * @property alwaysDark the palette has no light version and ignores the system setting.
  */
 enum class InkTheme(val label: String, val alwaysDark: Boolean = false) {
-    /** Sumi ink on washi paper, indigo marks, gold selection. */
+    /** Washi by day, Sumi night after dark: ink on paper, indigo marks, gold selection. */
     SUMI("Sumi"),
 
     /** Aizome: paper-white on deep indigo, for playing at night. */
@@ -34,121 +39,127 @@ enum class InkTheme(val label: String, val alwaysDark: Boolean = false) {
     BAMBOO("Bamboo"),
 }
 
-// Shared tones. Kin (gold leaf) marks the selection in every palette, and shu
-// (vermilion) marks corrections, the colour calligraphy teachers mark work in.
-private val Kin = Color(0xFFE3B23C)
-private val Shu = Color(0xFFD2462E)
-private val ShuLight = Color(0xFFFF7A5C)
-private val WashiLight = Color(0xFFF8F7F2)
-
-/** Vermilion of the hanko seal, used for the logo and stamps. Same in every theme. */
-val SealRed = Shu
-val SealPaper = WashiLight
-
 /**
- * The few base colours a palette is made from. [ink] is printed clues and
- * text, [accent] the player's own numbers and the primary colour.
+ * Sumi's colour roles, from the brand guideline. Each has one job:
+ *
+ * - [paper], [surface], [surfaceSunk], [line]: the page, cards, wells and hairlines.
+ * - [ink], [inkMuted]: text and printed clues.
+ * - [ai] (indigo): the player's own numbers and primary actions; [aiSoft] and [aiFaint] highlight.
+ * - [kin] (gold): where you are. A fill only, never text.
+ * - [shu] (vermilion): the seal, streaks, achievements and mistakes.
+ * - [matcha] (green): completion.
  */
-private data class Tones(
+@Immutable
+data class SumiColors(
     val dark: Boolean,
     val paper: Color,
     val surface: Color,
-    val surfaceVariant: Color,
-    val surfaceContainer: Color,
-    val surfaceContainerHigh: Color,
-    val outline: Color,
-    val outlineVariant: Color,
+    val surfaceSunk: Color,
+    val line: Color,
     val ink: Color,
-    val muted: Color,
-    val accent: Color,
-    val onAccent: Color,
-    val accentContainer: Color,
-    val onAccentContainer: Color,
+    val inkMuted: Color,
+    val ai: Color,
+    val onAi: Color,
+    val aiSoft: Color,
+    val aiFaint: Color,
+    val kin: Color,
+    val kinSoft: Color,
+    val shu: Color,
+    val shuSoft: Color,
+    val matcha: Color,
+    val matchaSoft: Color,
+    /** Text and icons on a [shu] fill. */
+    val onShu: Color,
+    /** Colour of the drop shadow under cards. */
+    val shadow: Color,
 )
 
-private val SumiLight = Tones(
+private val Kin = Color(0xFFF0B232)
+
+/** Vermilion of the hanko seal, used for the logo. Same in every theme. */
+val SealRed = Color(0xFFC63D22)
+val SealPaper = Color(0xFFFFFFFF)
+
+private val Washi = SumiColors(
     dark = false,
-    paper = Color(0xFFECEAE3), surface = WashiLight, surfaceVariant = Color(0xFFE2E0D8),
-    surfaceContainer = Color(0xFFE6E4DC), surfaceContainerHigh = Color(0xFFDFDDD5),
-    outline = Color(0xFF8C8B90), outlineVariant = Color(0xFFD2D0C8),
-    ink = Color(0xFF1A1A1C), muted = Color(0xFF5C5C62),
-    accent = Color(0xFF26408B), onAccent = Color.White,
-    accentContainer = Color(0xFFDDE3F2), onAccentContainer = Color(0xFF0C1C45),
+    paper = Color(0xFFF4F2ED), surface = Color(0xFFFFFFFF), surfaceSunk = Color(0xFFECE9E2), line = Color(0xFFE2DED5),
+    ink = Color(0xFF1D1F26), inkMuted = Color(0xFF5E6270),
+    ai = Color(0xFF3552C7), onAi = Color.White, aiSoft = Color(0xFFE3E8FB), aiFaint = Color(0xFFF1F3FD),
+    kin = Kin, kinSoft = Color(0xFFFBEFCF),
+    shu = Color(0xFFC63D22), shuSoft = Color(0xFFFBE3DC),
+    matcha = Color(0xFF2F7A4A), matchaSoft = Color(0xFFDDF0E3),
+    onShu = Color.White, shadow = Color(0xFF1D1F26),
 )
 
-private val SumiDark = Tones(
+private val SumiNight = SumiColors(
     dark = true,
-    paper = Color(0xFF141416), surface = Color(0xFF1C1C20), surfaceVariant = Color(0xFF2A2A30),
-    surfaceContainer = Color(0xFF212126), surfaceContainerHigh = Color(0xFF29292F),
-    outline = Color(0xFF706F78), outlineVariant = Color(0xFF38383F),
-    ink = Color(0xFFE8E6DF), muted = Color(0xFFB0AEB6),
-    accent = Color(0xFF9FB3EB), onAccent = Color(0xFF0C1C45),
-    accentContainer = Color(0xFF223563), onAccentContainer = Color(0xFFDDE3F2),
+    paper = Color(0xFF121317), surface = Color(0xFF1B1D23), surfaceSunk = Color(0xFF24272F), line = Color(0xFF2F333C),
+    ink = Color(0xFFECEDF2), inkMuted = Color(0xFFA3A8B6),
+    ai = Color(0xFF8EA6FF), onAi = Color(0xFF0D1640), aiSoft = Color(0xFF232D52), aiFaint = Color(0xFF1C2238),
+    kin = Kin, kinSoft = Color(0xFF4A3A12),
+    shu = Color(0xFFFF7A5C), shuSoft = Color(0xFF4A2219),
+    matcha = Color(0xFF7FCF97), matchaSoft = Color(0xFF1E3A27),
+    onShu = Color(0xFF2A0B04), shadow = Color.Black,
 )
 
-private val IndigoNight = Tones(
-    dark = true,
-    paper = Color(0xFF0E1426), surface = Color(0xFF151C33), surfaceVariant = Color(0xFF222B47),
-    surfaceContainer = Color(0xFF18203A), surfaceContainerHigh = Color(0xFF1F2842),
-    outline = Color(0xFF6A7391), outlineVariant = Color(0xFF2E3756),
-    ink = Color(0xFFE6E9F2), muted = Color(0xFFA9B0C6),
-    accent = Color(0xFF8FB4FF), onAccent = Color(0xFF0A1A3D),
-    accentContainer = Color(0xFF26386B), onAccentContainer = Color(0xFFDCE6FF),
+private val IndigoNight = SumiNight.copy(
+    paper = Color(0xFF0E1426), surface = Color(0xFF151C33), surfaceSunk = Color(0xFF1F2842), line = Color(0xFF2B3554),
+    ink = Color(0xFFE6E9F2), inkMuted = Color(0xFFA9B0C6),
+    ai = Color(0xFF8FB4FF), onAi = Color(0xFF0A1A3D), aiSoft = Color(0xFF26386B), aiFaint = Color(0xFF1A2443),
 )
 
-private val BambooLight = Tones(
-    dark = false,
-    paper = Color(0xFFE7ECE1), surface = Color(0xFFF6F8F2), surfaceVariant = Color(0xFFDCE3D3),
-    surfaceContainer = Color(0xFFE0E6D8), surfaceContainerHigh = Color(0xFFD7DFCE),
-    outline = Color(0xFF858F80), outlineVariant = Color(0xFFC9D2BF),
-    ink = Color(0xFF1B231A), muted = Color(0xFF56604F),
-    accent = Color(0xFF2F6B3A), onAccent = Color.White,
-    accentContainer = Color(0xFFD5E8D0), onAccentContainer = Color(0xFF0C2412),
+private val BambooDay = Washi.copy(
+    paper = Color(0xFFEEF2E8), surface = Color(0xFFFFFFFF), surfaceSunk = Color(0xFFE2E8DA), line = Color(0xFFD8E0CE),
+    ink = Color(0xFF1B231A), inkMuted = Color(0xFF56604F),
+    ai = Color(0xFF2F6B3A), aiSoft = Color(0xFFD9EBD4), aiFaint = Color(0xFFEFF6EC),
 )
 
-private val BambooDark = Tones(
-    dark = true,
-    paper = Color(0xFF10150F), surface = Color(0xFF171E16), surfaceVariant = Color(0xFF252E23),
-    surfaceContainer = Color(0xFF1B2319), surfaceContainerHigh = Color(0xFF222B20),
-    outline = Color(0xFF6C7767), outlineVariant = Color(0xFF333D30),
-    ink = Color(0xFFE3E8DD), muted = Color(0xFFAEB8A7),
-    accent = Color(0xFF8FD19B), onAccent = Color(0xFF0C2412),
-    accentContainer = Color(0xFF24452B), onAccentContainer = Color(0xFFD5E8D0),
+private val BambooNight = SumiNight.copy(
+    paper = Color(0xFF10150F), surface = Color(0xFF181F17), surfaceSunk = Color(0xFF222B20), line = Color(0xFF2E382B),
+    ink = Color(0xFFE3E8DD), inkMuted = Color(0xFFAEB8A7),
+    ai = Color(0xFF8FD19B), onAi = Color(0xFF0C2412), aiSoft = Color(0xFF24452B), aiFaint = Color(0xFF1A2A1C),
 )
 
-private fun tonesFor(theme: InkTheme, dark: Boolean): Tones = when (theme) {
-    InkTheme.SUMI -> if (dark) SumiDark else SumiLight
+private fun colorsFor(theme: InkTheme, dark: Boolean): SumiColors = when (theme) {
+    InkTheme.SUMI -> if (dark) SumiNight else Washi
     InkTheme.INDIGO_NIGHT -> IndigoNight
-    InkTheme.BAMBOO -> if (dark) BambooDark else BambooLight
+    InkTheme.BAMBOO -> if (dark) BambooNight else BambooDay
 }
 
-private fun Tones.colorScheme() = if (dark) {
+private fun SumiColors.colorScheme() = if (dark) {
     darkColorScheme(
-        primary = accent, onPrimary = onAccent,
-        primaryContainer = accentContainer, onPrimaryContainer = onAccentContainer,
-        secondary = Kin, onSecondary = Color(0xFF3A2A00),
-        secondaryContainer = Color(0xFF4F3B0C), onSecondaryContainer = Color(0xFFF6E6BC),
+        primary = ai, onPrimary = onAi,
+        primaryContainer = aiSoft, onPrimaryContainer = ink,
+        secondary = kin, onSecondary = Color(0xFF1D1F26),
+        secondaryContainer = kinSoft, onSecondaryContainer = ink,
+        tertiary = shu, onTertiary = onShu,
         background = paper, onBackground = ink, surface = surface, onSurface = ink,
-        surfaceVariant = surfaceVariant, onSurfaceVariant = muted,
-        surfaceContainer = surfaceContainer, surfaceContainerHigh = surfaceContainerHigh,
-        outline = outline, outlineVariant = outlineVariant, error = ShuLight,
+        surfaceVariant = surfaceSunk, onSurfaceVariant = inkMuted,
+        surfaceContainerLowest = surface, surfaceContainerLow = surface,
+        surfaceContainer = surface, surfaceContainerHigh = surface, surfaceContainerHighest = surfaceSunk,
+        outline = inkMuted, outlineVariant = line, error = shu, onError = onShu,
     )
 } else {
     lightColorScheme(
-        primary = accent, onPrimary = onAccent,
-        primaryContainer = accentContainer, onPrimaryContainer = onAccentContainer,
+        primary = ai, onPrimary = onAi,
+        primaryContainer = aiSoft, onPrimaryContainer = ink,
         secondary = Color(0xFF8A6410), onSecondary = Color.White,
-        secondaryContainer = Color(0xFFF6E6BC), onSecondaryContainer = Color(0xFF3A2A00),
+        secondaryContainer = kinSoft, onSecondaryContainer = ink,
+        tertiary = shu, onTertiary = onShu,
         background = paper, onBackground = ink, surface = surface, onSurface = ink,
-        surfaceVariant = surfaceVariant, onSurfaceVariant = muted,
-        surfaceContainer = surfaceContainer, surfaceContainerHigh = surfaceContainerHigh,
-        outline = outline, outlineVariant = outlineVariant, error = Color(0xFFC23B24),
+        surfaceVariant = surfaceSunk, onSurfaceVariant = inkMuted,
+        surfaceContainerLowest = surface, surfaceContainerLow = surface,
+        surfaceContainer = surface, surfaceContainerHigh = surface, surfaceContainerHighest = surfaceSunk,
+        outline = inkMuted, outlineVariant = line, error = shu, onError = onShu,
     )
 }
 
-/** Board colours that Material's scheme has no slot for. */
+/** Board colours, all taken from the palette's roles. */
 @Immutable
 data class BoardColors(
+    val well: Color,
+    val cell: Color,
+    val line: Color,
     val selected: Color,
     val sameNumber: Color,
     val peer: Color,
@@ -156,78 +167,103 @@ data class BoardColors(
     val given: Color,
     val entered: Color,
     val wrong: Color,
-    val thinLine: Color,
-    val thickLine: Color,
+    val notes: Color,
     /** Rows, columns and boxes a hint reasons about. */
     val hintArea: Color,
     /** The cells that make up a hint's pattern. */
     val hintFocus: Color,
+    /** The wash that sweeps across a finished row, column or box. */
+    val wash: Color,
 )
 
-private fun Tones.boardColors(): BoardColors {
-    val wrong = if (dark) ShuLight else Shu
-    return BoardColors(
-        selected = Kin.copy(alpha = if (dark) 0.34f else 0.50f),
-        sameNumber = accent.copy(alpha = if (dark) 0.20f else 0.16f),
-        peer = accent.copy(alpha = if (dark) 0.07f else 0.06f),
-        wrongBackground = wrong.copy(alpha = if (dark) 0.12f else 0.10f),
-        given = ink,
-        entered = accent,
-        wrong = wrong,
-        thinLine = if (dark) Color.White.copy(alpha = 0.11f) else ink.copy(alpha = 0.14f),
-        thickLine = ink.copy(alpha = if (dark) 0.70f else 0.85f),
-        hintArea = accent.copy(alpha = if (dark) 0.10f else 0.08f),
-        hintFocus = Kin.copy(alpha = if (dark) 0.40f else 0.55f),
-    )
-}
+private fun SumiColors.boardColors() = BoardColors(
+    well = surfaceSunk,
+    cell = surface,
+    line = line,
+    selected = kin,
+    sameNumber = aiSoft,
+    peer = aiFaint,
+    wrongBackground = shuSoft,
+    given = ink,
+    entered = ai,
+    wrong = shu,
+    notes = inkMuted,
+    hintArea = aiFaint,
+    hintFocus = if (dark) kin.copy(alpha = 0.42f) else kinSoft,
+    wash = matcha,
+)
 
-val LocalBoardColors = staticCompositionLocalOf { SumiLight.boardColors() }
+val LocalSumiColors = staticCompositionLocalOf { Washi }
+val LocalBoardColors = staticCompositionLocalOf { Washi.boardColors() }
+
+/** The current palette's colour roles. */
+object Sumi {
+    val colors: SumiColors
+        @Composable @ReadOnlyComposable get() = LocalSumiColors.current
+}
 
 /** Whether [theme] draws dark, given the system setting [systemDark]. */
 fun InkTheme.isDark(systemDark: Boolean) = alwaysDark || systemDark
 
 /** The paper, accent and ink of [theme], for drawing a small preview swatch. */
 fun InkTheme.swatch(dark: Boolean): Triple<Color, Color, Color> =
-    tonesFor(this, isDark(dark)).let { Triple(it.paper, it.accent, it.ink) }
+    colorsFor(this, isDark(dark)).let { Triple(it.paper, it.ai, it.ink) }
 
-/** Lexend, a typeface designed for easy reading, used for everything. */
-val Lexend = FontFamily(
-    Font(R.font.lexend_light, FontWeight.Light),
-    Font(R.font.lexend_regular, FontWeight.Normal),
-    Font(R.font.lexend_medium, FontWeight.Medium),
-    Font(R.font.lexend_semibold, FontWeight.SemiBold),
-    Font(R.font.lexend_bold, FontWeight.Bold),
+/** Sora: wide, open figures for titles and every number on the board and pad. */
+val Sora = FontFamily(
+    Font(R.font.sora_regular, FontWeight.Normal),
+    Font(R.font.sora_medium, FontWeight.Medium),
+    Font(R.font.sora_semibold, FontWeight.SemiBold),
+    Font(R.font.sora_bold, FontWeight.Bold),
 )
 
-private val AppTypography = Typography().run {
-    fun TextStyle.lexend(weight: FontWeight? = fontWeight) = copy(fontFamily = Lexend, fontWeight = weight)
-    copy(
-        displayLarge = displayLarge.lexend(),
-        displayMedium = displayMedium.lexend(),
-        displaySmall = displaySmall.lexend(FontWeight.Light).copy(letterSpacing = (-0.5).sp),
-        headlineLarge = headlineLarge.lexend(),
-        headlineMedium = headlineMedium.lexend(),
-        headlineSmall = headlineSmall.lexend(FontWeight.Medium),
-        titleLarge = titleLarge.lexend(FontWeight.Medium),
-        titleMedium = titleMedium.lexend(),
-        titleSmall = titleSmall.lexend(),
-        bodyLarge = bodyLarge.lexend(),
-        bodyMedium = bodyMedium.lexend(),
-        bodySmall = bodySmall.lexend(),
-        labelLarge = labelLarge.lexend(FontWeight.Medium),
-        labelMedium = labelMedium.lexend(),
-        labelSmall = labelSmall.lexend(),
-    )
-}
+/** Inter: everything you read. */
+val Inter = FontFamily(
+    Font(R.font.inter_regular, FontWeight.Normal),
+    Font(R.font.inter_medium, FontWeight.Medium),
+    Font(R.font.inter_semibold, FontWeight.SemiBold),
+    Font(R.font.inter_bold, FontWeight.Bold),
+)
 
-/**
- * Lexend has proportional digits only, so the timer draws each character in a
- * fixed-width slot (see TimerText) to keep it from jittering as digits change.
- */
+private fun sora(size: Int, line: Int, weight: FontWeight = FontWeight.SemiBold, tracking: Float = 0f) =
+    TextStyle(fontFamily = Sora, fontWeight = weight, fontSize = size.sp, lineHeight = line.sp, letterSpacing = tracking.sp)
+
+private fun inter(size: Int, line: Int, weight: FontWeight = FontWeight.Normal, tracking: Float = 0f) =
+    TextStyle(fontFamily = Inter, fontWeight = weight, fontSize = size.sp, lineHeight = line.sp, letterSpacing = tracking.sp)
+
+/** The type scale from the brand guideline, mapped onto Material's slots. */
+private val AppTypography = Typography(
+    displayLarge = sora(44, 48, tracking = -0.5f),
+    displayMedium = sora(38, 44, tracking = -0.5f),
+    displaySmall = sora(30, 36, tracking = -0.3f),
+    headlineLarge = sora(30, 36, tracking = -0.3f),
+    headlineMedium = sora(26, 32),
+    headlineSmall = sora(22, 28),
+    titleLarge = sora(20, 26),
+    titleMedium = sora(17, 22),
+    titleSmall = sora(15, 20),
+    bodyLarge = inter(16, 24),
+    bodyMedium = inter(14, 20),
+    bodySmall = inter(12, 16, FontWeight.Medium),
+    labelLarge = inter(15, 20, FontWeight.Bold),
+    labelMedium = inter(13, 18, FontWeight.SemiBold),
+    labelSmall = inter(11, 16, FontWeight.Bold, tracking = 1.1f),
+)
+
+private val AppShapes = Shapes(
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(16.dp),
+    medium = RoundedCornerShape(24.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(32.dp),
+)
+
+/** Tabular figures, so the timer doesn't jitter as its digits change. */
 val TimerStyle = TextStyle(
-    fontFamily = Lexend,
-    fontWeight = FontWeight.Medium,
-    fontSize = 16.sp,
+    fontFamily = Inter,
+    fontWeight = FontWeight.Bold,
+    fontSize = 15.sp,
+    fontFeatureSettings = "tnum",
 )
 
 @Composable
@@ -236,11 +272,15 @@ fun SudokuTheme(
     theme: InkTheme = InkTheme.SUMI,
     content: @Composable () -> Unit,
 ) {
-    val tones = tonesFor(theme, theme.isDark(darkTheme))
-    CompositionLocalProvider(LocalBoardColors provides tones.boardColors()) {
+    val colors = colorsFor(theme, theme.isDark(darkTheme))
+    CompositionLocalProvider(
+        LocalSumiColors provides colors,
+        LocalBoardColors provides colors.boardColors(),
+    ) {
         MaterialTheme(
-            colorScheme = tones.colorScheme(),
+            colorScheme = colors.colorScheme(),
             typography = AppTypography,
+            shapes = AppShapes,
             content = content,
         )
     }
