@@ -205,22 +205,67 @@ object Tutorial {
 
     /**
      * A fresh puzzle at [lesson]'s level whose logical solution uses the
-     * lesson's technique at least once, for practising it. Tries up to
-     * [attempts] puzzles; if none needs the technique (rare techniques can
-     * take a while), returns the last one, which is still at the right level,
-     * with [Practice.usesTechnique] false.
+     * lesson's technique at least once, for practising it.
+     *
+     * Most techniques turn up within a few random puzzles, so it tries up to
+     * [attempts] of those. Some are rare (a naked quad can take hundreds), so
+     * if none turns up it falls back to a random one of [PRACTICE_SEEDS],
+     * seeds known to give a puzzle that needs the technique (the generator is
+     * deterministic, and TutorialTest checks they still do). Without seeds it
+     * returns the last puzzle tried, still at the right level, with
+     * [Practice.usesTechnique] false.
      */
     fun practice(lesson: Lesson, random: Random = Random.Default, attempts: Int = PRACTICE_ATTEMPTS): Practice {
+        fun generate(r: Random) = if (lesson.killer) Killer.generate(lesson.level, r) else Generator.generate(lesson.level, r)
+        fun uses(puzzle: Puzzle) = LogicSolver.grade(puzzle.givens, puzzle.cages).count(lesson.technique) > 0
+
+        val seeds = PRACTICE_SEEDS[lesson.technique].orEmpty()
         var last: Puzzle? = null
-        repeat(attempts) {
-            val puzzle = if (lesson.killer) Killer.generate(lesson.level, random) else Generator.generate(lesson.level, random)
-            if (LogicSolver.grade(puzzle.givens, puzzle.cages).count(lesson.technique) > 0) return Practice(puzzle, true)
+        repeat(if (lesson.technique in RARE) RARE_ATTEMPTS else attempts) {
+            val puzzle = generate(random)
+            if (uses(puzzle)) return Practice(puzzle, true)
             last = puzzle
         }
-        return Practice(last!!, false)
+        if (seeds.isNotEmpty()) return Practice(generate(Random(seeds.random(random))), true)
+        return Practice(last ?: generate(random), false)
     }
 
-    private const val PRACTICE_ATTEMPTS = 30
+    private const val PRACTICE_ATTEMPTS = 12
+
+    /** Random tries before a rare technique falls back to its seeds, so practice still varies. */
+    private const val RARE_ATTEMPTS = 3
+
+    /** Techniques that need dozens to hundreds of random puzzles to turn up. */
+    private val RARE = setOf(Technique.NAKED_TRIPLE, Technique.HIDDEN_TRIPLE, Technique.NAKED_QUAD)
+
+    /**
+     * For techniques that don't always turn up within a few random puzzles:
+     * seeds whose puzzle at the lesson's level needs the technique. Found by
+     * searching generated puzzles.
+     */
+    val PRACTICE_SEEDS: Map<Technique, List<Int>> = mapOf(
+        Technique.CLAIMING to listOf(
+            1002, 1003, 1006, 1008, 1011, 1013, 1014, 1019, 1021, 1022, 1025, 1026, 1028, 1030, 1034, 1035, 1036, 1042, 1043, 1044, 1046, 1047, 1049, 1055,
+        ),
+        Technique.NAKED_PAIR to listOf(
+            1003, 1006, 1010, 1011, 1013, 1014, 1019, 1022, 1025, 1028, 1030, 1031, 1032, 1035, 1036, 1041, 1043, 1046, 1047, 1055, 1056, 1058, 1061, 1064,
+        ),
+        Technique.NAKED_TRIPLE to listOf(
+            1034, 1045, 1068, 1081, 1093, 1100, 1103, 1113, 1124, 1125, 1131, 1139, 1145, 1160, 1164, 1170, 1173, 1180, 1187, 1204, 1221, 1229, 1240, 1250,
+        ),
+        Technique.HIDDEN_TRIPLE to listOf(
+            1000, 1036, 1051, 1069, 1083, 1100, 1133, 1142, 1158, 1172, 1173, 1198, 1200, 1247, 1262, 1272, 1475, 1483, 1496, 1577, 1660, 1706, 1723, 1737,
+        ),
+        Technique.X_WING to listOf(
+            1004, 1005, 1006, 1018, 1019, 1022, 1026, 1027, 1031, 1037, 1038, 1041, 1050, 1055, 1056, 1058, 1061, 1063, 1064, 1065, 1074, 1076, 1079, 1081,
+        ),
+        Technique.NAKED_QUAD to listOf(
+            1000, 1150, 1793, 1917, 2137, 3300, 3448, 4341, 4426, 4620, 5592, 5871, 5970, 7237, 7418, 7424, 8382, 8390, 8741, 9403, 9650, 10499, 10834, 10951,
+        ),
+        Technique.SWORDFISH to listOf(
+            1001, 1004, 1011, 1016, 1020, 1029, 1030, 1032, 1042, 1043, 1050, 1052, 1053, 1054, 1064, 1071, 1076, 1080, 1086, 1089, 1091, 1092, 1098, 1104,
+        ),
+    )
 
     /** Builds [lesson]'s worked example, or null if it has none. Takes up to about a tenth of a second. */
     fun example(lesson: Lesson): Example? {
