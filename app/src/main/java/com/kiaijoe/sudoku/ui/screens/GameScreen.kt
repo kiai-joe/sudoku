@@ -93,6 +93,7 @@ import com.kiaijoe.sudoku.ui.components.icon
 import com.kiaijoe.sudoku.ui.formatTime
 import com.kiaijoe.sudoku.ui.icons.Lucide
 import com.kiaijoe.sudoku.ui.theme.Sumi
+import kotlinx.coroutines.delay
 
 /** The level as a title: "Medium", "Killer · Medium", "Daily · Killer Medium". */
 private fun GameState.title(): String = when {
@@ -129,7 +130,11 @@ fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
     Page {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             SumiTopBar(
-                title = if (state.generating || game == null) "New game" else game.title(),
+                title = when {
+                    state.generating || game == null -> "New game"
+                    state.practice != null && game.daily == null -> "Practice · ${state.practice.label}"
+                    else -> game.title()
+                },
                 onBack = onExit,
             ) {
                 if (game != null && game.status == GameStatus.PLAYING && !state.generating) {
@@ -516,12 +521,16 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
                 )
             }
             if (game.daily != null) {
-                val streak = state.daily.streak
+                val streak = (if (game.isKiller) state.killerDaily else state.daily).streak
                 add {
                     ListRow(
                         icon = Lucide.Flame,
-                        title = "$streak-day streak",
-                        subtitle = "Daily puzzle done. Come back tomorrow to keep it going.",
+                        title = if (game.isKiller) "$streak-day Killer streak" else "$streak-day streak",
+                        subtitle = if (game.isKiller) {
+                            "Daily Killer done. Come back tomorrow to keep it going."
+                        } else {
+                            "Daily puzzle done. Come back tomorrow to keep it going."
+                        },
                         iconColor = c.shu,
                         iconBackground = c.shuSoft,
                     )
@@ -582,20 +591,49 @@ private fun StatusRow(state: UiState, game: GameState) {
 private fun GameActions.newLike(game: GameState) =
     if (game.isKiller) newKiller(game.difficulty) else newGame(game.difficulty)
 
-/** A short vibration for each input, through the system's own haptic feedback settings. */
+/**
+ * A short vibration for each input, and a longer pattern for a solved puzzle
+ * or a lost game, through the system's own haptic feedback (so it follows the
+ * phone's touch-feedback setting and needs no permission). A pattern is a few
+ * system effects in a row.
+ */
 @Composable
 private fun Haptics(feedback: Feedback?, enabled: Boolean) {
     val view = LocalView.current
     LaunchedEffect(feedback?.id) {
         if (feedback == null || !enabled) return@LaunchedEffect
-        val modern = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-        val constant = when (feedback.kind) {
-            FeedbackKind.PLACE -> HapticFeedbackConstants.KEYBOARD_TAP
-            FeedbackKind.NOTE -> HapticFeedbackConstants.CLOCK_TICK
-            FeedbackKind.WRONG -> if (modern) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
-            FeedbackKind.COMPLETE -> if (modern) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.CONTEXT_CLICK
+        for ((i, step) in hapticPattern(feedback.kind, Build.VERSION.SDK_INT).withIndex()) {
+            if (i > 0) delay(step.delayMillis)
+            view.performHapticFeedback(step.constant)
         }
-        view.performHapticFeedback(constant)
+    }
+}
+
+/** One effect in a vibration pattern, [delayMillis] after the one before. */
+internal data class HapticStep(val constant: Int, val delayMillis: Long = 0)
+
+/** The system haptic effects for [kind], in order. [sdk] picks effects the phone has. */
+internal fun hapticPattern(kind: FeedbackKind, sdk: Int): List<HapticStep> {
+    val modern = sdk >= Build.VERSION_CODES.R
+    val confirm = if (modern) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.CONTEXT_CLICK
+    val reject = if (modern) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
+    return when (kind) {
+        FeedbackKind.PLACE -> listOf(HapticStep(HapticFeedbackConstants.KEYBOARD_TAP))
+        FeedbackKind.NOTE, FeedbackKind.HINT_STEP -> listOf(HapticStep(HapticFeedbackConstants.CLOCK_TICK))
+        FeedbackKind.WRONG -> listOf(HapticStep(reject))
+        FeedbackKind.COMPLETE -> listOf(HapticStep(confirm))
+        // Three rising beats, like the stamp coming down.
+        FeedbackKind.WIN -> listOf(
+            HapticStep(HapticFeedbackConstants.CLOCK_TICK),
+            HapticStep(HapticFeedbackConstants.CONTEXT_CLICK, delayMillis = 110),
+            HapticStep(confirm, delayMillis = 140),
+            HapticStep(HapticFeedbackConstants.LONG_PRESS, delayMillis = 160),
+        )
+        // Two heavy buzzes.
+        FeedbackKind.LOSE -> listOf(
+            HapticStep(reject),
+            HapticStep(reject, delayMillis = 220),
+        )
     }
 }
 

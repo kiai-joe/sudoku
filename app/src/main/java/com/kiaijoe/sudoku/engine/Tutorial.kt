@@ -29,6 +29,9 @@ data class Lesson(
  */
 data class Example(val game: GameState, val cards: List<HintCard>, val start: Int = 0)
 
+/** A practice puzzle for a lesson, and whether solving it by logic needs the lesson's technique. */
+class Practice(val puzzle: Puzzle, val usesTechnique: Boolean)
+
 object Tutorial {
 
     val lessons: List<Lesson> = listOf(
@@ -156,6 +159,28 @@ object Tutorial {
             level = Difficulty.MEDIUM, seed = 0, moves = 6, killer = true,
         ),
     )
+
+    /** Whether [lesson] offers practice: every lesson with a worked example does. */
+    fun hasPractice(lesson: Lesson): Boolean = lesson.seed != null
+
+    /**
+     * A fresh puzzle at [lesson]'s level whose logical solution uses the
+     * lesson's technique at least once, for practising it. Tries up to
+     * [attempts] puzzles; if none needs the technique (rare techniques can
+     * take a while), returns the last one, which is still at the right level,
+     * with [Practice.usesTechnique] false.
+     */
+    fun practice(lesson: Lesson, random: Random = Random.Default, attempts: Int = PRACTICE_ATTEMPTS): Practice {
+        var last: Puzzle? = null
+        repeat(attempts) {
+            val puzzle = if (lesson.killer) Killer.generate(lesson.level, random) else Generator.generate(lesson.level, random)
+            if (LogicSolver.grade(puzzle.givens, puzzle.cages).count(lesson.technique) > 0) return Practice(puzzle, true)
+            last = puzzle
+        }
+        return Practice(last!!, false)
+    }
+
+    private const val PRACTICE_ATTEMPTS = 30
 
     /** Builds [lesson]'s worked example, or null if it has none. Takes up to about a tenth of a second. */
     fun example(lesson: Lesson): Example? {

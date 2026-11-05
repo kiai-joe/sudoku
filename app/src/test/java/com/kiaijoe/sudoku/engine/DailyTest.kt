@@ -17,15 +17,15 @@ class DailyTest {
         // 2026-11-02 is a Monday.
         val expected = listOf(
             Difficulty.EASY, Difficulty.EASY, Difficulty.MEDIUM, Difficulty.MEDIUM,
-            Difficulty.HARD, Difficulty.MEDIUM, Difficulty.EXPERT,
+            Difficulty.HARD, Difficulty.HARD, Difficulty.EXPERT,
         )
         for ((i, level) in expected.withIndex()) {
             val d = day("2026-11-02") + i
             assertEquals(level, Daily.difficultyFor(d))
-            assertEquals("only Saturday is Killer", i == 5, Daily.isKiller(d))
+            assertEquals(level, Daily.killerDifficultyFor(d))
         }
-        assertEquals("Killer · Medium", Daily.label(day("2026-11-07")))
-        assertEquals("Hard", Daily.label(day("2026-11-06")))
+        assertEquals("Hard", Daily.label(day("2026-11-07")))
+        assertEquals("Killer · Hard", Daily.label(day("2026-11-07"), killer = true))
     }
 
     @Test
@@ -35,6 +35,10 @@ class DailyTest {
         val b = Daily.puzzleFor(today)
         assertArrayEquals(a.givens, b.givens)
         assertFalse(a.givens.contentEquals(Daily.puzzleFor(today + 7).givens))
+        val k = Daily.killerPuzzleFor(today)
+        assertEquals(k.cages, Daily.killerPuzzleFor(today).cages)
+        assertTrue(k.cages.isNotEmpty())
+        assertFalse(k.cages == Daily.killerPuzzleFor(today + 7).cages)
     }
 
     @Test
@@ -45,13 +49,17 @@ class DailyTest {
             val puzzle = Daily.puzzleFor(d)
             val grade = LogicSolver.grade(puzzle.givens, puzzle.cages)
             assertTrue("day $offset solvable", grade.solved)
-            val level = if (Daily.isKiller(d)) {
-                assertTrue("Saturday has cages", puzzle.cages.isNotEmpty())
-                Killer.levelOf(grade.hardest, puzzle.givens.count { it != 0 })
-            } else {
-                grade.level
-            }
-            assertEquals("day $offset", Daily.difficultyFor(d), level)
+            assertTrue("day $offset is classic", puzzle.cages.isEmpty())
+            assertEquals("day $offset", Daily.difficultyFor(d), grade.level)
+
+            val killer = Daily.killerPuzzleFor(d)
+            val killerGrade = LogicSolver.grade(killer.givens, killer.cages)
+            assertTrue("Killer day $offset solvable", killerGrade.solved)
+            assertEquals(
+                "Killer day $offset",
+                Daily.killerDifficultyFor(d),
+                Killer.levelOf(killerGrade.hardest, killer.givens.count { it != 0 }),
+            )
         }
     }
 
@@ -62,6 +70,9 @@ class DailyTest {
         assertEquals(d, game.daily)
         assertEquals(d, GameCodec.decode(GameCodec.encode(game))?.daily)
         assertNull(GameCodec.decode(GameCodec.encode(game.copy(daily = null)))?.daily)
+        val killer = Daily.gameFor(d, killer = true)
+        assertEquals(d, killer.daily)
+        assertTrue(killer.isKiller)
     }
 
     @Test
@@ -98,7 +109,9 @@ class DailyTest {
         assertEquals(300L, stats[0].averageSeconds)
         assertEquals(200L, stats[0].bestSeconds)
         assertEquals(Difficulty.EXPERT, stats[6].difficulty)
-        assertTrue("Saturday is Killer", stats[5].killer)
+        assertEquals(Difficulty.HARD, stats[5].difficulty)
+        assertFalse(stats[5].killer)
+        assertTrue(Daily.weekdayStats(results, killer = true).all { it.killer })
         assertEquals(900L, stats[6].averageSeconds)
         assertEquals(0, stats[2].solved)
         assertNull(stats[2].averageSeconds)

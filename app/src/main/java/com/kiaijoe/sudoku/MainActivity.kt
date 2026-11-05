@@ -75,12 +75,14 @@ private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewM
     val state by viewModel.ui.collectAsStateWithLifecycle()
     var screen by rememberSaveable { mutableStateOf(Screen.Home) }
     var lessonIndex by rememberSaveable { mutableIntStateOf(0) }
+    var calendarKiller by rememberSaveable { mutableStateOf(false) }
 
     // The widget's Play or Continue: straight into today's puzzle, or to the
     // Daily tab if it was solved since the widget last refreshed.
     LaunchedEffect(openDailyRequests) {
         if (openDailyRequests == 0) return@LaunchedEffect
         viewModel.playDaily()
+        calendarKiller = false
         screen = if (viewModel.ui.value.daily.solvedToday) Screen.Calendar else Screen.Game
     }
 
@@ -92,8 +94,8 @@ private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewM
         LaunchedEffect(screen) { if (screen == Screen.Home || screen == Screen.Calendar) viewModel.refreshDaily() }
 
         val onTab: (Tab) -> Unit = { screen = it.screen }
-        val playDaily = {
-            viewModel.playDaily()
+        val playDaily = { killer: Boolean ->
+            viewModel.playDaily(killer)
             screen = Screen.Game
         }
 
@@ -104,8 +106,16 @@ private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewM
                     viewModel.continueGame()
                     screen = Screen.Game
                 },
-                onPlayDaily = playDaily,
-                onCalendar = { screen = Screen.Calendar },
+                onPlayDaily = { playDaily(false) },
+                onCalendar = {
+                    calendarKiller = false
+                    screen = Screen.Calendar
+                },
+                onPlayKillerDaily = { playDaily(true) },
+                onKillerCalendar = {
+                    calendarKiller = true
+                    screen = Screen.Calendar
+                },
                 onNewGame = { difficulty ->
                     viewModel.newGame(difficulty)
                     screen = Screen.Game
@@ -155,6 +165,15 @@ private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewM
                     },
                     onBack = { screen = Screen.Learn },
                     onComplete = { viewModel.completeLesson(Tutorial.lessons[lessonIndex].technique.name) },
+                    onPractice = if (Tutorial.hasPractice(Tutorial.lessons[lessonIndex])) {
+                        {
+                            viewModel.practice(Tutorial.lessons[lessonIndex])
+                            screen = Screen.Game
+                        }
+                    } else {
+                        null
+                    },
+                    practiceReplacesGame = state.canContinue,
                 )
             }
             Screen.Calendar -> CalendarScreen(
@@ -162,6 +181,9 @@ private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewM
                 onBack = { screen = Screen.Home },
                 onPlayDaily = playDaily,
                 onTab = onTab,
+                killerDaily = state.killerDaily,
+                showKiller = calendarKiller,
+                onShowKiller = { calendarKiller = it },
             )
             Screen.Stats -> StatsScreen(
                 stats = state.stats,

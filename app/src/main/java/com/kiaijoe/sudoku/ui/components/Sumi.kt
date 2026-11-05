@@ -19,6 +19,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
@@ -395,4 +397,55 @@ fun Page(modifier: Modifier = Modifier, content: @Composable BoxScope.() -> Unit
             .background(Sumi.colors.paper),
         content = content,
     )
+}
+
+/** One choice in a [SegmentedControl]. */
+data class Segment(val label: String, val icon: ImageVector? = null)
+
+/**
+ * A segmented control on one pill-shaped card, the chosen segment filled
+ * indigo. Greyed out when not [enabled]. Screen readers hear radio buttons.
+ */
+@Composable
+fun SegmentedControl(
+    segments: List<Segment>,
+    selected: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+) {
+    val c = Sumi.colors
+    Row(
+        modifier
+            .fillMaxWidth()
+            .card(c, CircleShape)
+            .padding(5.dp)
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        segments.forEachIndexed { i, segment ->
+            val on = i == selected
+            val fg = when {
+                !enabled -> c.inkMuted.copy(alpha = 0.5f)
+                on -> c.onAi
+                else -> c.inkMuted
+            }
+            Row(
+                Modifier
+                    .weight(1f)
+                    .height(42.dp)
+                    .clip(CircleShape)
+                    .background(if (on) (if (enabled) c.ai else c.surfaceSunk) else c.surface)
+                    .selectable(selected = on, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(i) }),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (segment.icon != null) {
+                    Icon(segment.icon, contentDescription = null, tint = fg, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(6.dp))
+                }
+                Text(segment.label, style = MaterialTheme.typography.labelMedium, color = fg, maxLines = 1)
+            }
+        }
+    }
 }

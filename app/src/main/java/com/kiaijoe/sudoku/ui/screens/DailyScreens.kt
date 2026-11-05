@@ -37,7 +37,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.engine.Daily
 import com.kiaijoe.sudoku.ui.DailyUi
+import com.kiaijoe.sudoku.ui.components.ButtonTone
+import com.kiaijoe.sudoku.ui.components.CardShape
 import com.kiaijoe.sudoku.ui.components.ChipTone
+import com.kiaijoe.sudoku.ui.components.IconBadge
+import com.kiaijoe.sudoku.ui.components.Segment
+import com.kiaijoe.sudoku.ui.components.SegmentedControl
+import com.kiaijoe.sudoku.ui.components.card
 import com.kiaijoe.sudoku.ui.components.IconTile
 import com.kiaijoe.sudoku.ui.components.Overline
 import com.kiaijoe.sudoku.ui.components.PillButton
@@ -87,6 +93,54 @@ fun DailyCard(daily: DailyUi, onPlay: () -> Unit, onCalendar: () -> Unit, modifi
     }
 }
 
+/**
+ * The home screen's smaller card for today's Killer: its level, the Killer
+ * streak, and Play, Continue or the solved time. Tapping the card opens the
+ * Daily tab on the Killer calendar.
+ */
+@Composable
+fun KillerDailyCard(daily: DailyUi, onPlay: () -> Unit, onCalendar: () -> Unit, modifier: Modifier = Modifier) {
+    val c = Sumi.colors
+    Row(
+        modifier
+            .fillMaxWidth()
+            .card(c)
+            .clip(CardShape)
+            .clickable(role = Role.Button, onClickLabel = "Open the Killer calendar", onClick = onCalendar)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconBadge(Lucide.SquareDashed, tint = c.shu, background = c.shuSoft)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Overline("Daily Killer")
+            Text(daily.difficulty.label, style = MaterialTheme.typography.titleLarge, color = c.ink)
+            Text(
+                when (val streak = daily.streak) {
+                    0 -> "Its own streak, apart from the classic one"
+                    1 -> "1-day Killer streak"
+                    else -> "$streak-day Killer streak"
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = c.inkMuted,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        val solvedIn = daily.todaySeconds
+        if (solvedIn != null) {
+            SumiChip(formatTime(solvedIn), tone = ChipTone.Matcha, icon = Lucide.CheckCheck)
+        } else {
+            PillButton(
+                if (daily.inProgress != null) "Continue" else "Play",
+                onPlay,
+                icon = Lucide.Play,
+                height = 44.dp,
+                tone = ButtonTone.Seal,
+            )
+        }
+    }
+}
+
 /** Monday to Sunday of this week: vermilion on solved days, a ring on today. */
 @Composable
 private fun WeekStrip(daily: DailyUi, onCalendar: () -> Unit) {
@@ -132,13 +186,22 @@ private fun dayDescription(daily: DailyUi, day: Long, label: String): String = "
     else -> "not solved"
 }
 
-/** The Daily tab: the streak, a month at a time with every solved day, and how each weekday goes. */
+/**
+ * The Daily tab: the classic daily or the daily Killer, switched at the top,
+ * each with its streak, a month at a time with every solved day, and how
+ * each weekday goes.
+ *
+ * @param onPlayDaily plays today's puzzle; true for the Killer one.
+ */
 @Composable
 fun CalendarScreen(
     daily: DailyUi,
     onBack: () -> Unit,
-    onPlayDaily: () -> Unit = {},
+    onPlayDaily: (killer: Boolean) -> Unit = {},
     onTab: ((Tab) -> Unit)? = null,
+    killerDaily: DailyUi = DailyUi(today = daily.today, killer = true),
+    showKiller: Boolean = false,
+    onShowKiller: (Boolean) -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val c = Sumi.colors
@@ -147,8 +210,16 @@ fun CalendarScreen(
     val month = YearMonth.from(today).plusMonths(monthIndex)
 
     TabPage(Tab.Daily, onTab, maxContentWidth = 1040.dp) {
-        ScreenTitle("Daily puzzle", "A new puzzle every day, the same for everyone.")
-        Spacer(Modifier.height(18.dp))
+        ScreenTitle("Daily puzzles", "A classic and a Killer puzzle every day, the same for everyone.")
+        Spacer(Modifier.height(14.dp))
+        SegmentedControl(
+            segments = listOf(Segment("Classic", Lucide.Grid3x3), Segment("Killer", Lucide.SquareDashed)),
+            selected = if (showKiller) 1 else 0,
+            onSelect = { onShowKiller(it == 1) },
+        )
+        Spacer(Modifier.height(14.dp))
+        @Suppress("NAME_SHADOWING")
+        val daily = if (showKiller) killerDaily else daily
 
         SumiCard(Modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -169,7 +240,12 @@ fun CalendarScreen(
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (daily.streak == 1) "1-day streak" else "${daily.streak}-day streak",
+                        when {
+                            daily.killer && daily.streak == 1 -> "1-day Killer streak"
+                            daily.killer -> "${daily.streak}-day Killer streak"
+                            daily.streak == 1 -> "1-day streak"
+                            else -> "${daily.streak}-day streak"
+                        },
                         style = MaterialTheme.typography.titleLarge,
                         color = c.ink,
                     )
@@ -185,7 +261,7 @@ fun CalendarScreen(
                 } else {
                     PillButton(
                         if (daily.inProgress != null) "Continue" else "Play",
-                        onPlayDaily,
+                        { onPlayDaily(daily.killer) },
                         icon = Lucide.Play,
                         height = 44.dp,
                     )
@@ -296,11 +372,15 @@ private fun MonthGrid(daily: DailyUi, month: YearMonth) {
 @Composable
 private fun WeekdayCard(daily: DailyUi) {
     val c = Sumi.colors
-    val stats = Daily.weekdayStats(daily.results)
+    val stats = Daily.weekdayStats(daily.results, daily.killer)
     val longest = stats.maxOf { it.averageSeconds ?: 0L }.coerceAtLeast(1L)
     SumiCard(Modifier.fillMaxWidth()) {
         Text(
-            "Average solve time. Levels rise from Easy on Monday to Expert on Sunday, with Killer on Saturday.",
+            if (daily.killer) {
+                "Average solve time. Killer levels rise from Easy on Monday to Expert, with no printed numbers, on Sunday."
+            } else {
+                "Average solve time. Levels rise from Easy on Monday to Expert on Sunday."
+            },
             style = MaterialTheme.typography.bodySmall,
             color = c.inkMuted,
         )
@@ -308,7 +388,7 @@ private fun WeekdayCard(daily: DailyUi) {
         for (row in stats) {
             val spoken = buildString {
                 append(row.day.getDisplayName(TextStyle.FULL, Locale.getDefault()))
-                append(", ").append(if (row.killer) "Killer" else row.difficulty.label)
+                append(", ").append(row.difficulty.label)
                 if (row.solved == 0) {
                     append(", none solved yet")
                 } else {
@@ -329,9 +409,9 @@ private fun WeekdayCard(daily: DailyUi) {
                         color = c.ink,
                     )
                     Text(
-                        if (row.killer) "Killer" else row.difficulty.label,
+                        row.difficulty.label,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (row.killer) c.shu else c.inkMuted,
+                        color = c.inkMuted,
                     )
                 }
                 Box(

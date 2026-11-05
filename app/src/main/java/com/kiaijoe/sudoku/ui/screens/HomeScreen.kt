@@ -67,6 +67,8 @@ fun HomeScreen(
     onContinue: () -> Unit,
     onPlayDaily: () -> Unit,
     onCalendar: () -> Unit,
+    onPlayKillerDaily: () -> Unit = {},
+    onKillerCalendar: () -> Unit = {},
     onNewGame: (Difficulty) -> Unit,
     onNewKiller: (Difficulty) -> Unit,
     onSettings: () -> Unit,
@@ -105,6 +107,8 @@ fun HomeScreen(
         // Today's puzzle and the game in progress.
         val today: @Composable ColumnScope.() -> Unit = {
             DailyCard(state.daily, onPlay = onPlayDaily, onCalendar = onCalendar)
+            Spacer(Modifier.height(14.dp))
+            KillerDailyCard(state.killerDaily, onPlay = onPlayKillerDaily, onCalendar = onKillerCalendar)
             val game = state.savedGame
             if (state.canContinue && game != null) {
                 Spacer(Modifier.height(14.dp))

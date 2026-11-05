@@ -61,6 +61,8 @@ import com.kiaijoe.sudoku.ui.components.ListRow
 import com.kiaijoe.sudoku.ui.components.Overline
 import com.kiaijoe.sudoku.ui.components.Page
 import com.kiaijoe.sudoku.ui.components.RowChevron
+import com.kiaijoe.sudoku.ui.components.Segment
+import com.kiaijoe.sudoku.ui.components.SegmentedControl
 import com.kiaijoe.sudoku.ui.components.SumiSwitch
 import com.kiaijoe.sudoku.ui.components.SumiTopBar
 import com.kiaijoe.sudoku.ui.components.card
@@ -375,45 +377,19 @@ private fun ThemePicker(selected: InkTheme, dark: Boolean, onSelect: (InkTheme) 
  */
 @Composable
 private fun DarkModePicker(selected: DarkMode, enabled: Boolean, onSelect: (DarkMode) -> Unit) {
-    val c = Sumi.colors
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .card(c, CircleShape)
-            .padding(5.dp)
-            .selectableGroup(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        for (mode in DarkMode.entries) {
-            val on = mode == selected
-            val fg = when {
-                !enabled -> c.inkMuted.copy(alpha = 0.5f)
-                on -> c.onAi
-                else -> c.inkMuted
-            }
-            Row(
-                Modifier
-                    .weight(1f)
-                    .height(42.dp)
-                    .clip(CircleShape)
-                    .background(if (on) (if (enabled) c.ai else c.surfaceSunk) else c.surface)
-                    .selectable(selected = on, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(mode) }),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    when (mode) {
-                        DarkMode.SYSTEM -> Lucide.SunMoon
-                        DarkMode.LIGHT -> Lucide.Sun
-                        DarkMode.DARK -> Lucide.Moon
-                    },
-                    contentDescription = null,
-                    tint = fg,
-                    modifier = Modifier.size(18.dp),
-                )
-                Spacer(Modifier.width(6.dp))
-                Text(mode.label, style = MaterialTheme.typography.labelMedium, color = fg, maxLines = 1)
-            }
-        }
-    }
+    SegmentedControl(
+        segments = DarkMode.entries.map { mode ->
+            Segment(
+                mode.label,
+                when (mode) {
+                    DarkMode.SYSTEM -> Lucide.SunMoon
+                    DarkMode.LIGHT -> Lucide.Sun
+                    DarkMode.DARK -> Lucide.Moon
+                },
+            )
+        },
+        selected = selected.ordinal,
+        onSelect = { onSelect(DarkMode.entries[it]) },
+        enabled = enabled,
+    )
 }

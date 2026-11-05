@@ -71,7 +71,7 @@ class ScreenshotTest {
 
     private fun home(dark: Boolean) = capture(if (dark) "home_dark" else "home_light", dark) {
         HomeScreen(
-            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, stats = Fixtures.stats) },
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, stats = Fixtures.stats) },
             onContinue = {},
             onPlayDaily = {},
             onCalendar = {},
@@ -87,7 +87,7 @@ class ScreenshotTest {
     @Test
     fun homeIndigoNight() = capture("home_indigo_night", dark = false, theme = InkTheme.INDIGO_NIGHT) {
         HomeScreen(
-            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily) },
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, killerDaily = Fixtures.killerDaily) },
             onContinue = {},
             onPlayDaily = {},
             onCalendar = {},
@@ -217,14 +217,20 @@ class ScreenshotTest {
     @Test fun calendarDark() = calendar(dark = true)
 
     private fun calendar(dark: Boolean) = capture(if (dark) "calendar_dark" else "calendar_light", dark) {
-        CalendarScreen(daily = Fixtures.daily, onBack = {}, onTab = {})
+        CalendarScreen(daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, onBack = {}, onTab = {})
     }
 
     /** The whole daily page, including the weekday chart below the fold, on a tall screen. */
     @Test
     @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
     fun calendarFullLight() = capture("calendar_full_light", dark = false) {
-        CalendarScreen(daily = Fixtures.daily, onBack = {}, onTab = {})
+        CalendarScreen(daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, onBack = {}, onTab = {})
+    }
+
+    /** The Daily tab switched to the daily Killer. */
+    @Test
+    fun calendarKillerLight() = capture("calendar_killer_light", dark = false) {
+        CalendarScreen(daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, onBack = {}, onTab = {}, showKiller = true)
     }
 
     // --- Learn ---------------------------------------------------------------
@@ -288,7 +294,7 @@ class ScreenshotTest {
     @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
     fun homeFullLight() = capture("home_full_light", dark = false) {
         HomeScreen(
-            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily) },
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, killerDaily = Fixtures.killerDaily) },
             onContinue = {},
             onPlayDaily = {},
             onCalendar = {},
@@ -353,7 +359,7 @@ class ScreenshotTest {
     @Config(qualifiers = TABLET_PORTRAIT)
     fun homeTablet() = capture("home_tablet_light", dark = false) {
         HomeScreen(
-            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, stats = Fixtures.stats) },
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, stats = Fixtures.stats) },
             onContinue = {},
             onPlayDaily = {},
             onCalendar = {},
@@ -367,7 +373,7 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = TABLET_LANDSCAPE)
     fun calendarTablet() = capture("calendar_tablet_dark", dark = true) {
-        CalendarScreen(daily = Fixtures.daily, onBack = {}, onTab = {})
+        CalendarScreen(daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, onBack = {}, onTab = {})
     }
 
     @Test
@@ -473,6 +479,12 @@ private object Fixtures {
         val today = LocalDate.parse("2026-11-05").toEpochDay()
         val solved = listOf(1L, 2L, 3L) + (6L..14L) + listOf(18L, 22L, 23L)
         DailyUi(today = today, results = solved.associate { (today - it) to 300L + it * 17 })
+    }
+
+    /** The daily Killer on the same Thursday: Tuesday and Wednesday solved. */
+    val killerDaily: DailyUi = run {
+        val today = LocalDate.parse("2026-11-05").toEpochDay()
+        DailyUi(today = today, results = mapOf(today - 2 to 640L, today - 1 to 815L), killer = true)
     }
 
     /** The first five lessons finished. */

@@ -22,6 +22,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -184,10 +186,13 @@ fun LessonScreen(
     onNextLesson: (() -> Unit)?,
     onBack: () -> Unit,
     onComplete: () -> Unit = {},
+    onPractice: (() -> Unit)? = null,
+    practiceReplacesGame: Boolean = false,
 ) {
     BackHandler(onBack = onBack)
     val c = Sumi.colors
     val lesson = Tutorial.lessons[index]
+    var confirmPractice by remember { mutableStateOf(false) }
     // Open at the step that uses this lesson's technique; earlier steps are a tap back.
     var step by remember(index, example) { mutableIntStateOf(example?.start ?: 0) }
     val cards = example?.cards.orEmpty()
@@ -293,6 +298,24 @@ fun LessonScreen(
                 }
             }
         }
+        if (onPractice != null) {
+            Spacer(Modifier.height(14.dp))
+            PillButton(
+                "Practise on a new puzzle",
+                { if (practiceReplacesGame) confirmPractice = true else onPractice() },
+                width,
+                tone = if (done) ButtonTone.Primary else ButtonTone.Soft,
+                icon = Lucide.Play,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "A fresh ${if (lesson.killer) "Killer " else ""}${lesson.level.label} puzzle that needs a " +
+                    "${lesson.technique.label.lowercase()} somewhere along the way.",
+                style = MaterialTheme.typography.bodySmall,
+                color = c.inkMuted,
+                modifier = width,
+            )
+        }
         if (onNextLesson != null) {
             Spacer(Modifier.height(14.dp))
             PillButton(
@@ -367,5 +390,20 @@ fun LessonScreen(
                 }
             }
         }
+    }
+
+    if (confirmPractice && onPractice != null) {
+        AlertDialog(
+            onDismissRequest = { confirmPractice = false },
+            containerColor = c.surface,
+            title = { Text("Start a practice game?", style = MaterialTheme.typography.titleLarge) },
+            text = { Text("Your game in progress will be replaced.", style = MaterialTheme.typography.bodyLarge) },
+            confirmButton = {
+                PillButton("Start", { confirmPractice = false; onPractice() }, height = 44.dp)
+            },
+            dismissButton = {
+                PillButton("Cancel", { confirmPractice = false }, tone = ButtonTone.Ghost, height = 44.dp)
+            },
+        )
     }
 }

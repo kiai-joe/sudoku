@@ -80,7 +80,7 @@ class SumiWidget : AppWidgetProvider() {
         /** What the widgets show today, from what Sumi has saved. */
         fun model(context: Context, today: Long = LocalDate.now().toEpochDay()): DailyWidgetModel {
             val repo = GameRepository(context)
-            val inProgress = repo.loadDailyGame()?.let { it.daily == today && it.status == GameStatus.PLAYING } == true
+            val inProgress = repo.loadDailyGame()?.let { it.daily == today && it.status == GameStatus.PLAYING && !it.isKiller } == true
             return dailyWidgetModel(today, repo.loadDailyResults(), inProgress)
         }
 
