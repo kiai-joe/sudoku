@@ -278,6 +278,78 @@ class ScreenshotTest {
         )
     }
 
+    // --- Wide screens --------------------------------------------------------
+
+    /** A phone on its side: the board on the left, the controls beside it. */
+    @Test
+    @Config(qualifiers = PHONE_LANDSCAPE)
+    fun gameLandscape() = capture("game_landscape_light", dark = false) {
+        val g = Fixtures.midGame()
+        GameScreen(state = UiState(game = g, selected = Fixtures.selectedCell(g)), actions = GameActions.None, onExit = {})
+    }
+
+    @Test
+    @Config(qualifiers = PHONE_LANDSCAPE)
+    fun hintLandscape() = capture("hint_landscape_dark", dark = true) {
+        val (g, plan) = Fixtures.eliminationHint()
+        GameScreen(state = UiState(game = g, hint = HintUi(plan)), actions = GameActions.None, onExit = {})
+    }
+
+    @Test
+    @Config(qualifiers = TABLET_LANDSCAPE)
+    fun gameTablet() = capture("game_tablet_light", dark = false) {
+        val g = Fixtures.killerGame()
+        GameScreen(
+            state = UiState(game = g, selected = (0 until 81).first { g.values[it] == 0 }),
+            actions = GameActions.None,
+            onExit = {},
+        )
+    }
+
+    @Test
+    @Config(qualifiers = TABLET_LANDSCAPE)
+    fun winTablet() = capture("win_tablet_light", dark = false) {
+        GameScreen(
+            state = UiState(game = Fixtures.wonGame(), lastWinWasBest = true, stats = Fixtures.stats),
+            actions = GameActions.None,
+            onExit = {},
+        )
+    }
+
+    @Test
+    @Config(qualifiers = TABLET_PORTRAIT)
+    fun homeTablet() = capture("home_tablet_light", dark = false) {
+        HomeScreen(
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, stats = Fixtures.stats) },
+            onContinue = {},
+            onPlayDaily = {},
+            onCalendar = {},
+            onNewGame = {},
+            onNewKiller = {},
+            onSettings = {},
+            onTab = {},
+        )
+    }
+
+    @Test
+    @Config(qualifiers = TABLET_LANDSCAPE)
+    fun calendarTablet() = capture("calendar_tablet_dark", dark = true) {
+        CalendarScreen(daily = Fixtures.daily, onBack = {}, onTab = {})
+    }
+
+    @Test
+    @Config(qualifiers = PHONE_LANDSCAPE)
+    fun lessonLandscape() = capture("lesson_landscape_light", dark = false) {
+        val index = Tutorial.lessons.indexOfFirst { it.technique == Technique.X_WING }
+        LessonScreen(
+            index = index,
+            example = Tutorial.example(Tutorial.lessons[index]),
+            loading = false,
+            onNextLesson = {},
+            onBack = {},
+        )
+    }
+
     // --- Settings ----------------------------------------------------------
 
     @Test fun settingsLight() = settings(dark = false)
@@ -339,6 +411,13 @@ class ScreenshotTest {
         )
     }
 }
+
+/** A Pixel 7 on its side. */
+private const val PHONE_LANDSCAPE = "w915dp-h412dp-land-xxhdpi"
+
+/** A 10-inch tablet, both ways round. */
+private const val TABLET_LANDSCAPE = "w1280dp-h800dp-land-xhdpi"
+private const val TABLET_PORTRAIT = "w800dp-h1280dp-port-xhdpi"
 
 /** Fixed game states for screenshots, all from seeded puzzles. */
 private object Fixtures {

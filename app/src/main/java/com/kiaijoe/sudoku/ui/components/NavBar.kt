@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.ui.icons.Lucide
 import com.kiaijoe.sudoku.ui.theme.Sumi
@@ -88,10 +89,16 @@ fun FloatingNavBar(current: Tab, onSelect: (Tab) -> Unit, modifier: Modifier = M
 
 /**
  * One of the four tab pages: paper, a scrolling column with the screen gutter,
- * and the floating bar over the bottom when [onTab] is given.
+ * at most [maxContentWidth] wide, and the floating bar over the bottom when
+ * [onTab] is given.
  */
 @Composable
-fun TabPage(tab: Tab, onTab: ((Tab) -> Unit)?, content: @Composable ColumnScope.() -> Unit) {
+fun TabPage(
+    tab: Tab,
+    onTab: ((Tab) -> Unit)?,
+    maxContentWidth: Dp = 560.dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Page {
         Column(
             Modifier
@@ -101,7 +108,7 @@ fun TabPage(tab: Tab, onTab: ((Tab) -> Unit)?, content: @Composable ColumnScope.
                 .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
+            Column(Modifier.widthIn(max = maxContentWidth).fillMaxWidth()) {
                 Spacer(Modifier.height(16.dp))
                 content()
                 // Room to scroll the last card clear of the floating bar.

@@ -37,6 +37,10 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.Example
 import com.kiaijoe.sudoku.engine.Grid
@@ -191,6 +195,118 @@ fun LessonScreen(
     val finished = if (example == null) !loading else step >= cards.size
     LaunchedEffect(index, finished) { if (finished) onComplete() }
 
+    // One page per card, then a last page with the number placed.
+    val done = example != null && step >= cards.size
+    val card = cards.getOrNull(step)
+    val shown = when {
+        example == null -> null
+        done -> cards.last().let { example.game.place(it.placeCell, it.placeDigit, mistakeLimit = null, autoRemoveNotes = true) }
+        else -> example.game
+    }
+
+    // The worked example's board, or a spinner while it's built.
+    val board: @Composable (Modifier) -> Unit = { modifier ->
+        when {
+            loading -> Box(modifier, contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = c.ai, trackColor = c.surfaceSunk)
+            }
+            shown != null -> SudokuBoard(
+                game = shown,
+                selected = if (done) cards.last().placeCell else null,
+                highlightSameNumbers = false,
+                onSelect = {},
+                modifier = modifier.card(c, CardShape),
+                hint = card,
+            )
+        }
+    }
+
+    // Progress through the steps, what the technique is, and the current step's card.
+    val steps: @Composable ColumnScope.(Modifier) -> Unit = { width ->
+        if (cards.size > 1) {
+            Row(width.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (i in cards.indices) {
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .height(6.dp)
+                            .clip(CircleShape)
+                            .background(if (i <= step) c.ai else c.surfaceSunk),
+                    )
+                }
+            }
+            Spacer(Modifier.height(10.dp))
+        }
+        Text(lesson.intro, style = MaterialTheme.typography.bodyLarge, color = c.ink, modifier = width)
+    }
+
+    val explanation: @Composable ColumnScope.(Modifier) -> Unit = { width ->
+        if (example != null) {
+            SumiCard(width, padding = PaddingValues(20.dp)) {
+                Text(
+                    if (done) "Result" else card!!.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = c.ink,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    if (done) {
+                        val last = cards.last()
+                        "So row ${Grid.row(last.placeCell) + 1}, column ${Grid.col(last.placeCell) + 1} " +
+                            "is ${last.placeDigit}." + if (cards.size > 1) {
+                                " The ${lesson.technique.label.lowercase()} made that possible."
+                            } else {
+                                ""
+                            }
+                    } else {
+                        card!!.text
+                    },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = c.ink,
+                )
+                if (!done && card!!.eliminations.isNotEmpty()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "Crossed-out numbers are the ones this step rules out.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = c.inkMuted,
+                    )
+                }
+                Spacer(Modifier.height(18.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    PillButton(
+                        "Back",
+                        { step-- },
+                        Modifier.weight(1f),
+                        tone = ButtonTone.Soft,
+                        icon = Lucide.ArrowLeft,
+                        enabled = step > 0,
+                    )
+                    PillButton(
+                        if (card?.isPlacement == true) "Place ${card.placeDigit}" else "Next step",
+                        { step++ },
+                        Modifier.weight(1f),
+                        trailingIcon = if (card?.isPlacement == true) null else Lucide.ChevronRight,
+                        icon = if (card?.isPlacement == true) Lucide.Check else null,
+                        enabled = !done,
+                    )
+                }
+            }
+        }
+        if (onNextLesson != null) {
+            Spacer(Modifier.height(14.dp))
+            PillButton(
+                "Next: ${Tutorial.lessons[index + 1].technique.label}",
+                onNextLesson,
+                width,
+                tone = ButtonTone.Soft,
+                trailingIcon = Lucide.ChevronRight,
+            )
+        }
+    }
+
+    val exampleLabel = "Worked example · ${if (lesson.killer) "Killer " else ""}${lesson.level.label} puzzle"
+
     Page {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             SumiTopBar(lesson.technique.label, onBack = onBack) {
@@ -198,122 +314,57 @@ fun LessonScreen(
                     SumiChip("${minOf(step, cards.size - 1) + 1} of ${cards.size}", tone = ChipTone.Ai)
                 }
             }
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                val width = Modifier.widthIn(max = 560.dp).fillMaxWidth()
-                if (cards.size > 1) {
-                    Row(width.padding(vertical = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        for (i in cards.indices) {
-                            Box(
-                                Modifier
-                                    .weight(1f)
-                                    .height(6.dp)
-                                    .clip(CircleShape)
-                                    .background(if (i <= step) c.ai else c.surfaceSunk),
-                            )
+            BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                if (isWide(maxWidth, maxHeight) && (loading || example != null)) {
+                    // Board on the left at full height; the reading beside it.
+                    val size = min(maxHeight - 16.dp, maxWidth * 0.52f)
+                    Row(
+                        Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp),
+                        horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
+                    ) {
+                        board(Modifier.padding(top = 4.dp).size(size))
+                        Column(
+                            Modifier
+                                .widthIn(max = 520.dp)
+                                .weight(1f, fill = false)
+                                .fillMaxHeight()
+                                .verticalScroll(rememberScrollState())
+                                .padding(vertical = 4.dp),
+                        ) {
+                            val width = Modifier.fillMaxWidth()
+                            steps(width)
+                            Spacer(Modifier.height(14.dp))
+                            Overline(exampleLabel, width)
+                            Spacer(Modifier.height(10.dp))
+                            explanation(width)
+                            Spacer(Modifier.height(16.dp))
                         }
                     }
-                    Spacer(Modifier.height(10.dp))
-                }
-                Text(lesson.intro, style = MaterialTheme.typography.bodyLarge, color = c.ink, modifier = width)
-                Spacer(Modifier.height(16.dp))
-                when {
-                    loading -> Box(width.aspectRatio(1f), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator(color = c.ai, trackColor = c.surfaceSunk)
-                    }
-                    example == null -> Unit
-                    else -> {
-                        // One page per card, then a last page with the number placed.
-                        val done = step >= cards.size
-                        val card = cards.getOrNull(step)
-                        val shown = if (done) {
-                            val last = cards.last()
-                            example.game.place(last.placeCell, last.placeDigit, mistakeLimit = null, autoRemoveNotes = true)
-                        } else {
-                            example.game
-                        }
-                        Overline(
-                            "Worked example · ${if (lesson.killer) "Killer " else ""}${lesson.level.label} puzzle",
-                            width,
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        SudokuBoard(
-                            game = shown,
-                            selected = if (done) cards.last().placeCell else null,
-                            highlightSameNumbers = false,
-                            onSelect = {},
-                            modifier = width.aspectRatio(1f).card(c, CardShape),
-                            hint = card,
-                        )
-                        Spacer(Modifier.height(14.dp))
-                        SumiCard(width, padding = PaddingValues(20.dp)) {
-                            Text(
-                                if (done) "Result" else card!!.title,
-                                style = MaterialTheme.typography.titleLarge,
-                                color = c.ink,
-                            )
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                if (done) {
-                                    val last = cards.last()
-                                    "So row ${Grid.row(last.placeCell) + 1}, column ${Grid.col(last.placeCell) + 1} " +
-                                        "is ${last.placeDigit}." + if (cards.size > 1) {
-                                            " The ${lesson.technique.label.lowercase()} made that possible."
-                                        } else {
-                                            ""
-                                        }
-                                } else {
-                                    card!!.text
-                                },
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = c.ink,
-                            )
-                            if (!done && card!!.eliminations.isNotEmpty()) {
-                                Spacer(Modifier.height(6.dp))
-                                Text(
-                                    "Crossed-out numbers are the ones this step rules out.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = c.inkMuted,
-                                )
+                } else {
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        val width = Modifier.widthIn(max = 560.dp).fillMaxWidth()
+                        steps(width)
+                        Spacer(Modifier.height(16.dp))
+                        if (loading || example != null) {
+                            if (example != null) {
+                                Overline(exampleLabel, width)
+                                Spacer(Modifier.height(10.dp))
                             }
-                            Spacer(Modifier.height(18.dp))
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                PillButton(
-                                    "Back",
-                                    { step-- },
-                                    Modifier.weight(1f),
-                                    tone = ButtonTone.Soft,
-                                    icon = Lucide.ArrowLeft,
-                                    enabled = step > 0,
-                                )
-                                PillButton(
-                                    if (card?.isPlacement == true) "Place ${card.placeDigit}" else "Next step",
-                                    { step++ },
-                                    Modifier.weight(1f),
-                                    trailingIcon = if (card?.isPlacement == true) null else Lucide.ChevronRight,
-                                    icon = if (card?.isPlacement == true) Lucide.Check else null,
-                                    enabled = !done,
-                                )
-                            }
+                            board(width.aspectRatio(1f))
+                            Spacer(Modifier.height(14.dp))
                         }
+                        explanation(width)
+                        Spacer(Modifier.height(24.dp))
                     }
                 }
-                if (onNextLesson != null) {
-                    Spacer(Modifier.height(14.dp))
-                    PillButton(
-                        "Next: ${Tutorial.lessons[index + 1].technique.label}",
-                        onNextLesson,
-                        width,
-                        tone = ButtonTone.Soft,
-                        trailingIcon = Lucide.ChevronRight,
-                    )
-                }
-                Spacer(Modifier.height(24.dp))
             }
         }
     }

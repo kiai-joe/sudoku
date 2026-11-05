@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -145,7 +146,7 @@ fun CalendarScreen(
     var monthIndex by rememberSaveable { mutableStateOf(0L) }
     val month = YearMonth.from(today).plusMonths(monthIndex)
 
-    TabPage(Tab.Daily, onTab) {
+    TabPage(Tab.Daily, onTab, maxContentWidth = 1040.dp) {
         ScreenTitle("Daily puzzle", "A new puzzle every day, the same for everyone.")
         Spacer(Modifier.height(18.dp))
 
@@ -201,29 +202,47 @@ fun CalendarScreen(
         }
         Spacer(Modifier.height(14.dp))
 
-        SumiCard(Modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                IconTile(Lucide.ChevronLeft, "Previous month", onClick = { monthIndex-- }, size = 38.dp)
-                Text(
-                    "${month.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${month.year}",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = c.ink,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f),
-                )
-                if (monthIndex < 0) {
-                    IconTile(Lucide.ChevronRight, "Next month", onClick = { monthIndex++ }, size = 38.dp)
-                } else {
-                    Spacer(Modifier.size(38.dp))
+        val calendar: @Composable () -> Unit = {
+            SumiCard(Modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconTile(Lucide.ChevronLeft, "Previous month", onClick = { monthIndex-- }, size = 38.dp)
+                    Text(
+                        "${month.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${month.year}",
+                        style = MaterialTheme.typography.titleMedium,
+                        color = c.ink,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.weight(1f),
+                    )
+                    if (monthIndex < 0) {
+                        IconTile(Lucide.ChevronRight, "Next month", onClick = { monthIndex++ }, size = 38.dp)
+                    } else {
+                        Spacer(Modifier.size(38.dp))
+                    }
+                }
+                Spacer(Modifier.height(10.dp))
+                MonthGrid(daily, month)
+            }
+        }
+        val weekdays: @Composable () -> Unit = {
+            Overline("By weekday")
+            Spacer(Modifier.height(10.dp))
+            WeekdayCard(daily)
+        }
+        BoxWithConstraints {
+            if (maxWidth >= 720.dp) {
+                // Side by side on a tablet or a phone on its side.
+                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    Column(Modifier.weight(1f)) { calendar() }
+                    Column(Modifier.weight(1f)) { weekdays() }
+                }
+            } else {
+                Column {
+                    calendar()
+                    Spacer(Modifier.height(20.dp))
+                    weekdays()
                 }
             }
-            Spacer(Modifier.height(10.dp))
-            MonthGrid(daily, month)
         }
-        Spacer(Modifier.height(20.dp))
-        Overline("By weekday")
-        Spacer(Modifier.height(10.dp))
-        WeekdayCard(daily)
     }
 }
 
