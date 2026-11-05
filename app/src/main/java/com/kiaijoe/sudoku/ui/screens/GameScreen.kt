@@ -42,6 +42,10 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
+import androidx.compose.ui.unit.Dp
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -153,9 +157,15 @@ private fun Generating() {
     }
 }
 
+/**
+ * Whether a screen this size gets the side-by-side layout: wider than it is
+ * tall, with room for a board and a column of controls (a phone on its side,
+ * or a tablet).
+ */
+internal fun isWide(width: Dp, height: Dp) = width >= 600.dp && width > height
+
 @Composable
 private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: () -> Unit) {
-    val c = Sumi.colors
     val won = game.status == GameStatus.WON
     // Draw the stamp in only for a win seen happen, not when reopening a won game.
     var sawPlaying by remember { mutableStateOf(false) }
@@ -165,95 +175,143 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
     // Only react to inputs made while this screen is open, not one left over from before.
     val staleFeedbackId = remember { state.feedback?.id }
     val feedback = state.feedback?.takeIf { it.id != staleFeedbackId }
-    Column(
-        Modifier
-            .widthIn(max = 560.dp)
-            .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        StatusRow(state, game)
-        state.checkMessage?.let { message ->
-            Spacer(Modifier.height(8.dp))
-            SumiChip(
-                message,
-                tone = if (state.flagged.isEmpty()) ChipTone.Matcha else ChipTone.Shu,
-                icon = if (state.flagged.isEmpty()) Lucide.CheckCheck else Lucide.Eye,
-            )
-        }
-        Haptics(feedback, enabled = state.settings.haptics)
-        Spacer(Modifier.height(12.dp))
+    Haptics(feedback, enabled = state.settings.haptics)
 
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-                .card(c, CardShape),
-        ) {
-            SudokuBoard(
-                game = game,
-                selected = state.selected,
-                highlightSameNumbers = state.settings.highlightSameNumbers,
-                onSelect = actions::select,
-                modifier = Modifier.fillMaxSize(),
-                hint = state.hint?.card,
-                mistakeCell = (state.hint?.plan as? HintPlan.FixMistake)?.cell,
-                revealWrong = state.settings.instantCheck,
-                flagged = state.flagged,
-                flash = feedback,
-                largeNumbers = state.settings.largeNumbers,
-            )
-            if (state.paused) PausedOverlay(onResume = actions::togglePause)
-            if (won) {
-                Box(
+    BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+        if (isWide(maxWidth, maxHeight)) {
+            // Board on the left as big as the height allows; everything else beside it.
+            val board = min(maxHeight - 16.dp, maxWidth * 0.56f)
+            Row(
+                Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(28.dp, Alignment.CenterHorizontally),
+            ) {
+                BoardArea(state, game, actions, feedback, won, sawPlaying, Modifier.padding(top = 4.dp).size(board))
+                Column(
                     Modifier
-                        .fillMaxSize()
-                        .clip(CardShape)
-                        .background(c.paper.copy(alpha = 0.55f)),
-                )
-                HanamaruStamp(
-                    color = c.shu,
-                    animate = sawPlaying,
-                    modifier = Modifier
-                        .fillMaxSize(0.8f)
-                        .align(Alignment.Center)
-                        .rotate(-8f),
-                )
+                        .widthIn(max = 480.dp)
+                        .weight(1f, fill = false)
+                        .fillMaxHeight()
+                        .verticalScroll(rememberScrollState())
+                        .padding(vertical = 4.dp),
+                ) {
+                    StatusRow(state, game)
+                    CheckMessage(state)
+                    Spacer(Modifier.height(18.dp))
+                    Controls(state, game, actions, onExit, won)
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+        } else {
+            Column(
+                Modifier
+                    .widthIn(max = 560.dp)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                StatusRow(state, game)
+                CheckMessage(state)
+                Spacer(Modifier.height(12.dp))
+                BoardArea(state, game, actions, feedback, won, sawPlaying, Modifier.fillMaxWidth().aspectRatio(1f))
+                Spacer(Modifier.height(18.dp))
+                Controls(state, game, actions, onExit, won)
+                Spacer(Modifier.height(16.dp))
             }
         }
+    }
+}
 
-        Spacer(Modifier.height(18.dp))
-        val hint = state.hint
+@Composable
+private fun CheckMessage(state: UiState) {
+    val message = state.checkMessage ?: return
+    Spacer(Modifier.height(8.dp))
+    SumiChip(
+        message,
+        tone = if (state.flagged.isEmpty()) ChipTone.Matcha else ChipTone.Shu,
+        icon = if (state.flagged.isEmpty()) Lucide.CheckCheck else Lucide.Eye,
+    )
+}
+
+/** The board on its card, with the pause cover and the win stamp over it. */
+@Composable
+private fun BoardArea(
+    state: UiState,
+    game: GameState,
+    actions: GameActions,
+    feedback: Feedback?,
+    won: Boolean,
+    sawPlaying: Boolean,
+    modifier: Modifier,
+) {
+    val c = Sumi.colors
+    Box(modifier.card(c, CardShape)) {
+        SudokuBoard(
+            game = game,
+            selected = state.selected,
+            highlightSameNumbers = state.settings.highlightSameNumbers,
+            onSelect = actions::select,
+            modifier = Modifier.fillMaxSize(),
+            hint = state.hint?.card,
+            mistakeCell = (state.hint?.plan as? HintPlan.FixMistake)?.cell,
+            revealWrong = state.settings.instantCheck,
+            flagged = state.flagged,
+            flash = feedback,
+            largeNumbers = state.settings.largeNumbers,
+        )
+        if (state.paused) PausedOverlay(onResume = actions::togglePause)
         if (won) {
-            WinPanel(state, game, onNewGame = { actions.newLike(game) }, onHome = onExit)
-        } else if (hint != null) {
-            HintPanel(
-                hint = hint,
-                onNext = actions::hintNext,
-                onPlace = actions::hintPlace,
-                onErase = actions::hintEraseMistake,
-                onClose = actions::closeHint,
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .clip(CardShape)
+                    .background(c.paper.copy(alpha = 0.55f)),
             )
-        } else {
-            GameToolbar(
-                canUndo = state.canUndo,
-                notesMode = state.notesMode,
-                onUndo = actions::undo,
-                onErase = actions::erase,
-                onToggleNotes = actions::toggleNotesMode,
-                onFill = actions::fillCandidates,
-                onHint = actions::hint,
-            )
-            Spacer(Modifier.height(16.dp))
-            NumberPad(
-                remaining = { game.remaining(it, checking = state.settings.instantCheck) },
-                notesMode = state.notesMode,
-                onDigit = actions::input,
-                largeNumbers = state.settings.largeNumbers,
+            HanamaruStamp(
+                color = c.shu,
+                animate = sawPlaying,
+                modifier = Modifier
+                    .fillMaxSize(0.8f)
+                    .align(Alignment.Center)
+                    .rotate(-8f),
             )
         }
+    }
+}
+
+/** Under or beside the board: the win summary, an open hint, or the tools and number pad. */
+@Composable
+private fun Controls(state: UiState, game: GameState, actions: GameActions, onExit: () -> Unit, won: Boolean) {
+    val hint = state.hint
+    if (won) {
+        WinPanel(state, game, onNewGame = { actions.newLike(game) }, onHome = onExit)
+    } else if (hint != null) {
+        HintPanel(
+            hint = hint,
+            onNext = actions::hintNext,
+            onPlace = actions::hintPlace,
+            onErase = actions::hintEraseMistake,
+            onClose = actions::closeHint,
+        )
+    } else {
+        GameToolbar(
+            canUndo = state.canUndo,
+            notesMode = state.notesMode,
+            onUndo = actions::undo,
+            onErase = actions::erase,
+            onToggleNotes = actions::toggleNotesMode,
+            onFill = actions::fillCandidates,
+            onHint = actions::hint,
+        )
         Spacer(Modifier.height(16.dp))
+        NumberPad(
+            remaining = { game.remaining(it, checking = state.settings.instantCheck) },
+            notesMode = state.notesMode,
+            onDigit = actions::input,
+            largeNumbers = state.settings.largeNumbers,
+        )
     }
 }
 

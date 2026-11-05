@@ -6,6 +6,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -74,7 +76,7 @@ fun HomeScreen(
     var pendingKiller by remember { mutableStateOf<Difficulty?>(null) }
     val c = Sumi.colors
 
-    TabPage(Tab.Home, onTab) {
+    TabPage(Tab.Home, onTab, maxContentWidth = 1040.dp) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SealLogo(size = 38.dp)
             Spacer(Modifier.width(10.dp))
@@ -100,40 +102,57 @@ fun HomeScreen(
         }
         Spacer(Modifier.height(18.dp))
 
-        DailyCard(state.daily, onPlay = onPlayDaily, onCalendar = onCalendar)
-        Spacer(Modifier.height(14.dp))
-
-        val game = state.savedGame
-        if (state.canContinue && game != null) {
-            ContinueCard(
-                title = "${if (game.isKiller) "Killer · " else ""}${game.difficulty.label}",
-                detail = "${formatTime(game.elapsedSeconds)} · ${game.values.count { it != 0 }} of 81 filled",
-                onClick = onContinue,
-            )
-            Spacer(Modifier.height(14.dp))
+        // Today's puzzle and the game in progress.
+        val today: @Composable ColumnScope.() -> Unit = {
+            DailyCard(state.daily, onPlay = onPlayDaily, onCalendar = onCalendar)
+            val game = state.savedGame
+            if (state.canContinue && game != null) {
+                Spacer(Modifier.height(14.dp))
+                ContinueCard(
+                    title = "${if (game.isKiller) "Killer · " else ""}${game.difficulty.label}",
+                    detail = "${formatTime(game.elapsedSeconds)} · ${game.values.count { it != 0 }} of 81 filled",
+                    onClick = onContinue,
+                )
+            }
         }
-
-        Spacer(Modifier.height(6.dp))
-        Overline("New game")
-        Spacer(Modifier.height(10.dp))
-        Difficulty.entries.chunked(2).forEach { pair ->
-            Row(
-                Modifier.fillMaxWidth().height(IntrinsicSize.Min),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                pair.forEach { d ->
-                    LevelTile(
-                        name = d.label,
-                        detail = d.techniques,
-                        icon = d.icon,
-                        onClick = { if (state.canContinue) pending = d else onNewGame(d) },
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                    )
+        // The four levels and Killer.
+        val newGame: @Composable ColumnScope.() -> Unit = {
+            Overline("New game")
+            Spacer(Modifier.height(10.dp))
+            Difficulty.entries.chunked(2).forEach { pair ->
+                Row(
+                    Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    pair.forEach { d ->
+                        LevelTile(
+                            name = d.label,
+                            detail = d.techniques,
+                            icon = d.icon,
+                            onClick = { if (state.canContinue) pending = d else onNewGame(d) },
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+            KillerCard(onPick = { d -> if (state.canContinue) pendingKiller = d else onNewKiller(d) })
+        }
+        BoxWithConstraints {
+            if (maxWidth >= 720.dp) {
+                // Side by side on a tablet or a phone on its side.
+                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    Column(Modifier.weight(1f)) { today() }
+                    Column(Modifier.weight(1f)) { newGame() }
+                }
+            } else {
+                Column {
+                    today()
+                    Spacer(Modifier.height(20.dp))
+                    newGame()
                 }
             }
-            Spacer(Modifier.height(12.dp))
         }
-        KillerCard(onPick = { d -> if (state.canContinue) pendingKiller = d else onNewKiller(d) })
     }
 
     pending?.let { d ->
