@@ -104,13 +104,30 @@ fun StatsScreen(
         val s = if (level < Difficulty.entries.size) stats[Difficulty.entries[level]] ?: DifficultyStats() else killerStats
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatTile(s.won.toString(), "Solved of ${s.played}", Modifier.weight(1f).fillMaxHeight())
+                StatTile(
+                    s.won.toString(),
+                    if (s.played == 0) "Solved" else "Solved of ${s.played} · ${s.winRate}%",
+                    Modifier.weight(1f).fillMaxHeight(),
+                )
                 StatTile(s.bestSeconds?.let(::formatTime) ?: "—", "Best time", Modifier.weight(1f).fillMaxHeight())
             }
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatTile("${s.winRate}%", "Win rate", Modifier.weight(1f).fillMaxHeight())
-                StatTile(s.played.toString(), "Played", Modifier.weight(1f).fillMaxHeight())
+                StatTile(s.averageSeconds?.let(::formatTime) ?: "—", "Average", Modifier.weight(1f).fillMaxHeight())
+                StatTile(s.noHintRate?.let { "$it%" } ?: "—", "Without hints", Modifier.weight(1f).fillMaxHeight())
             }
+        }
+        // Wins from before these were kept count in "Solved" but not in the average.
+        if (s.timedWins < s.won) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                when (s.timedWins) {
+                    0 -> "Average and hints start counting from your next win."
+                    1 -> "Average and hints count the 1 win since they were added."
+                    else -> "Average and hints count the ${s.timedWins} wins since they were added."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = c.inkMuted,
+            )
         }
 
         Spacer(Modifier.height(22.dp))

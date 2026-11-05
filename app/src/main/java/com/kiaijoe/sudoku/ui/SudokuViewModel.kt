@@ -56,6 +56,8 @@ data class UiState(
     val killerStats: DifficultyStats = DifficultyStats(),
     val achievements: Map<Achievement, Long> = emptyMap(),
     val newAchievements: List<Achievement> = emptyList(),
+    /** Lessons finished, by technique name. */
+    val lessonsDone: Set<String> = emptySet(),
 ) {
     val canContinue: Boolean get() = savedGame?.status == GameStatus.PLAYING && !generating
 }
@@ -113,6 +115,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 settings = repo.loadSettings(),
                 stats = repo.loadStats(),
                 killerStats = repo.loadKillerStats(),
+                lessonsDone = repo.loadLessonsDone(),
             )
         },
     )
@@ -413,9 +416,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 repo.recordDailyWin(day, next.elapsedSeconds)
                 best = false
             } else if (next.isKiller) {
-                best = repo.recordKillerWin(next.elapsedSeconds)
+                best = repo.recordKillerWin(next.elapsedSeconds, next.hintsUsed)
             } else {
-                best = repo.recordWin(next.difficulty, next.elapsedSeconds)
+                best = repo.recordWin(next.difficulty, next.elapsedSeconds, next.hintsUsed)
             }
             undoStack.clear()
         }
@@ -454,6 +457,13 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     fun updateSettings(settings: Settings) {
         repo.saveSettings(settings)
         _ui.update { it.copy(settings = settings) }
+    }
+
+    /** Marks the lesson for [technique] finished, once its worked example reaches the end. */
+    fun completeLesson(technique: String) {
+        if (technique in _ui.value.lessonsDone) return
+        repo.markLessonDone(technique)
+        _ui.update { it.copy(lessonsDone = it.lessonsDone + technique) }
     }
 
     fun resetStats() {
