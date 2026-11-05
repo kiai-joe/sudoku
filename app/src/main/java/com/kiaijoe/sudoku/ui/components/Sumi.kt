@@ -337,9 +337,10 @@ fun SumiSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?, enabled:
             checkedThumbColor = c.onAi,
             checkedTrackColor = c.ai,
             checkedBorderColor = c.ai,
-            uncheckedThumbColor = c.surface,
+            // A muted thumb and outline, so an off switch shows on dark cards as well as light.
+            uncheckedThumbColor = c.inkMuted,
             uncheckedTrackColor = c.surfaceSunk,
-            uncheckedBorderColor = c.line,
+            uncheckedBorderColor = c.inkMuted.copy(alpha = 0.6f),
         ),
     )
 }
