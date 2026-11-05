@@ -84,7 +84,7 @@ fun StatsScreen(
 
     TabPage(Tab.Progress, onTab) {
         ScreenTitle(tr("Progress", "Maendeleo")) {
-            PillButton(tr("Reset", "Futa"), { confirmReset = true }, tone = ButtonTone.Ghost, height = 40.dp)
+            PillButton(tr("Reset", "Futa"), { confirmReset = true }, tone = ButtonTone.Outline, height = 40.dp)
         }
         Spacer(Modifier.height(14.dp))
         Row(

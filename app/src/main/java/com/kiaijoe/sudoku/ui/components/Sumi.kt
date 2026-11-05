@@ -3,6 +3,7 @@ package com.kiaijoe.sudoku.ui.components
 import com.kiaijoe.sudoku.engine.tr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -93,7 +94,12 @@ fun SumiCard(
     )
 }
 
-enum class ButtonTone { Primary, Soft, Seal, Ghost }
+/**
+ * How a [PillButton] is filled: [Primary] indigo, [Soft] pale indigo, [Seal]
+ * vermilion, [Ghost] text only (for a dialog's Cancel), [Outline] text in a
+ * thin indigo border (a quiet action that should still read as a button).
+ */
+enum class ButtonTone { Primary, Soft, Seal, Ghost, Outline }
 
 /** A pill button: one or two words, an optional icon before them. */
 @Composable
@@ -112,13 +118,20 @@ fun PillButton(
         ButtonTone.Primary -> c.ai to c.onAi
         ButtonTone.Soft -> c.aiSoft to c.ai
         ButtonTone.Seal -> c.shu to c.onShu
-        ButtonTone.Ghost -> Color.Transparent to c.ai
+        ButtonTone.Ghost, ButtonTone.Outline -> Color.Transparent to c.ai
     }
     Row(
         modifier
             .heightIn(min = height)
             .clip(CircleShape)
             .background(if (enabled) bg else c.surfaceSunk)
+            .then(
+                if (tone == ButtonTone.Outline) {
+                    Modifier.border(1.5.dp, if (enabled) c.ai else c.line, CircleShape)
+                } else {
+                    Modifier
+                },
+            )
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 22.dp),
         horizontalArrangement = Arrangement.Center,
