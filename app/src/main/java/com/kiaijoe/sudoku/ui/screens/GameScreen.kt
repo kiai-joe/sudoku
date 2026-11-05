@@ -487,7 +487,7 @@ private fun ColumnScope.HintContent(
             card != null && card.isPlacement ->
                 PillButton(tr("Place ${card.placeDigit}", "Weka ${card.placeDigit}"), onPlace, Modifier.weight(1f), icon = Lucide.Check)
             hint.hasNext ->
-                PillButton(tr("Next step", "Hatua inayofuata"), onNext, Modifier.weight(1f), trailingIcon = Lucide.ChevronRight)
+                PillButton(tr("Next step", "Hatua ijayo"), onNext, Modifier.weight(1f), trailingIcon = Lucide.ChevronRight)
         }
     }
 }

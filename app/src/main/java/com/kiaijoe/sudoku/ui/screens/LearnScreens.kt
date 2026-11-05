@@ -298,7 +298,7 @@ fun LessonScreen(
                         enabled = step > 0,
                     )
                     PillButton(
-                        if (card?.isPlacement == true) tr("Place ${card.placeDigit}", "Weka ${card.placeDigit}") else tr("Next step", "Hatua inayofuata"),
+                        if (card?.isPlacement == true) tr("Place ${card.placeDigit}", "Weka ${card.placeDigit}") else tr("Next step", "Hatua ijayo"),
                         { step++ },
                         Modifier.weight(1f),
                         trailingIcon = if (card?.isPlacement == true) null else Lucide.ChevronRight,
