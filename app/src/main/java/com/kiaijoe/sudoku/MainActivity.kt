@@ -109,6 +109,7 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
                 },
                 onBack = { screen = Screen.Home },
                 onTab = onTab,
+                done = state.lessonsDone,
             )
             Screen.Lesson -> {
                 // Building an example replays a real puzzle, so do it off the main thread.
@@ -126,6 +127,7 @@ private fun SudokuApp(viewModel: SudokuViewModel = viewModel()) {
                         null
                     },
                     onBack = { screen = Screen.Learn },
+                    onComplete = { viewModel.completeLesson(Tutorial.lessons[lessonIndex].technique.name) },
                 )
             }
             Screen.Calendar -> CalendarScreen(

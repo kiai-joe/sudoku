@@ -25,12 +25,27 @@ data class Settings(
     val largeNumbers: Boolean = false,
 )
 
+/**
+ * @property timedWins wins recorded with their time and hints, which began
+ *   after [won] did, so the average and the no-hint share come from these.
+ * @property totalSeconds the solve times of [timedWins] added up.
+ * @property noHintWins how many of [timedWins] used no hints.
+ */
 data class DifficultyStats(
     val played: Int = 0,
     val won: Int = 0,
     val bestSeconds: Long? = null,
+    val timedWins: Int = 0,
+    val totalSeconds: Long = 0,
+    val noHintWins: Int = 0,
 ) {
     val winRate: Int get() = if (played == 0) 0 else (won * 100) / played
+
+    /** Average solve time, or null before any timed win. */
+    val averageSeconds: Long? get() = if (timedWins == 0) null else totalSeconds / timedWins
+
+    /** Share of timed wins solved without a hint, in percent, or null before any. */
+    val noHintRate: Int? get() = if (timedWins == 0) null else (noHintWins * 100) / timedWins
 }
 
 /**
@@ -123,6 +138,9 @@ class GameRepository(context: Context) {
             played = prefs.getInt(key(name, "played"), 0),
             won = prefs.getInt(key(name, "won"), 0),
             bestSeconds = best.takeIf { it >= 0 },
+            timedWins = prefs.getInt(key(name, "timed"), 0),
+            totalSeconds = prefs.getLong(key(name, "total"), 0L),
+            noHintWins = prefs.getInt(key(name, "nohint"), 0),
         )
     }
 
@@ -136,25 +154,34 @@ class GameRepository(context: Context) {
     }
 
     /** Records a win and returns true when it beats the previous best time. */
-    fun recordWin(difficulty: Difficulty, seconds: Long): Boolean = recordWin(difficulty.name, seconds)
+    fun recordWin(difficulty: Difficulty, seconds: Long, hints: Int): Boolean = recordWin(difficulty.name, seconds, hints)
 
-    fun recordKillerWin(seconds: Long): Boolean = recordWin(KILLER, seconds)
+    fun recordKillerWin(seconds: Long, hints: Int): Boolean = recordWin(KILLER, seconds, hints)
 
-    private fun recordWin(name: String, seconds: Long): Boolean {
-        val won = prefs.getInt(key(name, "won"), 0)
-        val best = prefs.getLong(key(name, "best"), -1L)
-        val isBest = best < 0 || seconds < best
+    private fun recordWin(name: String, seconds: Long, hints: Int): Boolean {
+        val s = loadStats(name)
+        val isBest = s.bestSeconds == null || seconds < s.bestSeconds
         prefs.edit().apply {
-            putInt(key(name, "won"), won + 1)
+            putInt(key(name, "won"), s.won + 1)
             if (isBest) putLong(key(name, "best"), seconds)
+            putInt(key(name, "timed"), s.timedWins + 1)
+            putLong(key(name, "total"), s.totalSeconds + seconds)
+            putInt(key(name, "nohint"), s.noHintWins + if (hints == 0) 1 else 0)
         }.apply()
         return isBest
+    }
+
+    /** Lessons finished, by technique name. */
+    fun loadLessonsDone(): Set<String> = prefs.getStringSet(KEY_LESSONS_DONE, emptySet()).orEmpty().toSet()
+
+    fun markLessonDone(technique: String) {
+        prefs.edit().putStringSet(KEY_LESSONS_DONE, loadLessonsDone() + technique).apply()
     }
 
     fun resetStats() {
         prefs.edit().apply {
             (Difficulty.entries.map { it.name } + KILLER).forEach { name ->
-                remove(key(name, "played")); remove(key(name, "won")); remove(key(name, "best"))
+                for (field in STAT_FIELDS) remove(key(name, field))
             }
         }.apply()
     }
@@ -163,6 +190,8 @@ class GameRepository(context: Context) {
 
     private companion object {
         const val KILLER = "KILLER"
+        val STAT_FIELDS = listOf("played", "won", "best", "timed", "total", "nohint")
+        const val KEY_LESSONS_DONE = "lessons_done"
         const val KEY_GAME = "current_game"
         const val KEY_DAILY_GAME = "daily_game"
         const val KEY_DAILY_RESULTS = "daily_results"

@@ -29,6 +29,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.Example
@@ -57,11 +64,57 @@ import com.kiaijoe.sudoku.ui.theme.Sumi
 
 /** Every technique, grouped by the level that first needs it. */
 @Composable
-fun LearnScreen(onOpen: (Int) -> Unit, onBack: () -> Unit, onTab: ((Tab) -> Unit)? = null) {
+fun LearnScreen(
+    onOpen: (Int) -> Unit,
+    onBack: () -> Unit,
+    onTab: ((Tab) -> Unit)? = null,
+    done: Set<String> = emptySet(),
+) {
     BackHandler(onBack = onBack)
     val c = Sumi.colors
+    val total = Tutorial.lessons.size
+    val finished = Tutorial.lessons.count { it.technique.name in done }
+    // The first lesson not yet finished, easiest first.
+    val next = Tutorial.lessons.indexOfFirst { it.technique.name !in done }
     TabPage(Tab.Learn, onTab) {
         ScreenTitle("Learn", "Short lessons, each on a real board.")
+        Spacer(Modifier.height(18.dp))
+        SumiCard(
+            Modifier
+                .fillMaxWidth()
+                .clearAndSetSemantics { contentDescription = "$finished of $total lessons finished" },
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("$finished of $total lessons", style = MaterialTheme.typography.titleLarge, color = c.ink, modifier = Modifier.weight(1f))
+                if (finished == total) SumiChip("All done", tone = ChipTone.Matcha, icon = Lucide.CheckCheck)
+            }
+            Spacer(Modifier.height(12.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(CircleShape)
+                    .background(c.surfaceSunk),
+            ) {
+                if (finished > 0) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(finished.toFloat() / total)
+                            .fillMaxHeight()
+                            .clip(CircleShape)
+                            .background(c.matcha),
+                    )
+                }
+            }
+            if (next >= 0) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    "Next up: ${Tutorial.lessons[next].technique.label}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = c.inkMuted,
+                )
+            }
+        }
         val groups = Difficulty.entries.map { level ->
             Triple(level.label, level.icon, Tutorial.lessons.withIndex().filter {
                 !it.value.killer && it.value.technique.level == level
@@ -76,14 +129,37 @@ fun LearnScreen(onOpen: (Int) -> Unit, onBack: () -> Unit, onTab: ((Tab) -> Unit
             ListCard(
                 rows = lessons.map { (index, lesson) ->
                     @Composable {
+                        val isDone = lesson.technique.name in done
                         ListRow(
-                            icon = if (killer) icon else Lucide.BookOpen,
+                            icon = when {
+                                isDone -> Lucide.Check
+                                killer -> icon
+                                else -> Lucide.BookOpen
+                            },
                             title = lesson.technique.label,
                             subtitle = lesson.summary,
-                            iconColor = if (killer) c.shu else c.ai,
-                            iconBackground = if (killer) c.shuSoft else c.aiSoft,
+                            iconColor = when {
+                                isDone -> c.matcha
+                                killer -> c.shu
+                                else -> c.ai
+                            },
+                            iconBackground = when {
+                                isDone -> c.matchaSoft
+                                killer -> c.shuSoft
+                                else -> c.aiSoft
+                            },
                             onClick = { onOpen(index) },
-                        ) { RowChevron() }
+                            modifier = Modifier.semantics {
+                                stateDescription = if (isDone) "Finished" else if (index == next) "Next" else "Not started"
+                            },
+                        ) {
+                            if (index == next) {
+                                Spacer(Modifier.width(8.dp))
+                                SumiChip("Next", tone = ChipTone.Ai)
+                            } else {
+                                RowChevron()
+                            }
+                        }
                     }
                 },
             )
@@ -103,6 +179,7 @@ fun LessonScreen(
     loading: Boolean,
     onNextLesson: (() -> Unit)?,
     onBack: () -> Unit,
+    onComplete: () -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val c = Sumi.colors
@@ -110,6 +187,9 @@ fun LessonScreen(
     // Open at the step that uses this lesson's technique; earlier steps are a tap back.
     var step by remember(index, example) { mutableIntStateOf(example?.start ?: 0) }
     val cards = example?.cards.orEmpty()
+    // Finished on reaching the end of the worked example, or on opening a lesson that has none.
+    val finished = if (example == null) !loading else step >= cards.size
+    LaunchedEffect(index, finished) { if (finished) onComplete() }
 
     Page {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {

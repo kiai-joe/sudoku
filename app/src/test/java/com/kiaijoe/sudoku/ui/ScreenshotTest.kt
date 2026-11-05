@@ -231,7 +231,7 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
     fun learnLight() = capture("learn_light", dark = false) {
-        LearnScreen(onOpen = {}, onBack = {}, onTab = {})
+        LearnScreen(onOpen = {}, onBack = {}, onTab = {}, done = Fixtures.lessonsDone)
     }
 
     /** The X-Wing lesson at its first step, with the example built up front. */
@@ -344,8 +344,8 @@ class ScreenshotTest {
 private object Fixtures {
 
     val stats = mapOf(
-        Difficulty.EASY to DifficultyStats(played = 14, won = 13, bestSeconds = 192),
-        Difficulty.MEDIUM to DifficultyStats(played = 9, won = 7, bestSeconds = 431),
+        Difficulty.EASY to DifficultyStats(played = 14, won = 13, bestSeconds = 192, timedWins = 13, totalSeconds = 13 * 251L, noHintWins = 12),
+        Difficulty.MEDIUM to DifficultyStats(played = 9, won = 7, bestSeconds = 431, timedWins = 5, totalSeconds = 5 * 545L, noHintWins = 3),
         Difficulty.HARD to DifficultyStats(played = 4, won = 2, bestSeconds = 905),
         Difficulty.EXPERT to DifficultyStats(played = 1, won = 0),
     )
@@ -356,6 +356,9 @@ private object Fixtures {
         val solved = listOf(1L, 2L, 3L) + (6L..14L) + listOf(18L, 22L, 23L)
         DailyUi(today = today, results = solved.associate { (today - it) to 300L + it * 17 })
     }
+
+    /** The first five lessons finished. */
+    val lessonsDone: Set<String> = Tutorial.lessons.take(5).map { it.technique.name }.toSet()
 
     /** A few achievements earned in late October and early November 2026. */
     val achievements: Map<Achievement, Long> = mapOf(
