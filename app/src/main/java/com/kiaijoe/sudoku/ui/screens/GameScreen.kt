@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -219,7 +220,7 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
                 ) {
                     StatusRow(state, game)
                     CheckMessage(state)
-                    Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.height(16.dp))
                     Controls(state, game, actions, onExit, won, gridPad)
                     Spacer(Modifier.height(12.dp))
                 }
@@ -240,7 +241,7 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
                 CheckMessage(state)
                 Spacer(Modifier.height(12.dp))
                 BoardArea(state, game, actions, feedback, won, sawPlaying, Modifier.fillMaxWidth().aspectRatio(1f))
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(16.dp))
                 if (state.hint != null && !won) {
                     // The hint sheet sits over this space instead of the tools and number pad.
                     Spacer(Modifier.height(sheetHeight))
@@ -419,7 +420,7 @@ private fun HintPanel(
     onErase: () -> Unit,
     onClose: () -> Unit,
 ) {
-    SumiCard(Modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(20.dp)) {
+    SumiCard(Modifier.fillMaxWidth(), padding = PaddingValues(20.dp)) {
         HintContent(hint, onNext, onPlace, onErase, onClose)
     }
 }
@@ -478,7 +479,7 @@ private fun ColumnScope.HintContent(
             color = c.inkMuted,
         )
     }
-    Spacer(Modifier.height(18.dp))
+    Spacer(Modifier.height(16.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         PillButton(tr("Close", "Funga"), onClose, Modifier.weight(1f), tone = ButtonTone.Soft)
         when {
@@ -508,7 +509,7 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
             Spacer(Modifier.height(10.dp))
             SumiChip(tr("New best time!", "Muda bora mpya!"), tone = ChipTone.Shu, icon = Lucide.Trophy)
         }
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(16.dp))
         val rows = buildList<@Composable () -> Unit> {
             add {
                 ListRow(

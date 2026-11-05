@@ -119,8 +119,7 @@ private fun ToolButton(
         Spacer(Modifier.height(6.dp))
         Text(
             label,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelMedium,
             color = when {
                 !enabled -> c.inkMuted
                 active -> c.ai

@@ -106,16 +106,16 @@ fun HomeScreen(
             }
             IconTile(Lucide.Settings, tr("Settings", "Mipangilio"), onClick = onSettings)
         }
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(16.dp))
 
         // Today's puzzle and the game in progress.
         val today: @Composable ColumnScope.() -> Unit = {
             DailyCard(state.daily, onPlay = onPlayDaily, onCalendar = onCalendar)
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
             KillerDailyCard(state.killerDaily, onPlay = onPlayKillerDaily, onCalendar = onKillerCalendar)
             val game = state.savedGame
             if (state.canContinue && game != null) {
-                Spacer(Modifier.height(14.dp))
+                Spacer(Modifier.height(12.dp))
                 ContinueCard(
                     title = "${if (game.isKiller) "Killer · " else ""}${game.difficulty.label}",
                     detail = formatTime(game.elapsedSeconds) + " · " + game.values.count { it != 0 }.let { filled ->
@@ -128,7 +128,7 @@ fun HomeScreen(
         // The four levels and Killer.
         val newGame: @Composable ColumnScope.() -> Unit = {
             Overline(tr("New game", "Mchezo mpya"))
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Difficulty.entries.chunked(2).forEach { pair ->
                 Row(
                     Modifier.fillMaxWidth().height(IntrinsicSize.Min),
@@ -151,14 +151,14 @@ fun HomeScreen(
         BoxWithConstraints {
             if (maxWidth >= 720.dp) {
                 // Side by side on a tablet or a phone on its side.
-                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     Column(Modifier.weight(1f)) { today() }
                     Column(Modifier.weight(1f)) { newGame() }
                 }
             } else {
                 Column {
                     today()
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     newGame()
                 }
             }
@@ -270,7 +270,7 @@ private fun KillerCard(onPick: (Difficulty) -> Unit) {
                 .semantics(mergeDescendants = true) {
                     stateDescription = if (open) tr("Expanded", "Imefunguliwa") else tr("Collapsed", "Imefungwa")
                 }
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconBadge(Lucide.SquareDashed, tint = c.shu, background = c.shuSoft, size = 44.dp)

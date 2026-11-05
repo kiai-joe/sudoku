@@ -89,7 +89,7 @@ fun DailyCard(daily: DailyUi, onPlay: () -> Unit, onCalendar: () -> Unit, modifi
                 )
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
         WeekStrip(daily, onCalendar)
     }
 }
@@ -212,17 +212,17 @@ fun CalendarScreen(
 
     TabPage(Tab.Daily, onTab, maxContentWidth = 1040.dp) {
         ScreenTitle(tr("Daily puzzles", "Mafumbo ya kila siku"), tr("A classic and a Killer puzzle every day, the same for everyone.", "Fumbo la kawaida na la Killer kila siku, yaleyale kwa kila mtu."))
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(16.dp))
         SegmentedControl(
             segments = listOf(Segment(tr("Classic", "Kawaida"), Lucide.Grid3x3), Segment("Killer", Lucide.SquareDashed)),
             selected = if (showKiller) 1 else 0,
             onSelect = { onShowKiller(it == 1) },
         )
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
         @Suppress("NAME_SHADOWING")
         val daily = if (showKiller) killerDaily else daily
 
-        SumiCard(Modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
+        SumiCard(Modifier.fillMaxWidth()) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     Modifier
@@ -283,10 +283,10 @@ fun CalendarScreen(
                 )
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
 
         val calendar: @Composable () -> Unit = {
-            SumiCard(Modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
+            SumiCard(Modifier.fillMaxWidth()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconTile(Lucide.ChevronLeft, tr("Previous month", "Mwezi uliopita"), onClick = { monthIndex-- }, size = 38.dp)
                     Text(
@@ -308,20 +308,20 @@ fun CalendarScreen(
         }
         val weekdays: @Composable () -> Unit = {
             Overline(tr("By weekday", "Kwa siku ya wiki"))
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             WeekdayCard(daily)
         }
         BoxWithConstraints {
             if (maxWidth >= 720.dp) {
                 // Side by side on a tablet or a phone on its side.
-                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                     Column(Modifier.weight(1f)) { calendar() }
                     Column(Modifier.weight(1f)) { weekdays() }
                 }
             } else {
                 Column {
                     calendar()
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(24.dp))
                     weekdays()
                 }
             }

@@ -80,7 +80,7 @@ fun SumiCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
     color: Color = Sumi.colors.surface,
-    padding: PaddingValues = PaddingValues(18.dp),
+    padding: PaddingValues = PaddingValues(16.dp),
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val colors = Sumi.colors
@@ -133,7 +133,7 @@ fun PillButton(
                 },
             )
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 22.dp),
+            .padding(horizontal = 24.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -433,7 +433,7 @@ fun SegmentedControl(
         modifier
             .fillMaxWidth()
             .card(c, CircleShape)
-            .padding(5.dp)
+            .padding(4.dp)
             .selectableGroup(),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
