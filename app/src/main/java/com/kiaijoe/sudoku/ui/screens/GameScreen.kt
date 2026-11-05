@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.screens
 
+import com.kiaijoe.sudoku.engine.tr
 import android.os.Build
 import android.view.HapticFeedbackConstants
 import androidx.activity.compose.BackHandler
@@ -93,10 +94,11 @@ import com.kiaijoe.sudoku.ui.components.icon
 import com.kiaijoe.sudoku.ui.formatTime
 import com.kiaijoe.sudoku.ui.icons.Lucide
 import com.kiaijoe.sudoku.ui.theme.Sumi
+import kotlinx.coroutines.delay
 
 /** The level as a title: "Medium", "Killer · Medium", "Daily · Killer Medium". */
 private fun GameState.title(): String = when {
-    daily != null -> "Daily · ${if (isKiller) "Killer " else ""}${difficulty.label}"
+    daily != null -> tr("Daily", "Leo") + " · ${if (isKiller) "Killer " else ""}${difficulty.label}"
     isKiller -> "Killer · ${difficulty.label}"
     else -> difficulty.label
 }
@@ -129,16 +131,20 @@ fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
     Page {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             SumiTopBar(
-                title = if (state.generating || game == null) "New game" else game.title(),
+                title = when {
+                    state.generating || game == null -> tr("New game", "Mchezo mpya")
+                    state.practice != null && game.daily == null -> tr("Practice", "Mazoezi") + " · ${state.practice.label}"
+                    else -> game.title()
+                },
                 onBack = onExit,
             ) {
                 if (game != null && game.status == GameStatus.PLAYING && !state.generating) {
                     if (!state.settings.instantCheck && !state.paused) {
-                        IconTile(Lucide.CheckCheck, "Check", onClick = actions::check)
+                        IconTile(Lucide.CheckCheck, tr("Check", "Kagua"), onClick = actions::check)
                     }
                     IconTile(
                         if (state.paused) Lucide.Play else Lucide.Pause,
-                        if (state.paused) "Resume" else "Pause",
+                        if (state.paused) tr("Resume", "Endelea") else tr("Pause", "Sitisha"),
                         onClick = actions::togglePause,
                     )
                 }
@@ -166,7 +172,7 @@ private fun Generating() {
     ) {
         CircularProgressIndicator(color = Sumi.colors.ai, trackColor = Sumi.colors.surfaceSunk)
         Spacer(Modifier.height(16.dp))
-        Text("Building your puzzle…", style = MaterialTheme.typography.bodyMedium, color = Sumi.colors.inkMuted)
+        Text(tr("Building your puzzle…", "Tunaandaa fumbo lako…"), style = MaterialTheme.typography.bodyMedium, color = Sumi.colors.inkMuted)
     }
 }
 
@@ -280,7 +286,7 @@ private fun HintSheet(hint: HintUi?, actions: GameActions, modifier: Modifier = 
                 .widthIn(max = 640.dp)
                 .fillMaxWidth()
                 .card(c, shape, elevation = 16.dp)
-                .semantics { paneTitle = "Hint" }
+                .semantics { paneTitle = tr("Hint", "Dokezo") }
                 .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 20.dp),
         ) {
             Box(
@@ -440,21 +446,24 @@ private fun ColumnScope.HintContent(
         Spacer(Modifier.width(12.dp))
         Text(
             when {
-                mistake != null -> "Check this cell"
+                mistake != null -> tr("Check this cell", "Kagua kisanduku hiki")
                 card != null -> card.title
-                else -> "Hint"
+                else -> tr("Hint", "Dokezo")
             },
             style = MaterialTheme.typography.titleLarge,
             color = c.ink,
             modifier = Modifier.weight(1f).semantics { heading() },
         )
-        if (hint.total > 1) SumiChip("Step ${hint.index + 1} of ${hint.total}", tone = ChipTone.Ai)
+        if (hint.total > 1) SumiChip(tr("Step ${hint.index + 1} of ${hint.total}", "Hatua ${hint.index + 1} kati ya ${hint.total}"), tone = ChipTone.Ai)
     }
     Spacer(Modifier.height(12.dp))
     Text(
         when {
             mistake != null ->
-                "The ${mistake.digit} here doesn't match the solution. Erase it, then ask for a hint again."
+                tr(
+                    "The ${mistake.digit} here doesn't match the solution. Erase it, then ask for a hint again.",
+                    "Namba ${mistake.digit} hapa hailingani na jibu. Ifute, kisha uombe dokezo tena.",
+                )
             card != null -> card.text
             else -> ""
         },
@@ -464,21 +473,21 @@ private fun ColumnScope.HintContent(
     if (card != null && !card.isPlacement && card.eliminations.isNotEmpty()) {
         Spacer(Modifier.height(6.dp))
         Text(
-            "Crossed-out numbers on the board are the ones this rules out.",
+            tr("Crossed-out numbers on the board are the ones this rules out.", "Namba zilizokatwa ubaoni ndizo hatua hii inaziondoa."),
             style = MaterialTheme.typography.bodySmall,
             color = c.inkMuted,
         )
     }
     Spacer(Modifier.height(18.dp))
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        PillButton("Close", onClose, Modifier.weight(1f), tone = ButtonTone.Soft)
+        PillButton(tr("Close", "Funga"), onClose, Modifier.weight(1f), tone = ButtonTone.Soft)
         when {
             mistake != null ->
-                PillButton("Erase it", onErase, Modifier.weight(1f), icon = Lucide.Eraser)
+                PillButton(tr("Erase it", "Ifute"), onErase, Modifier.weight(1f), icon = Lucide.Eraser)
             card != null && card.isPlacement ->
-                PillButton("Place ${card.placeDigit}", onPlace, Modifier.weight(1f), icon = Lucide.Check)
+                PillButton(tr("Place ${card.placeDigit}", "Weka ${card.placeDigit}"), onPlace, Modifier.weight(1f), icon = Lucide.Check)
             hint.hasNext ->
-                PillButton("Next step", onNext, Modifier.weight(1f), trailingIcon = Lucide.ChevronRight)
+                PillButton(tr("Next step", "Hatua ijayo"), onNext, Modifier.weight(1f), trailingIcon = Lucide.ChevronRight)
         }
     }
 }
@@ -489,7 +498,7 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
     val best = state.stats[game.difficulty]?.bestSeconds
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            "Solved in ${formatTime(game.elapsedSeconds)}",
+            tr("Solved in ${formatTime(game.elapsedSeconds)}", "Limetatuliwa kwa ${formatTime(game.elapsedSeconds)}"),
             style = MaterialTheme.typography.displaySmall,
             color = c.ink,
             textAlign = TextAlign.Center,
@@ -497,7 +506,7 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
         )
         if (state.lastWinWasBest) {
             Spacer(Modifier.height(10.dp))
-            SumiChip("New best time!", tone = ChipTone.Shu, icon = Lucide.Trophy)
+            SumiChip(tr("New best time!", "Muda bora mpya!"), tone = ChipTone.Shu, icon = Lucide.Trophy)
         }
         Spacer(Modifier.height(18.dp))
         val rows = buildList<@Composable () -> Unit> {
@@ -505,23 +514,35 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
                 ListRow(
                     icon = if (game.isKiller) Lucide.SquareDashed else game.difficulty.icon,
                     title = if (game.isKiller) "Killer · ${game.difficulty.label}" else game.difficulty.label,
-                    subtitle = game.hardest?.let { "Hardest step: ${it.label.lowercase()}" },
+                    subtitle = game.hardest?.let { tr("Hardest step: ${it.label.lowercase()}", "Hatua ngumu zaidi: ${it.label.lowercase()}") },
                 )
             }
             add {
                 ListRow(
                     icon = Lucide.ListChecks,
-                    title = "${plural(game.mistakes, "mistake")} · ${plural(game.hintsUsed, "hint")}",
-                    subtitle = if (best != null && !state.lastWinWasBest) "Your best is ${formatTime(best)}" else null,
+                    title = "${mistakesCount(game.mistakes)} · ${hintsCount(game.hintsUsed)}",
+                    subtitle = if (best != null && !state.lastWinWasBest) {
+                        tr("Your best is ${formatTime(best)}", "Muda wako bora ni ${formatTime(best)}")
+                    } else {
+                        null
+                    },
                 )
             }
             if (game.daily != null) {
-                val streak = state.daily.streak
+                val streak = (if (game.isKiller) state.killerDaily else state.daily).streak
                 add {
                     ListRow(
                         icon = Lucide.Flame,
-                        title = "$streak-day streak",
-                        subtitle = "Daily puzzle done. Come back tomorrow to keep it going.",
+                        title = if (game.isKiller) {
+                            tr("$streak-day Killer streak", "Mfululizo wa Killer wa siku $streak")
+                        } else {
+                            tr("$streak-day streak", "Mfululizo wa siku $streak")
+                        },
+                        subtitle = if (game.isKiller) {
+                            tr("Daily Killer done. Come back tomorrow to keep it going.", "Killer ya leo imekamilika. Rudi kesho kuendeleza mfululizo.")
+                        } else {
+                            tr("Daily puzzle done. Come back tomorrow to keep it going.", "Fumbo la leo limekamilika. Rudi kesho kuendeleza mfululizo.")
+                        },
                         iconColor = c.shu,
                         iconBackground = c.shuSoft,
                     )
@@ -531,7 +552,7 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
                 add {
                     ListRow(
                         icon = achievement.icon,
-                        title = "New achievement: ${achievement.title}",
+                        title = tr("New achievement: ${achievement.title}", "Tuzo mpya: ${achievement.title}"),
                         subtitle = achievement.description,
                         iconColor = c.onShu,
                         iconBackground = c.shu,
@@ -542,13 +563,15 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
         ListCard(rows = rows)
         Spacer(Modifier.height(20.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            PillButton("Home", onHome, Modifier.weight(1f), tone = ButtonTone.Soft, icon = Lucide.House)
-            PillButton("New game", onNewGame, Modifier.weight(1f), tone = ButtonTone.Seal, icon = Lucide.RotateCcw)
+            PillButton(tr("Home", "Nyumbani"), onHome, Modifier.weight(1f), tone = ButtonTone.Soft, icon = Lucide.House)
+            PillButton(tr("New game", "Mchezo mpya"), onNewGame, Modifier.weight(1f), tone = ButtonTone.Seal, icon = Lucide.RotateCcw)
         }
     }
 }
 
-private fun plural(n: Int, word: String) = if (n == 1) "1 $word" else "$n ${word}s"
+private fun mistakesCount(n: Int) = tr(if (n == 1) "1 mistake" else "$n mistakes", if (n == 1) "kosa 1" else "makosa $n")
+
+private fun hintsCount(n: Int) = tr(if (n == 1) "1 hint" else "$n hints", if (n == 1) "dokezo 1" else "madokezo $n")
 
 @Composable
 private fun StatusRow(state: UiState, game: GameState) {
@@ -560,16 +583,16 @@ private fun StatusRow(state: UiState, game: GameState) {
     ) {
         val checking = state.settings.instantCheck
         val mistakesText = when {
-            !checking -> "Checks ${state.checks}"
-            state.settings.mistakeLimit -> "Mistakes ${game.mistakes} of $MISTAKE_LIMIT"
-            else -> "Mistakes ${game.mistakes}"
+            !checking -> tr("Checks ${state.checks}", "Ukaguzi ${state.checks}")
+            state.settings.mistakeLimit -> tr("Mistakes ${game.mistakes} of $MISTAKE_LIMIT", "Makosa ${game.mistakes} kati ya $MISTAKE_LIMIT")
+            else -> tr("Mistakes ${game.mistakes}", "Makosa ${game.mistakes}")
         }
         Text(
             mistakesText,
             style = MaterialTheme.typography.labelMedium,
             color = if (checking && game.mistakes > 0) c.shu else c.inkMuted,
         )
-        Text("Hints ${game.hintsUsed}", style = MaterialTheme.typography.labelMedium, color = c.inkMuted)
+        Text(tr("Hints ${game.hintsUsed}", "Madokezo ${game.hintsUsed}"), style = MaterialTheme.typography.labelMedium, color = c.inkMuted)
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Lucide.Timer, contentDescription = null, tint = c.ink, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
@@ -582,20 +605,49 @@ private fun StatusRow(state: UiState, game: GameState) {
 private fun GameActions.newLike(game: GameState) =
     if (game.isKiller) newKiller(game.difficulty) else newGame(game.difficulty)
 
-/** A short vibration for each input, through the system's own haptic feedback settings. */
+/**
+ * A short vibration for each input, and a longer pattern for a solved puzzle
+ * or a lost game, through the system's own haptic feedback (so it follows the
+ * phone's touch-feedback setting and needs no permission). A pattern is a few
+ * system effects in a row.
+ */
 @Composable
 private fun Haptics(feedback: Feedback?, enabled: Boolean) {
     val view = LocalView.current
     LaunchedEffect(feedback?.id) {
         if (feedback == null || !enabled) return@LaunchedEffect
-        val modern = Build.VERSION.SDK_INT >= Build.VERSION_CODES.R
-        val constant = when (feedback.kind) {
-            FeedbackKind.PLACE -> HapticFeedbackConstants.KEYBOARD_TAP
-            FeedbackKind.NOTE -> HapticFeedbackConstants.CLOCK_TICK
-            FeedbackKind.WRONG -> if (modern) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
-            FeedbackKind.COMPLETE -> if (modern) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.CONTEXT_CLICK
+        for ((i, step) in hapticPattern(feedback.kind, Build.VERSION.SDK_INT).withIndex()) {
+            if (i > 0) delay(step.delayMillis)
+            view.performHapticFeedback(step.constant)
         }
-        view.performHapticFeedback(constant)
+    }
+}
+
+/** One effect in a vibration pattern, [delayMillis] after the one before. */
+internal data class HapticStep(val constant: Int, val delayMillis: Long = 0)
+
+/** The system haptic effects for [kind], in order. [sdk] picks effects the phone has. */
+internal fun hapticPattern(kind: FeedbackKind, sdk: Int): List<HapticStep> {
+    val modern = sdk >= Build.VERSION_CODES.R
+    val confirm = if (modern) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.CONTEXT_CLICK
+    val reject = if (modern) HapticFeedbackConstants.REJECT else HapticFeedbackConstants.LONG_PRESS
+    return when (kind) {
+        FeedbackKind.PLACE -> listOf(HapticStep(HapticFeedbackConstants.KEYBOARD_TAP))
+        FeedbackKind.NOTE, FeedbackKind.HINT_STEP -> listOf(HapticStep(HapticFeedbackConstants.CLOCK_TICK))
+        FeedbackKind.WRONG -> listOf(HapticStep(reject))
+        FeedbackKind.COMPLETE -> listOf(HapticStep(confirm))
+        // Three rising beats, like the stamp coming down.
+        FeedbackKind.WIN -> listOf(
+            HapticStep(HapticFeedbackConstants.CLOCK_TICK),
+            HapticStep(HapticFeedbackConstants.CONTEXT_CLICK, delayMillis = 110),
+            HapticStep(confirm, delayMillis = 140),
+            HapticStep(HapticFeedbackConstants.LONG_PRESS, delayMillis = 160),
+        )
+        // Two heavy buzzes.
+        FeedbackKind.LOSE -> listOf(
+            HapticStep(reject),
+            HapticStep(reject, delayMillis = 220),
+        )
     }
 }
 
@@ -612,9 +664,9 @@ private fun PausedOverlay(onResume: () -> Unit) {
     ) {
         IconBadge(Lucide.Pause, tint = c.ai, background = c.aiSoft, size = 56.dp)
         Spacer(Modifier.height(14.dp))
-        Text("Paused", style = MaterialTheme.typography.headlineSmall, color = c.ink)
+        Text(tr("Paused", "Imesitishwa"), style = MaterialTheme.typography.headlineSmall, color = c.ink)
         Spacer(Modifier.height(16.dp))
-        PillButton("Resume", onResume, icon = Lucide.Play)
+        PillButton(tr("Resume", "Endelea"), onResume, icon = Lucide.Play)
     }
 }
 
@@ -626,16 +678,19 @@ private fun EndDialogs(game: GameState, actions: GameActions) {
         GameStatus.LOST -> AlertDialog(
             onDismissRequest = {},
             containerColor = c.surface,
-            title = { Text("Out of mistakes", style = MaterialTheme.typography.titleLarge) },
+            title = { Text(tr("Out of mistakes", "Makosa yamekwisha"), style = MaterialTheme.typography.titleLarge) },
             text = {
                 Text(
-                    "That was $MISTAKE_LIMIT wrong numbers. Try this puzzle again or start a fresh one.",
+                    tr(
+                        "That was $MISTAKE_LIMIT wrong numbers. Try this puzzle again or start a fresh one.",
+                        "Hizo ni namba $MISTAKE_LIMIT zisizo sahihi. Jaribu fumbo hili tena au anza jipya.",
+                    ),
                     style = MaterialTheme.typography.bodyLarge,
                 )
             },
-            confirmButton = { PillButton("Try again", actions::restart, height = 44.dp) },
+            confirmButton = { PillButton(tr("Try again", "Jaribu tena"), actions::restart, height = 44.dp) },
             dismissButton = {
-                PillButton("New puzzle", { actions.newLike(game) }, tone = ButtonTone.Soft, height = 44.dp)
+                PillButton(tr("New puzzle", "Fumbo jipya"), { actions.newLike(game) }, tone = ButtonTone.Soft, height = 44.dp)
             },
         )
         GameStatus.PLAYING -> Unit

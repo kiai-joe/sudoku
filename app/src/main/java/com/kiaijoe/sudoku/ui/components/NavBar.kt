@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.components
 
+import com.kiaijoe.sudoku.engine.tr
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -39,11 +40,14 @@ import com.kiaijoe.sudoku.ui.icons.Lucide
 import com.kiaijoe.sudoku.ui.theme.Sumi
 
 /** The four places the bottom bar goes. */
-enum class Tab(val label: String, val icon: ImageVector) {
-    Home("Home", Lucide.House),
-    Daily("Daily", Lucide.CalendarDays),
-    Learn("Learn", Lucide.GraduationCap),
-    Progress("Progress", Lucide.ChartNoAxesColumnIncreasing),
+enum class Tab(private val en: String, private val sw: String, val icon: ImageVector) {
+    Home("Home", "Nyumbani", Lucide.House),
+    Daily("Daily", "Kila siku", Lucide.CalendarDays),
+    Learn("Learn", "Jifunze", Lucide.GraduationCap),
+    Progress("Progress", "Maendeleo", Lucide.ChartNoAxesColumnIncreasing),
+    ;
+
+    val label: String get() = tr(en, sw)
 }
 
 /**

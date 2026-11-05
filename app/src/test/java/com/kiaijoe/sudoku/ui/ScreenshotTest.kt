@@ -14,6 +14,7 @@ import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.GameStatus
 import com.kiaijoe.sudoku.engine.Generator
 import com.kiaijoe.sudoku.engine.HintPlan
+import com.kiaijoe.sudoku.engine.Lang
 import com.kiaijoe.sudoku.engine.Hints
 import com.kiaijoe.sudoku.engine.Killer
 import com.kiaijoe.sudoku.engine.Progress
@@ -36,6 +37,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.time.LocalDate
+import java.util.Locale
 import kotlin.random.Random
 
 /**
@@ -71,7 +73,7 @@ class ScreenshotTest {
 
     private fun home(dark: Boolean) = capture(if (dark) "home_dark" else "home_light", dark) {
         HomeScreen(
-            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, stats = Fixtures.stats) },
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, stats = Fixtures.stats) },
             onContinue = {},
             onPlayDaily = {},
             onCalendar = {},
@@ -87,7 +89,7 @@ class ScreenshotTest {
     @Test
     fun homeIndigoNight() = capture("home_indigo_night", dark = false, theme = InkTheme.INDIGO_NIGHT) {
         HomeScreen(
-            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily) },
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, killerDaily = Fixtures.killerDaily) },
             onContinue = {},
             onPlayDaily = {},
             onCalendar = {},
@@ -217,14 +219,20 @@ class ScreenshotTest {
     @Test fun calendarDark() = calendar(dark = true)
 
     private fun calendar(dark: Boolean) = capture(if (dark) "calendar_dark" else "calendar_light", dark) {
-        CalendarScreen(daily = Fixtures.daily, onBack = {}, onTab = {})
+        CalendarScreen(daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, onBack = {}, onTab = {})
     }
 
     /** The whole daily page, including the weekday chart below the fold, on a tall screen. */
     @Test
     @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
     fun calendarFullLight() = capture("calendar_full_light", dark = false) {
-        CalendarScreen(daily = Fixtures.daily, onBack = {}, onTab = {})
+        CalendarScreen(daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, onBack = {}, onTab = {})
+    }
+
+    /** The Daily tab switched to the daily Killer. */
+    @Test
+    fun calendarKillerLight() = capture("calendar_killer_light", dark = false) {
+        CalendarScreen(daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, onBack = {}, onTab = {}, showKiller = true)
     }
 
     // --- Learn ---------------------------------------------------------------
@@ -288,7 +296,7 @@ class ScreenshotTest {
     @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
     fun homeFullLight() = capture("home_full_light", dark = false) {
         HomeScreen(
-            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily) },
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, killerDaily = Fixtures.killerDaily) },
             onContinue = {},
             onPlayDaily = {},
             onCalendar = {},
@@ -353,7 +361,7 @@ class ScreenshotTest {
     @Config(qualifiers = TABLET_PORTRAIT)
     fun homeTablet() = capture("home_tablet_light", dark = false) {
         HomeScreen(
-            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, stats = Fixtures.stats) },
+            state = Fixtures.midGame().let { UiState(game = it, savedGame = it, daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, stats = Fixtures.stats) },
             onContinue = {},
             onPlayDaily = {},
             onCalendar = {},
@@ -367,7 +375,7 @@ class ScreenshotTest {
     @Test
     @Config(qualifiers = TABLET_LANDSCAPE)
     fun calendarTablet() = capture("calendar_tablet_dark", dark = true) {
-        CalendarScreen(daily = Fixtures.daily, onBack = {}, onTab = {})
+        CalendarScreen(daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, onBack = {}, onTab = {})
     }
 
     @Test
@@ -397,6 +405,95 @@ class ScreenshotTest {
 
     private fun settings(dark: Boolean) = capture(if (dark) "settings_dark" else "settings_light", dark) {
         SettingsScreen(settings = Settings(), onChange = {}, onBack = {})
+    }
+
+    // --- Swahili -------------------------------------------------------------
+
+    /** Runs [block] with the app in Swahili, as on a phone set to Kiswahili (Tanzania). */
+    private fun swahili(block: () -> Unit) {
+        val before = Locale.getDefault()
+        Lang.forced = Lang.SW
+        Locale.setDefault(Locale("sw", "TZ"))
+        try {
+            block()
+        } finally {
+            Lang.forced = null
+            Locale.setDefault(before)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun homeSwahili() = swahili {
+        capture("home_sw_light", dark = false) {
+            HomeScreen(
+                state = Fixtures.midGame().let {
+                    UiState(game = it, savedGame = it, daily = Fixtures.daily, killerDaily = Fixtures.killerDaily)
+                },
+                onContinue = {},
+                onPlayDaily = {},
+                onCalendar = {},
+                onNewGame = {},
+                onNewKiller = {},
+                onSettings = {},
+                onTab = {},
+            )
+        }
+    }
+
+    @Test
+    fun hintSwahili() = swahili {
+        capture("hint_sw_light", dark = false) {
+            val (g, plan) = Fixtures.eliminationHint()
+            GameScreen(state = UiState(game = g, hint = HintUi(plan)), actions = GameActions.None, onExit = {})
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun lessonSwahili() = swahili {
+        capture("lesson_xwing_sw_light", dark = false) {
+            val index = Tutorial.lessons.indexOfFirst { it.technique == Technique.X_WING }
+            LessonScreen(
+                index = index,
+                example = Tutorial.example(Tutorial.lessons[index]),
+                loading = false,
+                onNextLesson = {},
+                onBack = {},
+                onPractice = {},
+            )
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun calendarSwahili() = swahili {
+        capture("calendar_sw_light", dark = false) {
+            CalendarScreen(daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, onBack = {}, onTab = {})
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun settingsSwahili() = swahili {
+        capture("settings_sw_light", dark = false) {
+            SettingsScreen(settings = Settings(), onChange = {}, onBack = {})
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun statsSwahili() = swahili {
+        capture("stats_sw_light", dark = false) {
+            StatsScreen(
+                stats = Fixtures.stats,
+                killerStats = DifficultyStats(played = 3, won = 2, bestSeconds = 1210),
+                achievements = Fixtures.achievements,
+                onReset = {},
+                onBack = {},
+                onTab = {},
+            )
+        }
     }
 
     /** Progress in the dark palette, with the floating bar. */
@@ -473,6 +570,12 @@ private object Fixtures {
         val today = LocalDate.parse("2026-11-05").toEpochDay()
         val solved = listOf(1L, 2L, 3L) + (6L..14L) + listOf(18L, 22L, 23L)
         DailyUi(today = today, results = solved.associate { (today - it) to 300L + it * 17 })
+    }
+
+    /** The daily Killer on the same Thursday: Tuesday and Wednesday solved. */
+    val killerDaily: DailyUi = run {
+        val today = LocalDate.parse("2026-11-05").toEpochDay()
+        DailyUi(today = today, results = mapOf(today - 2 to 640L, today - 1 to 815L), killer = true)
     }
 
     /** The first five lessons finished. */

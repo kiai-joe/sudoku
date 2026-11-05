@@ -13,13 +13,14 @@ The look is soft and rounded: the board is nine rounded boxes on a sunk well ins
 - Highlighting for the selected cell's row, column, box and matching numbers.
 - Mistake limit of 3, which you can turn off in Settings.
 - Optional "check when I ask" mode: turn off *Show mistakes right away* and nothing reveals whether a number is right (no red numbers, no mistake count, correct cells stay editable, the number pad counts every placed copy) until you tap **Check**.
-- Finishing a row, column or box sends a brief matcha ink wash across it, and placing numbers gives a light vibration (both can be turned off).
+- Finishing a row, column or box sends a brief matcha ink wash across it, and placing numbers gives a light vibration, with a longer pattern when you solve a puzzle or run out of mistakes and a soft tick on each hint step (both can be turned off). Vibrations use the system's own haptic effects, so they follow the phone's touch-feedback setting and need no permission.
 - Undo and erase.
 - Teaching hints: a hint finds the easiest next step on your board, highlights the cells involved, and explains it in plain words ("In the centre box, 4 can only go in row 5…"). Steps that only rule out candidates show them crossed out on the board, and you step through to the number they lead to. A wrong number on the board is pointed out first. On a phone the hint slides up as a sheet over the tools, so the board stays in view; on a wide screen it sits beside the board.
 - Timer that pauses when you leave the app, plus a manual pause that hides the board.
 - Killer Sudoku in four levels: the grid is split into cages, each showing the sum of its cells, with no repeats inside a cage. Killer has its own ladder, because cage logic solves most puzzles before classic techniques are needed: Easy needs cage combinations, Medium the 45 rule (innies and outies), Hard classic techniques such as pointing and pairs, and Expert the same with no printed numbers at all. Every puzzle is solvable by logic, and hints explain cage combinations and the 45 rule.
-- Learn: a lesson for every technique the puzzles are graded by, each with a worked example from a real puzzle that you step through on the board, explained the same way hints are. Reaching the end of a lesson ticks it off, and Learn shows how many you've finished and which is next.
-- Daily puzzle: the same puzzle for everyone each day, made from the date so it works offline. It runs from Easy on Monday to Expert on Sunday, with a Killer puzzle on Saturday. A streak counts the days in a row you solve it, and the Daily tab's calendar marks each solved day in vermilion. It's saved separately, so it never replaces your regular game.
+- Learn: a lesson for every technique the puzzles are graded by, each with a worked example from a real puzzle that you step through on the board, explained the same way hints are. Reaching the end of a lesson ticks it off, and Learn shows how many you've finished and which is next. Each lesson with an example has **Practise on a new puzzle**, which starts a fresh puzzle at the lesson's level whose solution needs that technique.
+- Daily puzzle: the same puzzle for everyone each day, made from the date so it works offline. It runs from Easy on Monday to Expert on Sunday. A streak counts the days in a row you solve it, and the Daily tab's calendar marks each solved day in vermilion.
+- Daily Killer: a Killer Sudoku every day as well, rising from Easy on Monday to Expert (no printed numbers) on Sunday, with its own streak and calendar. The Daily tab switches between the two. It's saved separately, so it never replaces your regular game.
 - The current game is saved after every move and can be resumed.
 - A home-screen widget (Daily puzzle, 4×2) shows today's level, your streak and this week, with a button that opens straight into today's puzzle. It updates when you start or solve the daily, just after midnight and at least hourly, and needs no permission. A 2×1 Streak widget shows just the streak (or today's level) and a round Play button.
 - Tablets and landscape: on a screen wider than it is tall, the board sits on the left at full height with the controls, hint or win summary beside it, and lessons do the same. On a tablet the number pad becomes a 3×3 grid of bigger keys. Home and the Daily tab use two columns on wide screens.
@@ -27,6 +28,7 @@ The look is soft and rounded: the board is nine rounded boxes on a sunk well ins
 - Progress per level: games played and solved, win rate, best time, average time, and how often you solve without hints.
 - Twelve achievements, from a first solve to a 30-day daily streak and an Expert Killer with no printed numbers. New ones show on the win screen; all are shown as seals under Progress, and tapping one shows what it needs and when you earned it. Ones already earned from saved statistics are awarded on first launch.
 - Accessibility: a Larger numbers setting; wrong numbers are underlined as well as red, so they don't rely on colour; every board cell is fully described to screen readers (value, pencil marks, Killer cage, and what a hint shows or rules out), achievement and weekday rows read as one sentence, and the ink wash and stamp animation are skipped when the system's Remove animations setting is on. `AccessibilityTest` checks what TalkBack hears.
+- English and Swahili (Kiswahili): Sumi follows the phone's language, and on Android 13 or newer you can set Sumi's language on its own in the system settings. Everything is translated, including hint explanations and lessons. Each piece of text is written as `tr("English", "Kiswahili")` in the code, so a translation can be checked next to its English.
 - Three palettes, picked in Settings: Sumi (Washi by day, Sumi night after dark), Indigo night (paper-white on deep indigo, always dark) and Bamboo (green-tinted paper). Sumi and Bamboo follow the phone's light or dark setting, or you can pick Light or Dark in Settings (the home-screen widgets still follow the phone).
 
 ## Privacy
@@ -44,6 +46,7 @@ and install it, allowing "Install unknown apps" for your browser when asked. New
 The **Release APK** workflow publishes a GitHub release with `Sumi.apk` attached:
 
 - every push to `main` makes a `build-N` release
+- running the Release APK workflow by hand (Actions › Release APK › Run workflow) makes a `build-N` release from the chosen branch
 - pushing a tag such as `v0.2.0` makes a release with that version name
 
 ```bash

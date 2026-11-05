@@ -33,4 +33,32 @@ class TutorialTest {
             assertEquals(lesson.level, example.game.difficulty)
         }
     }
+
+    /** Every stored practice seed must still give a puzzle at the lesson's level that needs its technique. */
+    @Test
+    fun practiceSeedsStillNeedTheirTechnique() {
+        for ((technique, seeds) in Tutorial.PRACTICE_SEEDS) {
+            val lesson = Tutorial.lessons.first { it.technique == technique }
+            for (seed in seeds) {
+                val puzzle = Generator.generate(lesson.level, kotlin.random.Random(seed))
+                assertEquals("$technique seed $seed level", lesson.level, puzzle.difficulty)
+                assertTrue(
+                    "$technique seed $seed needs it",
+                    LogicSolver.grade(puzzle.givens).count(technique) > 0,
+                )
+            }
+        }
+    }
+
+    /** Practice finds a puzzle that needs the technique, for every lesson with an example. */
+    @Test
+    fun practiceNeedsTheLessonsTechnique() {
+        for (lesson in Tutorial.lessons.filter { Tutorial.hasPractice(it) }) {
+            val practice = Tutorial.practice(lesson, kotlin.random.Random(lesson.technique.ordinal))
+            assertTrue("${lesson.technique} practice needs it", practice.usesTechnique)
+            assertEquals(lesson.killer, practice.puzzle.cages.isNotEmpty())
+            val grade = LogicSolver.grade(practice.puzzle.givens, practice.puzzle.cages)
+            assertTrue("${lesson.technique} practice is used", grade.count(lesson.technique) > 0)
+        }
+    }
 }

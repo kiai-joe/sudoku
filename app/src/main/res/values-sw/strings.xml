@@ -1,0 +1,6 @@
+<resources>
+    <string name="widget_name">Fumbo la leo</string>
+    <string name="widget_description">Fumbo la leo, mfululizo wako na wiki hii</string>
+    <string name="widget_streak_name">Mfululizo</string>
+    <string name="widget_streak_description">Mfululizo wako wa kila siku, na kitufe cha kucheza fumbo la leo</string>
+</resources>

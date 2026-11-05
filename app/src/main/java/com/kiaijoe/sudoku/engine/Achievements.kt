@@ -1,19 +1,51 @@
 package com.kiaijoe.sudoku.engine
 
 /** Milestones a player can earn. The order is the order they're listed in. */
-enum class Achievement(val title: String, val description: String) {
-    FIRST_STAMP("First stamp", "Solve any puzzle"),
-    STEADY_HAND("Steady hand", "Solve a Hard puzzle"),
-    MASTER("Master", "Solve an Expert puzzle"),
-    FULL_LADDER("Full ladder", "Solve a puzzle at every level, Easy to Expert"),
-    ON_YOUR_OWN("On your own", "Solve a Medium or harder puzzle without hints"),
-    CLEAN_INK("Clean ink", "Solve a puzzle with no mistakes and no hints, with mistakes shown"),
-    SWIFT_BRUSH("Swift brush", "Solve a Medium or harder puzzle in under 8 minutes"),
-    CAGE_BREAKER("Cage breaker", "Solve a Killer Sudoku"),
-    BLANK_PAGE("Blank page", "Solve an Expert Killer, which has no printed numbers"),
-    REGULAR("Regular", "Solve 10 daily puzzles"),
-    WEEK_OF_INK("A week of ink", "Solve the daily puzzle 7 days in a row"),
-    MOON_CYCLE("Moon cycle", "Solve the daily puzzle 30 days in a row"),
+enum class Achievement(
+    private val titleEn: String,
+    private val titleSw: String,
+    private val descriptionEn: String,
+    private val descriptionSw: String,
+) {
+    FIRST_STAMP("First stamp", "Muhuri wa kwanza", "Solve any puzzle", "Tatua fumbo lolote"),
+    STEADY_HAND("Steady hand", "Mkono thabiti", "Solve a Hard puzzle", "Tatua fumbo la kiwango Ngumu"),
+    MASTER("Master", "Gwiji", "Solve an Expert puzzle", "Tatua fumbo la kiwango Bingwa"),
+    FULL_LADDER(
+        "Full ladder", "Ngazi kamili",
+        "Solve a puzzle at every level, Easy to Expert", "Tatua fumbo katika kila kiwango, kuanzia Rahisi hadi Bingwa",
+    ),
+    ON_YOUR_OWN(
+        "On your own", "Peke yako",
+        "Solve a Medium or harder puzzle without hints", "Tatua fumbo la Kati au gumu zaidi bila madokezo",
+    ),
+    CLEAN_INK(
+        "Clean ink", "Wino safi",
+        "Solve a puzzle with no mistakes and no hints, with mistakes shown",
+        "Tatua fumbo bila makosa wala madokezo, makosa yakionyeshwa",
+    ),
+    SWIFT_BRUSH(
+        "Swift brush", "Brashi ya haraka",
+        "Solve a Medium or harder puzzle in under 8 minutes", "Tatua fumbo la Kati au gumu zaidi chini ya dakika 8",
+    ),
+    CAGE_BREAKER("Cage breaker", "Mvunja vizimba", "Solve a Killer Sudoku", "Tatua Killer Sudoku"),
+    BLANK_PAGE(
+        "Blank page", "Ukurasa mtupu",
+        "Solve an Expert Killer, which has no printed numbers", "Tatua Killer ya Bingwa, isiyo na namba zilizochapishwa",
+    ),
+    REGULAR("Regular", "Mgeni wa kawaida", "Solve 10 daily puzzles", "Tatua mafumbo 10 ya kila siku"),
+    WEEK_OF_INK(
+        "A week of ink", "Wiki ya wino",
+        "Solve the daily puzzle 7 days in a row", "Tatua fumbo la kila siku kwa siku 7 mfululizo",
+    ),
+    MOON_CYCLE(
+        "Moon cycle", "Mzunguko wa mwezi",
+        "Solve the daily puzzle 30 days in a row", "Tatua fumbo la kila siku kwa siku 30 mfululizo",
+    ),
+    ;
+
+    val title: String get() = tr(titleEn, titleSw)
+
+    val description: String get() = tr(descriptionEn, descriptionSw)
 }
 
 /**

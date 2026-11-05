@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.components
 
+import com.kiaijoe.sudoku.engine.tr
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
@@ -49,7 +50,7 @@ fun HanamaruStamp(color: Color, modifier: Modifier = Modifier, animate: Boolean 
 
     Canvas(
         modifier
-            .semantics { contentDescription = "Solved: hanamaru stamp" }
+            .semantics { contentDescription = tr("Solved: hanamaru stamp", "Limetatuliwa: muhuri wa hanamaru") }
             .graphicsLayer {
                 scaleX = pulse.value
                 scaleY = pulse.value

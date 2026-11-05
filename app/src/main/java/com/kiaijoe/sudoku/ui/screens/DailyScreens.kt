@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.screens
 
+import com.kiaijoe.sudoku.engine.tr
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -37,7 +38,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.engine.Daily
 import com.kiaijoe.sudoku.ui.DailyUi
+import com.kiaijoe.sudoku.ui.components.ButtonTone
+import com.kiaijoe.sudoku.ui.components.CardShape
 import com.kiaijoe.sudoku.ui.components.ChipTone
+import com.kiaijoe.sudoku.ui.components.IconBadge
+import com.kiaijoe.sudoku.ui.components.Segment
+import com.kiaijoe.sudoku.ui.components.SegmentedControl
+import com.kiaijoe.sudoku.ui.components.card
 import com.kiaijoe.sudoku.ui.components.IconTile
 import com.kiaijoe.sudoku.ui.components.Overline
 import com.kiaijoe.sudoku.ui.components.PillButton
@@ -67,7 +74,7 @@ fun DailyCard(daily: DailyUi, onPlay: () -> Unit, onCalendar: () -> Unit, modifi
     SumiCard(modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Overline("Daily · ${dayName(today)} ${today.dayOfMonth} ${monthName(today)}")
+                Overline(tr("Daily", "Fumbo la leo") + " · ${dayName(today)} ${today.dayOfMonth} ${monthName(today)}")
                 Text(daily.label, style = MaterialTheme.typography.headlineSmall, color = c.ink)
             }
             val solvedIn = daily.todaySeconds
@@ -75,7 +82,7 @@ fun DailyCard(daily: DailyUi, onPlay: () -> Unit, onCalendar: () -> Unit, modifi
                 SumiChip(formatTime(solvedIn), tone = ChipTone.Matcha, icon = Lucide.CheckCheck)
             } else {
                 PillButton(
-                    if (daily.inProgress != null) "Continue" else "Play",
+                    if (daily.inProgress != null) tr("Continue", "Endelea") else tr("Play", "Cheza"),
                     onPlay,
                     icon = Lucide.Play,
                     height = 44.dp,
@@ -84,6 +91,54 @@ fun DailyCard(daily: DailyUi, onPlay: () -> Unit, onCalendar: () -> Unit, modifi
         }
         Spacer(Modifier.height(14.dp))
         WeekStrip(daily, onCalendar)
+    }
+}
+
+/**
+ * The home screen's smaller card for today's Killer: its level, the Killer
+ * streak, and Play, Continue or the solved time. Tapping the card opens the
+ * Daily tab on the Killer calendar.
+ */
+@Composable
+fun KillerDailyCard(daily: DailyUi, onPlay: () -> Unit, onCalendar: () -> Unit, modifier: Modifier = Modifier) {
+    val c = Sumi.colors
+    Row(
+        modifier
+            .fillMaxWidth()
+            .card(c)
+            .clip(CardShape)
+            .clickable(role = Role.Button, onClickLabel = tr("Open the Killer calendar", "Fungua kalenda ya Killer"), onClick = onCalendar)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconBadge(Lucide.SquareDashed, tint = c.shu, background = c.shuSoft)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Overline(tr("Daily Killer", "Killer ya leo"))
+            Text(daily.difficulty.label, style = MaterialTheme.typography.titleLarge, color = c.ink)
+            Text(
+                when (val streak = daily.streak) {
+                    0 -> tr("Its own streak, apart from the classic one", "Mfululizo wake binafsi, tofauti na wa kawaida")
+                    1 -> tr("1-day Killer streak", "Mfululizo wa Killer wa siku 1")
+                    else -> tr("$streak-day Killer streak", "Mfululizo wa Killer wa siku $streak")
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = c.inkMuted,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        val solvedIn = daily.todaySeconds
+        if (solvedIn != null) {
+            SumiChip(formatTime(solvedIn), tone = ChipTone.Matcha, icon = Lucide.CheckCheck)
+        } else {
+            PillButton(
+                if (daily.inProgress != null) tr("Continue", "Endelea") else tr("Play", "Cheza"),
+                onPlay,
+                icon = Lucide.Play,
+                height = 44.dp,
+                tone = ButtonTone.Seal,
+            )
+        }
     }
 }
 
@@ -97,7 +152,7 @@ private fun WeekStrip(daily: DailyUi, onCalendar: () -> Unit) {
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
-            .clickable(role = Role.Button, onClickLabel = "Open the calendar", onClick = onCalendar),
+            .clickable(role = Role.Button, onClickLabel = tr("Open the calendar", "Fungua kalenda"), onClick = onCalendar),
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         for (i in 0 until 7) {
@@ -126,19 +181,28 @@ private fun WeekStrip(daily: DailyUi, onCalendar: () -> Unit) {
 }
 
 private fun dayDescription(daily: DailyUi, day: Long, label: String): String = "$label, " + when {
-    day in daily.results -> "solved"
-    day == daily.today -> "today"
-    day > daily.today -> "upcoming"
-    else -> "not solved"
+    day in daily.results -> tr("solved", "limetatuliwa")
+    day == daily.today -> tr("today", "leo")
+    day > daily.today -> tr("upcoming", "linakuja")
+    else -> tr("not solved", "halikutatuliwa")
 }
 
-/** The Daily tab: the streak, a month at a time with every solved day, and how each weekday goes. */
+/**
+ * The Daily tab: the classic daily or the daily Killer, switched at the top,
+ * each with its streak, a month at a time with every solved day, and how
+ * each weekday goes.
+ *
+ * @param onPlayDaily plays today's puzzle; true for the Killer one.
+ */
 @Composable
 fun CalendarScreen(
     daily: DailyUi,
     onBack: () -> Unit,
-    onPlayDaily: () -> Unit = {},
+    onPlayDaily: (killer: Boolean) -> Unit = {},
     onTab: ((Tab) -> Unit)? = null,
+    killerDaily: DailyUi = DailyUi(today = daily.today, killer = true),
+    showKiller: Boolean = false,
+    onShowKiller: (Boolean) -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     val c = Sumi.colors
@@ -147,8 +211,16 @@ fun CalendarScreen(
     val month = YearMonth.from(today).plusMonths(monthIndex)
 
     TabPage(Tab.Daily, onTab, maxContentWidth = 1040.dp) {
-        ScreenTitle("Daily puzzle", "A new puzzle every day, the same for everyone.")
-        Spacer(Modifier.height(18.dp))
+        ScreenTitle(tr("Daily puzzles", "Mafumbo ya kila siku"), tr("A classic and a Killer puzzle every day, the same for everyone.", "Fumbo la kawaida na la Killer kila siku, yaleyale kwa kila mtu."))
+        Spacer(Modifier.height(14.dp))
+        SegmentedControl(
+            segments = listOf(Segment(tr("Classic", "Kawaida"), Lucide.Grid3x3), Segment("Killer", Lucide.SquareDashed)),
+            selected = if (showKiller) 1 else 0,
+            onSelect = { onShowKiller(it == 1) },
+        )
+        Spacer(Modifier.height(14.dp))
+        @Suppress("NAME_SHADOWING")
+        val daily = if (showKiller) killerDaily else daily
 
         SumiCard(Modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -169,12 +241,20 @@ fun CalendarScreen(
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(
-                        if (daily.streak == 1) "1-day streak" else "${daily.streak}-day streak",
+                        when {
+                            daily.killer && daily.streak == 1 -> tr("1-day Killer streak", "Mfululizo wa Killer wa siku 1")
+                            daily.killer -> tr("${daily.streak}-day Killer streak", "Mfululizo wa Killer wa siku ${daily.streak}")
+                            daily.streak == 1 -> tr("1-day streak", "Mfululizo wa siku 1")
+                            else -> tr("${daily.streak}-day streak", "Mfululizo wa siku ${daily.streak}")
+                        },
                         style = MaterialTheme.typography.titleLarge,
                         color = c.ink,
                     )
                     Text(
-                        "Best: ${daily.longestStreak} days · ${daily.results.size} solved",
+                        tr(
+                            "Best: ${daily.longestStreak} days · ${daily.results.size} solved",
+                            "Bora: siku ${daily.longestStreak} · ${daily.results.size} yametatuliwa",
+                        ),
                         style = MaterialTheme.typography.bodySmall,
                         color = c.inkMuted,
                     )
@@ -184,8 +264,8 @@ fun CalendarScreen(
                     SumiChip(formatTime(solvedIn), tone = ChipTone.Matcha, icon = Lucide.CheckCheck)
                 } else {
                     PillButton(
-                        if (daily.inProgress != null) "Continue" else "Play",
-                        onPlayDaily,
+                        if (daily.inProgress != null) tr("Continue", "Endelea") else tr("Play", "Cheza"),
+                        { onPlayDaily(daily.killer) },
                         icon = Lucide.Play,
                         height = 44.dp,
                     )
@@ -194,7 +274,10 @@ fun CalendarScreen(
             if (daily.streak == 0 && daily.todaySeconds == null) {
                 Spacer(Modifier.height(10.dp))
                 Text(
-                    "Solve today's ${daily.label} puzzle to start a streak.",
+                    tr(
+                        "Solve today's ${daily.label} puzzle to start a streak.",
+                        "Tatua fumbo la leo la ${daily.label} kuanza mfululizo.",
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = c.inkMuted,
                 )
@@ -205,7 +288,7 @@ fun CalendarScreen(
         val calendar: @Composable () -> Unit = {
             SumiCard(Modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconTile(Lucide.ChevronLeft, "Previous month", onClick = { monthIndex-- }, size = 38.dp)
+                    IconTile(Lucide.ChevronLeft, tr("Previous month", "Mwezi uliopita"), onClick = { monthIndex-- }, size = 38.dp)
                     Text(
                         "${month.month.getDisplayName(TextStyle.FULL, Locale.getDefault())} ${month.year}",
                         style = MaterialTheme.typography.titleMedium,
@@ -214,7 +297,7 @@ fun CalendarScreen(
                         modifier = Modifier.weight(1f),
                     )
                     if (monthIndex < 0) {
-                        IconTile(Lucide.ChevronRight, "Next month", onClick = { monthIndex++ }, size = 38.dp)
+                        IconTile(Lucide.ChevronRight, tr("Next month", "Mwezi ujao"), onClick = { monthIndex++ }, size = 38.dp)
                     } else {
                         Spacer(Modifier.size(38.dp))
                     }
@@ -224,7 +307,7 @@ fun CalendarScreen(
             }
         }
         val weekdays: @Composable () -> Unit = {
-            Overline("By weekday")
+            Overline(tr("By weekday", "Kwa siku ya wiki"))
             Spacer(Modifier.height(10.dp))
             WeekdayCard(daily)
         }
@@ -296,11 +379,15 @@ private fun MonthGrid(daily: DailyUi, month: YearMonth) {
 @Composable
 private fun WeekdayCard(daily: DailyUi) {
     val c = Sumi.colors
-    val stats = Daily.weekdayStats(daily.results)
+    val stats = Daily.weekdayStats(daily.results, daily.killer)
     val longest = stats.maxOf { it.averageSeconds ?: 0L }.coerceAtLeast(1L)
     SumiCard(Modifier.fillMaxWidth()) {
         Text(
-            "Average solve time. Levels rise from Easy on Monday to Expert on Sunday, with Killer on Saturday.",
+            if (daily.killer) {
+                tr("Average solve time. Killer levels rise from Easy on Monday to Expert, with no printed numbers, on Sunday.", "Wastani wa muda wa kutatua. Viwango vya Killer vinapanda kutoka Rahisi Jumatatu hadi Bingwa, bila namba zilizochapishwa, Jumapili.")
+            } else {
+                tr("Average solve time. Levels rise from Easy on Monday to Expert on Sunday.", "Wastani wa muda wa kutatua. Viwango vinapanda kutoka Rahisi Jumatatu hadi Bingwa Jumapili.")
+            },
             style = MaterialTheme.typography.bodySmall,
             color = c.inkMuted,
         )
@@ -308,11 +395,18 @@ private fun WeekdayCard(daily: DailyUi) {
         for (row in stats) {
             val spoken = buildString {
                 append(row.day.getDisplayName(TextStyle.FULL, Locale.getDefault()))
-                append(", ").append(if (row.killer) "Killer" else row.difficulty.label)
+                append(", ").append(row.difficulty.label)
                 if (row.solved == 0) {
-                    append(", none solved yet")
+                    append(tr(", none solved yet", ", hakuna lililotatuliwa bado"))
                 } else {
-                    append(", average ${formatTime(row.averageSeconds!!)}, ${row.solved} solved, best ${formatTime(row.bestSeconds!!)}")
+                    val average = formatTime(row.averageSeconds!!)
+                    val best = formatTime(row.bestSeconds!!)
+                    append(
+                        tr(
+                            ", average $average, ${row.solved} solved, best $best",
+                            ", wastani $average, ${row.solved} yametatuliwa, bora $best",
+                        ),
+                    )
                 }
             }
             Row(
@@ -329,9 +423,9 @@ private fun WeekdayCard(daily: DailyUi) {
                         color = c.ink,
                     )
                     Text(
-                        if (row.killer) "Killer" else row.difficulty.label,
+                        row.difficulty.label,
                         style = MaterialTheme.typography.bodySmall,
-                        color = if (row.killer) c.shu else c.inkMuted,
+                        color = c.inkMuted,
                     )
                 }
                 Box(
@@ -360,7 +454,11 @@ private fun WeekdayCard(daily: DailyUi) {
                         color = c.ink,
                     )
                     Text(
-                        if (row.solved == 0) "none yet" else "${row.solved}× · best ${formatTime(row.bestSeconds!!)}",
+                        if (row.solved == 0) {
+                            tr("none yet", "bado hakuna")
+                        } else {
+                            "${row.solved}× · " + tr("best", "bora") + " ${formatTime(row.bestSeconds!!)}"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = c.inkMuted,
                         maxLines = 1,

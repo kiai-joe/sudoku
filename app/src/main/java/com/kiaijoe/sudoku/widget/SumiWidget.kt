@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.widget
 
+import com.kiaijoe.sudoku.engine.tr
 import android.app.AlarmManager
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
@@ -80,7 +81,7 @@ class SumiWidget : AppWidgetProvider() {
         /** What the widgets show today, from what Sumi has saved. */
         fun model(context: Context, today: Long = LocalDate.now().toEpochDay()): DailyWidgetModel {
             val repo = GameRepository(context)
-            val inProgress = repo.loadDailyGame()?.let { it.daily == today && it.status == GameStatus.PLAYING } == true
+            val inProgress = repo.loadDailyGame()?.let { it.daily == today && it.status == GameStatus.PLAYING && !it.isKiller } == true
             return dailyWidgetModel(today, repo.loadDailyResults(), inProgress)
         }
 
@@ -145,7 +146,7 @@ class SumiWidget : AppWidgetProvider() {
             views.setViewVisibility(R.id.widget_small_flame, if (streak) View.VISIBLE else View.GONE)
             views.setTextViewText(R.id.widget_small_value, if (streak) model.streak.toString() else model.title)
             views.setTextViewTextSize(R.id.widget_small_value, TypedValue.COMPLEX_UNIT_SP, if (streak) 22f else 17f)
-            views.setTextViewText(R.id.widget_small_caption, if (streak) "day streak" else "Daily puzzle")
+            views.setTextViewText(R.id.widget_small_caption, if (streak) tr("day streak", "siku mfululizo") else tr("Daily puzzle", "Fumbo la leo"))
             if (model.solved) {
                 views.setInt(R.id.widget_small_action, "setBackgroundResource", R.drawable.widget_circle_matcha_soft)
                 views.setImageViewResource(R.id.widget_small_icon, R.drawable.ic_widget_check_matcha)
@@ -154,7 +155,14 @@ class SumiWidget : AppWidgetProvider() {
                 views.setImageViewResource(R.id.widget_small_icon, R.drawable.ic_widget_play)
             }
             views.setContentDescription(android.R.id.background, model.description)
-            views.setContentDescription(R.id.widget_small_action, if (model.solved) "Open Sumi" else "${model.action} today's puzzle")
+            views.setContentDescription(
+                R.id.widget_small_action,
+                if (model.solved) {
+                    tr("Open Sumi", "Fungua Sumi")
+                } else {
+                    tr("${model.action} today's puzzle", "${model.action} fumbo la leo")
+                },
+            )
             views.setOnClickPendingIntent(android.R.id.background, launch(context, openDaily = false))
             views.setOnClickPendingIntent(R.id.widget_small_action, launch(context, openDaily = !model.solved))
             return views

@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui
 
+import com.kiaijoe.sudoku.engine.tr
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,7 +19,10 @@ import com.kiaijoe.sudoku.engine.HintCard
 import com.kiaijoe.sudoku.engine.HintPlan
 import com.kiaijoe.sudoku.engine.Hints
 import com.kiaijoe.sudoku.engine.Killer
+import com.kiaijoe.sudoku.engine.Lesson
 import com.kiaijoe.sudoku.engine.Progress
+import com.kiaijoe.sudoku.engine.Technique
+import com.kiaijoe.sudoku.engine.Tutorial
 import com.kiaijoe.sudoku.widget.SumiWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -36,12 +40,14 @@ const val MISTAKE_LIMIT = 3
 
 /**
  * [game] is the game on screen, regular or daily. [savedGame] is the regular
- * game in progress, which the home screen offers to continue.
+ * game in progress, which the home screen offers to continue. [daily] is the
+ * classic daily puzzle and [killerDaily] the Killer one.
  */
 data class UiState(
     val game: GameState? = null,
     val savedGame: GameState? = null,
     val daily: DailyUi = DailyUi(),
+    val killerDaily: DailyUi = DailyUi(killer = true),
     val selected: Int? = null,
     val notesMode: Boolean = false,
     val paused: Boolean = false,
@@ -60,31 +66,40 @@ data class UiState(
     val newAchievements: List<Achievement> = emptyList(),
     /** Lessons finished, by technique name. */
     val lessonsDone: Set<String> = emptySet(),
+    /** The technique the game on screen is practice for, if it was started from a lesson. */
+    val practice: Technique? = null,
 ) {
     val canContinue: Boolean get() = savedGame?.status == GameStatus.PLAYING && !generating
 }
 
 /**
- * Today's daily puzzle and the record of past ones.
+ * Today's daily puzzle, classic or Killer, and the record of past ones.
  *
  * @property today the current epoch day.
  * @property results solved days (epoch day to seconds).
  * @property inProgress today's daily game if started and not finished.
+ * @property killer whether this is the daily Killer, which has its own record and streak.
  */
 data class DailyUi(
     val today: Long = 0,
     val results: Map<Long, Long> = emptyMap(),
     val inProgress: GameState? = null,
+    val killer: Boolean = false,
 ) {
-    val difficulty: Difficulty get() = Daily.difficultyFor(today)
-    val label: String get() = Daily.label(today)
+    val difficulty: Difficulty get() = Daily.difficultyFor(today, killer)
+    val label: String get() = Daily.label(today, killer)
     val solvedToday: Boolean get() = today in results
     val todaySeconds: Long? get() = results[today]
     val streak: Int get() = Daily.streak(results.keys, today)
     val longestStreak: Int get() = Daily.longestStreak(results.keys)
 }
 
-enum class FeedbackKind { PLACE, NOTE, WRONG, COMPLETE }
+/**
+ * What a vibration is for: a placed number, a pencil mark, a wrong number, a
+ * finished row, column or box, a solved puzzle, a game lost to mistakes, or
+ * a step through a hint.
+ */
+enum class FeedbackKind { PLACE, NOTE, WRONG, COMPLETE, WIN, LOSE, HINT_STEP }
 
 /**
  * What the last input did, for a vibration and, when a row, column or box
@@ -125,7 +140,8 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         UiState(
             game = saved,
             savedGame = saved,
-            daily = loadDaily(),
+            daily = loadDaily(killer = false),
+            killerDaily = loadDaily(killer = true),
             settings = repo.loadSettings(),
             stats = repo.loadStats(),
             killerStats = repo.loadKillerStats(),
@@ -152,9 +168,12 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         _ui.update { it.copy(achievements = repo.loadAchievements()) }
         updateTimer()
         refreshWidget()
-        BackupResult(ok = true, message = "Restored. Your games, stats and settings are back.")
+        BackupResult(ok = true, message = tr(
+            "Restored. Your games, stats and settings are back.",
+            "Imerejeshwa. Michezo, takwimu na mipangilio yako imerudi.",
+        ))
     } catch (e: BackupException) {
-        BackupResult(ok = false, message = e.message ?: "This backup couldn't be restored.")
+        BackupResult(ok = false, message = e.message ?: tr("This backup couldn't be restored.", "Nakala hii haikuweza kurejeshwa."))
     }
 
     /** What the saved statistics add up to, for achievements. */
@@ -202,6 +221,23 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
+    /**
+     * Starts a practice game for [lesson]: a fresh puzzle at its level that
+     * needs its technique. It takes the regular game's slot and counts in the
+     * level's statistics, like any new game.
+     */
+    fun practice(lesson: Lesson) {
+        startLoading()
+        viewModelScope.launch {
+            val practice = withContext(Dispatchers.Default) { Tutorial.practice(lesson) }
+            val game = GameState.from(practice.puzzle)
+            if (lesson.killer) repo.recordKillerStart() else repo.recordStart(lesson.level)
+            repo.saveGame(game)
+            show(game, savedGame = game)
+            _ui.update { it.copy(practice = lesson.technique.takeIf { practice.usesTechnique }) }
+        }
+    }
+
     /** Brings back the regular game in progress, if the screen shows the daily one. */
     fun continueGame() {
         val s = _ui.value
@@ -210,10 +246,10 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         show(saved, savedGame = saved)
     }
 
-    /** Opens today's daily puzzle, resuming it if already started. */
-    fun playDaily() {
+    /** Opens today's daily puzzle, or the daily Killer when [killer], resuming it if already started. */
+    fun playDaily(killer: Boolean = false) {
         refreshDaily()
-        val daily = _ui.value.daily
+        val daily = if (killer) _ui.value.killerDaily else _ui.value.daily
         if (daily.solvedToday) return
         daily.inProgress?.let {
             show(it, savedGame = _ui.value.savedGame)
@@ -221,24 +257,27 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         }
         startLoading()
         viewModelScope.launch {
-            val game = withContext(Dispatchers.Default) { Daily.gameFor(daily.today) }
-            repo.saveDailyGame(game)
+            val game = withContext(Dispatchers.Default) { Daily.gameFor(daily.today, killer) }
+            repo.saveDailyGame(game, killer)
             show(game, savedGame = _ui.value.savedGame)
             refreshDaily()
-            refreshWidget()
+            if (!killer) refreshWidget()
         }
     }
 
-    /** Re-reads today's date and daily progress, in case the day has changed. */
-    fun refreshDaily() = _ui.update { it.copy(daily = loadDaily()) }
+    /** Re-reads today's date and both dailies' progress, in case the day has changed. */
+    fun refreshDaily() = _ui.update { it.copy(daily = loadDaily(killer = false), killerDaily = loadDaily(killer = true)) }
 
     /** Brings the home-screen widget up to date with the daily record. */
     private fun refreshWidget() = SumiWidget.refresh(getApplication<Application>())
 
-    private fun loadDaily(): DailyUi {
+    private fun loadDaily(killer: Boolean): DailyUi {
         val today = LocalDate.now().toEpochDay()
-        val inProgress = repo.loadDailyGame()?.takeIf { it.daily == today && it.status == GameStatus.PLAYING }
-        return DailyUi(today = today, results = repo.loadDailyResults(), inProgress = inProgress)
+        val inProgress = repo.loadDailyGame(killer)?.takeIf {
+            // Before the daily Killer, Saturday's classic daily was a Killer; such a game isn't today's either way.
+            it.daily == today && it.status == GameStatus.PLAYING && it.isKiller == killer
+        }
+        return DailyUi(today = today, results = repo.loadDailyResults(killer), inProgress = inProgress, killer = killer)
     }
 
     private fun startLoading() {
@@ -265,6 +304,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 feedback = null,
                 lastWinWasBest = false,
                 newAchievements = emptyList(),
+                practice = null,
                 stats = repo.loadStats(),
                 killerStats = repo.loadKillerStats(),
             )
@@ -339,6 +379,8 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         }
         val after = _ui.value.game ?: return
         if (after == before) return
+        // A win or loss has its own vibration, set by move().
+        if (after.status != GameStatus.PLAYING) return
         // Finishing a group is only celebrated when it can't give away whether numbers are right.
         val completed = if (!s.notesMode && checking && after.isCorrect(cell)) {
             after.completedHouses(cell).flatMap { it.cells.toList() }.distinct()
@@ -380,9 +422,12 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 flagged = wrong,
                 checks = it.checks + 1,
                 checkMessage = when (wrong.size) {
-                    0 -> "Everything so far is right."
-                    1 -> "1 number is wrong. It's marked in red."
-                    else -> "${wrong.size} numbers are wrong. They're marked in red."
+                    0 -> tr("Everything so far is right.", "Kila kitu hadi sasa ni sahihi.")
+                    1 -> tr("1 number is wrong. It's marked in red.", "Namba 1 si sahihi. Imewekwa alama nyekundu.")
+                    else -> tr(
+                        "${wrong.size} numbers are wrong. They're marked in red.",
+                        "Namba ${wrong.size} si sahihi. Zimewekwa alama nyekundu.",
+                    )
                 },
             )
         }
@@ -402,7 +447,11 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
 
     override fun hintNext() = _ui.update { s ->
         val h = s.hint ?: return@update s
-        if (h.hasNext) s.copy(hint = h.copy(index = h.index + 1)) else s
+        if (h.hasNext) {
+            s.copy(hint = h.copy(index = h.index + 1), feedback = Feedback(++feedbackId, FeedbackKind.HINT_STEP))
+        } else {
+            s
+        }
     }
 
     /** Places the number the hint's last step arrives at. */
@@ -447,8 +496,8 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         if (next.status == GameStatus.WON) {
             val day = next.daily
             if (day != null) {
-                repo.recordDailyWin(day, next.elapsedSeconds)
-                refreshWidget()
+                repo.recordDailyWin(day, next.elapsedSeconds, killer = next.isKiller)
+                if (!next.isKiller) refreshWidget()
                 best = false
             } else if (next.isKiller) {
                 best = repo.recordKillerWin(next.elapsedSeconds, next.hintsUsed)
@@ -468,6 +517,11 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 killerStats = if (next.status == GameStatus.WON) repo.loadKillerStats() else it.killerStats,
                 newAchievements = newAchievements,
                 achievements = if (newAchievements.isEmpty()) it.achievements else repo.loadAchievements(),
+                feedback = when (next.status) {
+                    GameStatus.WON -> Feedback(++feedbackId, FeedbackKind.WIN)
+                    GameStatus.LOST -> Feedback(++feedbackId, FeedbackKind.LOSE)
+                    GameStatus.PLAYING -> it.feedback
+                },
             )
         }
         updateTimer()
@@ -478,13 +532,13 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         if (game.daily == null) {
             state.copy(savedGame = game.takeIf { it.status == GameStatus.PLAYING })
         } else {
-            state.copy(daily = loadDaily())
+            state.copy(daily = loadDaily(killer = false), killerDaily = loadDaily(killer = true))
         }
 
     /** Saves [game] to its slot. Finished games are cleared; daily wins live in the results. */
     private fun persist(game: GameState) {
         val keep = if (game.status == GameStatus.WON) null else game
-        if (game.daily != null) repo.saveDailyGame(keep) else repo.saveGame(keep)
+        if (game.daily != null) repo.saveDailyGame(keep, killer = game.isKiller) else repo.saveGame(keep)
     }
 
     // --- Settings and stats ---------------------------------------------

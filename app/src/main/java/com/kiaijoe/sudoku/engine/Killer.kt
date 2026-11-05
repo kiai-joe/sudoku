@@ -88,10 +88,10 @@ object Killer {
 
     /** What each Killer level asks of the player, for the level buttons. */
     fun describe(level: Difficulty): String = when (level) {
-        Difficulty.EASY -> "Cage sums"
-        Difficulty.MEDIUM -> "The 45 rule"
-        Difficulty.HARD -> "Pointing and pairs too"
-        Difficulty.EXPERT -> "No printed numbers"
+        Difficulty.EASY -> tr("Cage sums", "Jumla za vizimba")
+        Difficulty.MEDIUM -> tr("The 45 rule", "Kanuni ya 45")
+        Difficulty.HARD -> tr("Pointing and pairs too", "Pia kuelekeza na jozi")
+        Difficulty.EXPERT -> tr("No printed numbers", "Hakuna namba zilizochapishwa")
     }
 
     /** The hardest technique allowed for a Killer [level]. */

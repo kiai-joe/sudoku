@@ -53,7 +53,7 @@ data class DifficultyStats(
 
 /**
  * Saves games, settings and stats in SharedPreferences. A regular game and
- * the daily puzzle are kept in separate slots so neither replaces the other.
+ * the two daily puzzles are kept in separate slots so none replaces another.
  */
 class GameRepository(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -69,6 +69,8 @@ class GameRepository(context: Context) {
         loadGame()
         loadDailyGame()
         loadDailyResults()
+        loadDailyGame(killer = true)
+        loadDailyResults(killer = true)
         loadAchievements()
         loadSettings()
         loadStats()
@@ -84,27 +86,35 @@ class GameRepository(context: Context) {
         }.apply()
     }
 
-    fun loadDailyGame(): GameState? = prefs.getString(KEY_DAILY_GAME, null)?.let(GameCodec::decode)
+    /** The daily game in progress, classic or (when [killer]) Killer; each has its own slot. */
+    fun loadDailyGame(killer: Boolean = false): GameState? =
+        prefs.getString(dailyGameKey(killer), null)?.let(GameCodec::decode)
 
-    fun saveDailyGame(state: GameState?) {
+    /** Saves [state] to its daily slot (the Killer one for a Killer game), or clears [killer]'s slot when null. */
+    fun saveDailyGame(state: GameState?, killer: Boolean = state?.isKiller == true) {
+        val key = dailyGameKey(killer)
         prefs.edit().apply {
-            if (state == null) remove(KEY_DAILY_GAME) else putString(KEY_DAILY_GAME, GameCodec.encode(state))
+            if (state == null) remove(key) else putString(key, GameCodec.encode(state))
         }.apply()
     }
 
-    /** Solved daily puzzles: epoch day to solve time in seconds. */
-    fun loadDailyResults(): Map<Long, Long> =
-        prefs.getStringSet(KEY_DAILY_RESULTS, emptySet()).orEmpty().mapNotNull { entry ->
+    private fun dailyGameKey(killer: Boolean) = if (killer) KEY_KILLER_DAILY_GAME else KEY_DAILY_GAME
+
+    private fun dailyResultsKey(killer: Boolean) = if (killer) KEY_KILLER_DAILY_RESULTS else KEY_DAILY_RESULTS
+
+    /** Solved daily puzzles, classic or Killer: epoch day to solve time in seconds. */
+    fun loadDailyResults(killer: Boolean = false): Map<Long, Long> =
+        prefs.getStringSet(dailyResultsKey(killer), emptySet()).orEmpty().mapNotNull { entry ->
             val (day, seconds) = entry.split(":").takeIf { it.size == 2 } ?: return@mapNotNull null
             val d = day.toLongOrNull() ?: return@mapNotNull null
             val t = seconds.toLongOrNull() ?: return@mapNotNull null
             d to t
         }.toMap()
 
-    fun recordDailyWin(day: Long, seconds: Long) {
-        val results = loadDailyResults().toMutableMap()
+    fun recordDailyWin(day: Long, seconds: Long, killer: Boolean = false) {
+        val results = loadDailyResults(killer).toMutableMap()
         results[day] = minOf(seconds, results[day] ?: Long.MAX_VALUE)
-        prefs.edit().putStringSet(KEY_DAILY_RESULTS, results.map { (d, t) -> "$d:$t" }.toSet()).apply()
+        prefs.edit().putStringSet(dailyResultsKey(killer), results.map { (d, t) -> "$d:$t" }.toSet()).apply()
     }
 
     /** Earned achievements and the epoch day each was earned. */
@@ -222,6 +232,8 @@ class GameRepository(context: Context) {
         private const val KEY_GAME = "current_game"
         private const val KEY_DAILY_GAME = "daily_game"
         private const val KEY_DAILY_RESULTS = "daily_results"
+        private const val KEY_KILLER_DAILY_GAME = "killer_daily_game"
+        private const val KEY_KILLER_DAILY_RESULTS = "killer_daily_results"
         private const val KEY_ACHIEVEMENTS = "achievements"
         private const val KEY_MISTAKE_LIMIT = "mistake_limit"
         private const val KEY_AUTO_NOTES = "auto_remove_notes"

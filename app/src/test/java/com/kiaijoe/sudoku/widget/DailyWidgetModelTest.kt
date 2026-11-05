@@ -53,8 +53,9 @@ class DailyWidgetModelTest {
     }
 
     @Test
-    fun saturdayIsKiller() {
+    fun showsTheClassicDailyEveryDay() {
+        // Saturday's widget shows the classic Hard puzzle; the daily Killer lives in the app.
         val m = dailyWidgetModel(thursday + 2, emptyMap(), inProgress = false, locale = Locale.UK)
-        assertTrue(m.title, m.title.startsWith("Killer · "))
+        assertEquals("Hard", m.title)
     }
 }

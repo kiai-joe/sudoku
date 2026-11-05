@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.screens
 
+import com.kiaijoe.sudoku.engine.tr
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +23,8 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
@@ -81,16 +84,18 @@ fun LearnScreen(
     // The first lesson not yet finished, easiest first.
     val next = Tutorial.lessons.indexOfFirst { it.technique.name !in done }
     TabPage(Tab.Learn, onTab) {
-        ScreenTitle("Learn", "Short lessons, each on a real board.")
+        ScreenTitle(tr("Learn", "Jifunze"), tr("Short lessons, each on a real board.", "Masomo mafupi, kila moja kwenye ubao halisi."))
         Spacer(Modifier.height(18.dp))
         SumiCard(
             Modifier
                 .fillMaxWidth()
-                .clearAndSetSemantics { contentDescription = "$finished of $total lessons finished" },
+                .clearAndSetSemantics {
+                    contentDescription = tr("$finished of $total lessons finished", "Masomo $finished kati ya $total yamekamilika")
+                },
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("$finished of $total lessons", style = MaterialTheme.typography.titleLarge, color = c.ink, modifier = Modifier.weight(1f))
-                if (finished == total) SumiChip("All done", tone = ChipTone.Matcha, icon = Lucide.CheckCheck)
+                Text(tr("$finished of $total lessons", "Masomo $finished kati ya $total"), style = MaterialTheme.typography.titleLarge, color = c.ink, modifier = Modifier.weight(1f))
+                if (finished == total) SumiChip(tr("All done", "Yote yamekamilika"), tone = ChipTone.Matcha, icon = Lucide.CheckCheck)
             }
             Spacer(Modifier.height(12.dp))
             Box(
@@ -113,7 +118,7 @@ fun LearnScreen(
             if (next >= 0) {
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Next up: ${Tutorial.lessons[next].technique.label}",
+                    tr("Next up: ${Tutorial.lessons[next].technique.label}", "Linalofuata: ${Tutorial.lessons[next].technique.label}"),
                     style = MaterialTheme.typography.bodyMedium,
                     color = c.inkMuted,
                 )
@@ -129,7 +134,7 @@ fun LearnScreen(
             Spacer(Modifier.height(20.dp))
             Overline(heading)
             Spacer(Modifier.height(10.dp))
-            val killer = heading.startsWith("Killer")
+            val killer = icon == Lucide.SquareDashed
             ListCard(
                 rows = lessons.map { (index, lesson) ->
                     @Composable {
@@ -154,12 +159,16 @@ fun LearnScreen(
                             },
                             onClick = { onOpen(index) },
                             modifier = Modifier.semantics {
-                                stateDescription = if (isDone) "Finished" else if (index == next) "Next" else "Not started"
+                                stateDescription = when {
+                                    isDone -> tr("Finished", "Limekamilika")
+                                    index == next -> tr("Next", "Linalofuata")
+                                    else -> tr("Not started", "Halijaanzwa")
+                                }
                             },
                         ) {
                             if (index == next) {
                                 Spacer(Modifier.width(8.dp))
-                                SumiChip("Next", tone = ChipTone.Ai)
+                                SumiChip(tr("Next", "Linalofuata"), tone = ChipTone.Ai)
                             } else {
                                 RowChevron()
                             }
@@ -184,10 +193,13 @@ fun LessonScreen(
     onNextLesson: (() -> Unit)?,
     onBack: () -> Unit,
     onComplete: () -> Unit = {},
+    onPractice: (() -> Unit)? = null,
+    practiceReplacesGame: Boolean = false,
 ) {
     BackHandler(onBack = onBack)
     val c = Sumi.colors
     val lesson = Tutorial.lessons[index]
+    var confirmPractice by remember { mutableStateOf(false) }
     // Open at the step that uses this lesson's technique; earlier steps are a tap back.
     var step by remember(index, example) { mutableIntStateOf(example?.start ?: 0) }
     val cards = example?.cards.orEmpty()
@@ -244,7 +256,7 @@ fun LessonScreen(
         if (example != null) {
             SumiCard(width, padding = PaddingValues(20.dp)) {
                 Text(
-                    if (done) "Result" else card!!.title,
+                    if (done) tr("Result", "Matokeo") else card!!.title,
                     style = MaterialTheme.typography.titleLarge,
                     color = c.ink,
                 )
@@ -252,12 +264,15 @@ fun LessonScreen(
                 Text(
                     if (done) {
                         val last = cards.last()
-                        "So row ${Grid.row(last.placeCell) + 1}, column ${Grid.col(last.placeCell) + 1} " +
-                            "is ${last.placeDigit}." + if (cards.size > 1) {
-                                " The ${lesson.technique.label.lowercase()} made that possible."
-                            } else {
-                                ""
-                            }
+                        val row = Grid.row(last.placeCell) + 1
+                        val col = Grid.col(last.placeCell) + 1
+                        val technique = lesson.technique.label.lowercase()
+                        tr(
+                            "So row $row, column $col is ${last.placeDigit}." +
+                                if (cards.size > 1) " The $technique made that possible." else "",
+                            "Kwa hiyo mstari wa $row, safu ya $col ni ${last.placeDigit}." +
+                                if (cards.size > 1) " Hatua ya ${technique} ndiyo iliyowezesha hilo." else "",
+                        )
                     } else {
                         card!!.text
                     },
@@ -267,7 +282,7 @@ fun LessonScreen(
                 if (!done && card!!.eliminations.isNotEmpty()) {
                     Spacer(Modifier.height(6.dp))
                     Text(
-                        "Crossed-out numbers are the ones this step rules out.",
+                        tr("Crossed-out numbers are the ones this step rules out.", "Namba zilizokatwa ndizo hatua hii inaziondoa."),
                         style = MaterialTheme.typography.bodySmall,
                         color = c.inkMuted,
                     )
@@ -275,7 +290,7 @@ fun LessonScreen(
                 Spacer(Modifier.height(18.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     PillButton(
-                        "Back",
+                        tr("Back", "Rudi"),
                         { step-- },
                         Modifier.weight(1f),
                         tone = ButtonTone.Soft,
@@ -283,7 +298,7 @@ fun LessonScreen(
                         enabled = step > 0,
                     )
                     PillButton(
-                        if (card?.isPlacement == true) "Place ${card.placeDigit}" else "Next step",
+                        if (card?.isPlacement == true) tr("Place ${card.placeDigit}", "Weka ${card.placeDigit}") else tr("Next step", "Hatua ijayo"),
                         { step++ },
                         Modifier.weight(1f),
                         trailingIcon = if (card?.isPlacement == true) null else Lucide.ChevronRight,
@@ -293,10 +308,32 @@ fun LessonScreen(
                 }
             }
         }
+        if (onPractice != null) {
+            Spacer(Modifier.height(14.dp))
+            PillButton(
+                tr("Practise on a new puzzle", "Fanya mazoezi kwenye fumbo jipya"),
+                { if (practiceReplacesGame) confirmPractice = true else onPractice() },
+                width,
+                tone = if (done) ButtonTone.Primary else ButtonTone.Soft,
+                icon = Lucide.Play,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                tr(
+                    "A fresh ${if (lesson.killer) "Killer " else ""}${lesson.level.label} puzzle that needs a " +
+                        "${lesson.technique.label.lowercase()} somewhere along the way.",
+                    "Fumbo jipya la ${if (lesson.killer) "Killer " else ""}${lesson.level.label} linalohitaji " +
+                        "${lesson.technique.label.lowercase()} mahali fulani njiani.",
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = c.inkMuted,
+                modifier = width,
+            )
+        }
         if (onNextLesson != null) {
             Spacer(Modifier.height(14.dp))
             PillButton(
-                "Next: ${Tutorial.lessons[index + 1].technique.label}",
+                tr("Next: ${Tutorial.lessons[index + 1].technique.label}", "Linalofuata: ${Tutorial.lessons[index + 1].technique.label}"),
                 onNextLesson,
                 width,
                 tone = ButtonTone.Soft,
@@ -305,13 +342,16 @@ fun LessonScreen(
         }
     }
 
-    val exampleLabel = "Worked example · ${if (lesson.killer) "Killer " else ""}${lesson.level.label} puzzle"
+    val exampleLabel = tr(
+        "Worked example · ${if (lesson.killer) "Killer " else ""}${lesson.level.label} puzzle",
+        "Mfano uliofanyiwa kazi · fumbo la ${if (lesson.killer) "Killer " else ""}${lesson.level.label}",
+    )
 
     Page {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             SumiTopBar(lesson.technique.label, onBack = onBack) {
                 if (cards.isNotEmpty()) {
-                    SumiChip("${minOf(step, cards.size - 1) + 1} of ${cards.size}", tone = ChipTone.Ai)
+                    SumiChip(tr("${minOf(step, cards.size - 1) + 1} of ${cards.size}", "${minOf(step, cards.size - 1) + 1} kati ya ${cards.size}"), tone = ChipTone.Ai)
                 }
             }
             BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -367,5 +407,20 @@ fun LessonScreen(
                 }
             }
         }
+    }
+
+    if (confirmPractice && onPractice != null) {
+        AlertDialog(
+            onDismissRequest = { confirmPractice = false },
+            containerColor = c.surface,
+            title = { Text(tr("Start a practice game?", "Anza mchezo wa mazoezi?"), style = MaterialTheme.typography.titleLarge) },
+            text = { Text(tr("Your game in progress will be replaced.", "Mchezo wako unaoendelea utabadilishwa."), style = MaterialTheme.typography.bodyLarge) },
+            confirmButton = {
+                PillButton(tr("Start", "Anza"), { confirmPractice = false; onPractice() }, height = 44.dp)
+            },
+            dismissButton = {
+                PillButton(tr("Cancel", "Ghairi"), { confirmPractice = false }, tone = ButtonTone.Ghost, height = 44.dp)
+            },
+        )
     }
 }
