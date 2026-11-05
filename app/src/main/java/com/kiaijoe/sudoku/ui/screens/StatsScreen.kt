@@ -84,7 +84,7 @@ fun StatsScreen(
 
     TabPage(Tab.Progress, onTab) {
         ScreenTitle(tr("Progress", "Maendeleo")) {
-            PillButton(tr("Reset", "Futa"), { confirmReset = true }, tone = ButtonTone.Ghost, height = 40.dp)
+            PillButton(tr("Reset", "Futa"), { confirmReset = true }, tone = ButtonTone.Outline, height = 40.dp)
         }
         Spacer(Modifier.height(14.dp))
         Row(
@@ -259,6 +259,8 @@ private fun Seal(a: Achievement, day: Long?, onClick: () -> Unit, modifier: Modi
             color = if (day != null) c.ink else c.inkMuted,
             textAlign = TextAlign.Center,
             maxLines = 2,
+            // A margin each side, so a long name wraps instead of meeting its neighbour's.
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp),
         )
     }
 }

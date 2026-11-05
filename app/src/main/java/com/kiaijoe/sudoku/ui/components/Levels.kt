@@ -29,4 +29,17 @@ val Achievement.icon: ImageVector
         Achievement.REGULAR -> Lucide.CalendarCheck
         Achievement.WEEK_OF_INK -> Lucide.Flame
         Achievement.MOON_CYCLE -> Lucide.Moon
+        Achievement.LIGHTNING -> Lucide.Rabbit
+        Achievement.IRON_WILL -> Lucide.Shield
+        Achievement.BLIND_INK -> Lucide.EyeOff
+        Achievement.SWORDSMITH -> Lucide.Fish
+        Achievement.SECOND_WIND -> Lucide.Wind
+        Achievement.HUNDRED_STAMPS -> Lucide.Stamp
+        Achievement.FIRST_LESSON -> Lucide.BookOpenCheck
+        Achievement.PUT_TO_PRACTICE -> Lucide.Dumbbell
+        Achievement.SCHOLAR -> Lucide.GraduationCap
+        Achievement.FULL_WEEK -> Lucide.CalendarRange
+        Achievement.KILLER_REGULAR -> Lucide.CalendarCheck2
+        Achievement.CAGED_WEEK -> Lucide.FlameKindling
+        Achievement.TWO_BRUSHES -> Lucide.Brush
     }

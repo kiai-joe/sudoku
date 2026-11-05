@@ -57,7 +57,6 @@ data class UiState(
     val hint: HintUi? = null,
     val feedback: Feedback? = null,
     val flagged: Set<Int> = emptySet(),
-    val checks: Int = 0,
     val checkMessage: String? = null,
     val settings: Settings = Settings(),
     val stats: Map<Difficulty, DifficultyStats> = emptyMap(),
@@ -66,8 +65,6 @@ data class UiState(
     val newAchievements: List<Achievement> = emptyList(),
     /** Lessons finished, by technique name. */
     val lessonsDone: Set<String> = emptySet(),
-    /** The technique the game on screen is practice for, if it was started from a lesson. */
-    val practice: Technique? = null,
 ) {
     val canContinue: Boolean get() = savedGame?.status == GameStatus.PLAYING && !generating
 }
@@ -184,6 +181,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             killerWon = repo.loadKillerStats().won,
             dailySolved = daily.size,
             longestStreak = Daily.longestStreak(daily.keys),
+            dailyDays = daily.keys,
+            killerDailyDays = repo.loadDailyResults(killer = true).keys,
+            lessonsDone = repo.loadLessonsDone().size,
         )
     }
 
@@ -230,11 +230,10 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         startLoading()
         viewModelScope.launch {
             val practice = withContext(Dispatchers.Default) { Tutorial.practice(lesson) }
-            val game = GameState.from(practice.puzzle)
+            val game = GameState.from(practice.puzzle).copy(practice = lesson.technique.takeIf { practice.usesTechnique })
             if (lesson.killer) repo.recordKillerStart() else repo.recordStart(lesson.level)
             repo.saveGame(game)
             show(game, savedGame = game)
-            _ui.update { it.copy(practice = lesson.technique.takeIf { practice.usesTechnique }) }
         }
     }
 
@@ -299,12 +298,10 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 notesMode = false,
                 hint = null,
                 flagged = emptySet(),
-                checks = 0,
                 checkMessage = null,
                 feedback = null,
                 lastWinWasBest = false,
                 newAchievements = emptyList(),
-                practice = null,
                 stats = repo.loadStats(),
                 killerStats = repo.loadKillerStats(),
             )
@@ -417,10 +414,12 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         val game = _ui.value.game ?: return
         if (game.status != GameStatus.PLAYING) return
         val wrong = (0 until 81).filter { game.isWrong(it) }.toSet()
+        val counted = game.copy(checks = game.checks + 1)
+        persist(counted)
         _ui.update {
-            it.copy(
+            synced(it, counted).copy(
+                game = counted,
                 flagged = wrong,
-                checks = it.checks + 1,
                 checkMessage = when (wrong.size) {
                     0 -> tr("Everything so far is right.", "Kila kitu hadi sasa ni sahihi.")
                     1 -> tr("1 number is wrong. It's marked in red.", "Namba 1 si sahihi. Imewekwa alama nyekundu.")
@@ -552,7 +551,8 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
     fun completeLesson(technique: String) {
         if (technique in _ui.value.lessonsDone) return
         repo.markLessonDone(technique)
-        _ui.update { it.copy(lessonsDone = it.lessonsDone + technique) }
+        award(won = null)
+        _ui.update { it.copy(lessonsDone = it.lessonsDone + technique, achievements = repo.loadAchievements()) }
     }
 
     fun resetStats() {

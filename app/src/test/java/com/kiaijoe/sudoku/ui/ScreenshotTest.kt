@@ -133,14 +133,13 @@ class ScreenshotTest {
     /** "Show mistakes right away" off, after tapping Check: the wrong number is flagged. */
     @Test
     fun checkModeLight() = capture("game_check_light", dark = false) {
-        val g = Fixtures.midGame()
+        val g = Fixtures.midGame().copy(checks = 1)
         val wrong = (0 until 81).filter { g.isWrong(it) }.toSet()
         GameScreen(
             state = UiState(
                 game = g,
                 settings = Settings(instantCheck = false),
                 flagged = wrong,
-                checks = 1,
                 checkMessage = "1 number is wrong. It's marked in red.",
             ),
             actions = GameActions.None,

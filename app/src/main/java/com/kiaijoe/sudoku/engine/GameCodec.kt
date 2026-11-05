@@ -18,15 +18,19 @@ object GameCodec {
         state.hardest?.name ?: "-",
         state.daily?.toString() ?: "-",
         if (state.cages.isEmpty()) "-" else state.cages.joinToString(";") { "${it.sum}:${it.cells.joinToString(".")}" },
+        state.checks.toString(),
+        state.practice?.name ?: "-",
+        if (state.afterLoss) "1" else "0",
     ).joinToString("|")
 
     /**
      * Returns null for anything that isn't a well-formed save. Older saves
-     * have 10 fields (before grading), 11 (before daily puzzles) or 12 (before Killer).
+     * have 10 fields (before grading), 11 (before daily puzzles), 12 (before
+     * Killer) or 13 (before checks, practice and restarts were saved).
      */
     fun decode(text: String): GameState? = runCatching {
         val parts = text.split("|")
-        if (parts.size !in 10..13 || parts[0] != VERSION) return null
+        if (parts.size !in 10..16 || parts[0] != VERSION) return null
         val givens = digits(parts[2])
         val solution = digits(parts[3])
         val values = digits(parts[4])
@@ -46,6 +50,9 @@ object GameCodec {
             hardest = parts.getOrNull(10)?.takeIf { it != "-" }?.let { Technique.valueOf(it) },
             daily = parts.getOrNull(11)?.takeIf { it != "-" }?.toLong(),
             cages = parts.getOrNull(12)?.takeIf { it != "-" }?.let(::cages).orEmpty(),
+            checks = parts.getOrNull(13)?.toInt() ?: 0,
+            practice = parts.getOrNull(14)?.takeIf { it != "-" }?.let { Technique.valueOf(it) },
+            afterLoss = parts.getOrNull(15) == "1",
         )
     }.getOrNull()
 
