@@ -86,7 +86,7 @@ fun StatsScreen(
         ScreenTitle(tr("Progress", "Maendeleo")) {
             PillButton(tr("Reset", "Futa"), { confirmReset = true }, tone = ButtonTone.Outline, height = 40.dp)
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(16.dp))
         Row(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -101,7 +101,7 @@ fun StatsScreen(
                 )
             }
         }
-        Spacer(Modifier.height(14.dp))
+        Spacer(Modifier.height(12.dp))
         val s = if (level < Difficulty.entries.size) stats[Difficulty.entries[level]] ?: DifficultyStats() else killerStats
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -140,7 +140,7 @@ fun StatsScreen(
             )
         }
 
-        Spacer(Modifier.height(22.dp))
+        Spacer(Modifier.height(24.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Overline(tr("Achievements", "Tuzo"), Modifier.weight(1f))
             Text(
@@ -149,7 +149,7 @@ fun StatsScreen(
                 color = c.inkMuted,
             )
         }
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(8.dp))
         Achievement.entries.chunked(4).forEach { row ->
             Row(Modifier.fillMaxWidth()) {
                 row.forEach { a ->
@@ -157,7 +157,7 @@ fun StatsScreen(
                 }
                 repeat(4 - row.size) { Spacer(Modifier.weight(1f)) }
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 

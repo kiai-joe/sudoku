@@ -85,7 +85,7 @@ fun LearnScreen(
     val next = Tutorial.lessons.indexOfFirst { it.technique.name !in done }
     TabPage(Tab.Learn, onTab) {
         ScreenTitle(tr("Learn", "Jifunze"), tr("Short lessons, each on a real board.", "Masomo mafupi, kila moja kwenye ubao halisi."))
-        Spacer(Modifier.height(18.dp))
+        Spacer(Modifier.height(16.dp))
         SumiCard(
             Modifier
                 .fillMaxWidth()
@@ -131,9 +131,9 @@ fun LearnScreen(
         } + listOf(Triple("Killer Sudoku", Lucide.SquareDashed, Tutorial.lessons.withIndex().filter { it.value.killer }))
         for ((heading, icon, lessons) in groups) {
             if (lessons.isEmpty()) continue
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(24.dp))
             Overline(heading)
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             val killer = icon == Lucide.SquareDashed
             ListCard(
                 rows = lessons.map { (index, lesson) ->
@@ -287,7 +287,7 @@ fun LessonScreen(
                         color = c.inkMuted,
                     )
                 }
-                Spacer(Modifier.height(18.dp))
+                Spacer(Modifier.height(16.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     PillButton(
                         tr("Back", "Rudi"),
@@ -309,7 +309,7 @@ fun LessonScreen(
             }
         }
         if (onPractice != null) {
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
             PillButton(
                 tr("Practise on a new puzzle", "Fanya mazoezi kwenye fumbo jipya"),
                 { if (practiceReplacesGame) confirmPractice = true else onPractice() },
@@ -331,7 +331,7 @@ fun LessonScreen(
             )
         }
         if (onNextLesson != null) {
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
             PillButton(
                 tr("Next: ${Tutorial.lessons[index + 1].technique.label}", "Linalofuata: ${Tutorial.lessons[index + 1].technique.label}"),
                 onNextLesson,
@@ -375,9 +375,9 @@ fun LessonScreen(
                         ) {
                             val width = Modifier.fillMaxWidth()
                             steps(width)
-                            Spacer(Modifier.height(14.dp))
+                            Spacer(Modifier.height(16.dp))
                             Overline(exampleLabel, width)
-                            Spacer(Modifier.height(10.dp))
+                            Spacer(Modifier.height(8.dp))
                             explanation(width)
                             Spacer(Modifier.height(16.dp))
                         }
@@ -396,10 +396,10 @@ fun LessonScreen(
                         if (loading || example != null) {
                             if (example != null) {
                                 Overline(exampleLabel, width)
-                                Spacer(Modifier.height(10.dp))
+                                Spacer(Modifier.height(8.dp))
                             }
                             board(width.aspectRatio(1f))
-                            Spacer(Modifier.height(14.dp))
+                            Spacer(Modifier.height(12.dp))
                         }
                         explanation(width)
                         Spacer(Modifier.height(24.dp))
