@@ -33,6 +33,7 @@ import com.kiaijoe.sudoku.ui.screens.StatsScreen
 import com.kiaijoe.sudoku.ui.theme.InkTheme
 import com.kiaijoe.sudoku.ui.theme.SudokuTheme
 import com.kiaijoe.sudoku.ui.theme.isDark
+import com.kiaijoe.sudoku.ui.theme.resolve
 import com.kiaijoe.sudoku.widget.SumiWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -83,8 +84,9 @@ private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewM
         screen = if (viewModel.ui.value.daily.solvedToday) Screen.Calendar else Screen.Game
     }
 
-    SudokuTheme(theme = state.settings.theme) {
-        SystemBars(state.settings.theme)
+    val dark = state.settings.darkMode.resolve(isSystemInDarkTheme())
+    SudokuTheme(darkTheme = dark, theme = state.settings.theme) {
+        SystemBars(state.settings.theme, dark)
 
         // The date may have changed since the app was last on the home screen.
         LaunchedEffect(screen) { if (screen == Screen.Home || screen == Screen.Calendar) viewModel.refreshDaily() }
@@ -175,8 +177,8 @@ private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewM
 
 /** Light or dark status and navigation bar icons to match the chosen palette. */
 @Composable
-private fun SystemBars(theme: InkTheme) {
-    val dark = theme.isDark(isSystemInDarkTheme())
+private fun SystemBars(theme: InkTheme, darkMode: Boolean) {
+    val dark = theme.isDark(darkMode)
     val activity = LocalContext.current as? ComponentActivity ?: return
     LaunchedEffect(dark) {
         val style = if (dark) {

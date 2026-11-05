@@ -49,6 +49,11 @@ import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.size
+import com.kiaijoe.sudoku.ui.theme.resolve
+import com.kiaijoe.sudoku.ui.theme.DarkMode
+import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.CircleShape
 import com.kiaijoe.sudoku.data.Settings
 import com.kiaijoe.sudoku.ui.MISTAKE_LIMIT
 import com.kiaijoe.sudoku.ui.components.ListCard
@@ -124,7 +129,27 @@ fun SettingsScreen(
             ) {
                 Column(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
                     Section("Look")
-                    ThemePicker(selected = settings.theme, onSelect = { onChange(settings.copy(theme = it)) })
+                    val systemDark = isSystemInDarkTheme()
+                    ThemePicker(
+                        selected = settings.theme,
+                        dark = settings.darkMode.resolve(systemDark),
+                        onSelect = { onChange(settings.copy(theme = it)) },
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    DarkModePicker(
+                        selected = settings.darkMode,
+                        enabled = !settings.theme.alwaysDark,
+                        onSelect = { onChange(settings.copy(darkMode = it)) },
+                    )
+                    if (settings.theme.alwaysDark) {
+                        Spacer(Modifier.height(6.dp))
+                        Text(
+                            "${settings.theme.label} is always dark.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Sumi.colors.inkMuted,
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                        )
+                    }
                     Spacer(Modifier.height(12.dp))
                     ListCard(
                         rows = listOf<@Composable () -> Unit>({
@@ -301,12 +326,12 @@ private fun SwitchRow(
 
 /** One card per palette, each with a tiny preview: paper, a printed number and one of yours. */
 @Composable
-private fun ThemePicker(selected: InkTheme, onSelect: (InkTheme) -> Unit) {
+private fun ThemePicker(selected: InkTheme, dark: Boolean, onSelect: (InkTheme) -> Unit) {
     val c = Sumi.colors
-    val systemDark = isSystemInDarkTheme()
     Row(Modifier.fillMaxWidth().selectableGroup(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         for (theme in InkTheme.entries) {
-            val (paper, accent, ink) = theme.swatch(systemDark)
+            // Previewed in the mode the app is actually showing.
+            val (paper, accent, ink) = theme.swatch(dark)
             val isSelected = theme == selected
             val shape = RoundedCornerShape(20.dp)
             Column(
@@ -339,6 +364,55 @@ private fun ThemePicker(selected: InkTheme, onSelect: (InkTheme) -> Unit) {
                     color = if (isSelected) c.ai else c.ink,
                     maxLines = 1,
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Light, dark, or following the phone: a segmented control on one card, the
+ * chosen segment filled indigo. Greyed out for a palette that is always dark.
+ */
+@Composable
+private fun DarkModePicker(selected: DarkMode, enabled: Boolean, onSelect: (DarkMode) -> Unit) {
+    val c = Sumi.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .card(c, CircleShape)
+            .padding(5.dp)
+            .selectableGroup(),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        for (mode in DarkMode.entries) {
+            val on = mode == selected
+            val fg = when {
+                !enabled -> c.inkMuted.copy(alpha = 0.5f)
+                on -> c.onAi
+                else -> c.inkMuted
+            }
+            Row(
+                Modifier
+                    .weight(1f)
+                    .height(42.dp)
+                    .clip(CircleShape)
+                    .background(if (on) (if (enabled) c.ai else c.surfaceSunk) else c.surface)
+                    .selectable(selected = on, enabled = enabled, role = Role.RadioButton, onClick = { onSelect(mode) }),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    when (mode) {
+                        DarkMode.SYSTEM -> Lucide.SunMoon
+                        DarkMode.LIGHT -> Lucide.Sun
+                        DarkMode.DARK -> Lucide.Moon
+                    },
+                    contentDescription = null,
+                    tint = fg,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(mode.label, style = MaterialTheme.typography.labelMedium, color = fg, maxLines = 1)
             }
         }
     }

@@ -26,6 +26,7 @@ import com.kiaijoe.sudoku.ui.screens.LearnScreen
 import com.kiaijoe.sudoku.ui.screens.LessonScreen
 import com.kiaijoe.sudoku.ui.screens.SettingsScreen
 import com.kiaijoe.sudoku.ui.screens.StatsScreen
+import com.kiaijoe.sudoku.ui.theme.DarkMode
 import com.kiaijoe.sudoku.ui.theme.InkTheme
 import com.kiaijoe.sudoku.ui.theme.SudokuTheme
 import org.junit.Rule
@@ -367,6 +368,12 @@ class ScreenshotTest {
     @Test fun settingsLight() = settings(dark = false)
 
     @Test fun settingsDark() = settings(dark = true)
+
+    /** Dark chosen in Settings, with Indigo night, which greys the toggle out because it's always dark. */
+    @Test
+    fun settingsForcedDark() = capture("settings_forced_dark", dark = true, theme = InkTheme.INDIGO_NIGHT) {
+        SettingsScreen(settings = Settings(theme = InkTheme.INDIGO_NIGHT, darkMode = DarkMode.DARK), onChange = {}, onBack = {})
+    }
 
     private fun settings(dark: Boolean) = capture(if (dark) "settings_dark" else "settings_light", dark) {
         SettingsScreen(settings = Settings(), onChange = {}, onBack = {})

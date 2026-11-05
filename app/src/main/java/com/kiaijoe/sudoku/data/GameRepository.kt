@@ -5,6 +5,7 @@ import com.kiaijoe.sudoku.engine.Achievement
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameCodec
 import com.kiaijoe.sudoku.engine.GameState
+import com.kiaijoe.sudoku.ui.theme.DarkMode
 import com.kiaijoe.sudoku.ui.theme.InkTheme
 
 /**
@@ -14,6 +15,7 @@ import com.kiaijoe.sudoku.ui.theme.InkTheme
  * @property haptics short vibrations when placing numbers and finishing groups.
  * @property theme the ink palette.
  * @property largeNumbers bigger digits on the board and number pad.
+ * @property darkMode light, dark, or following the phone.
  */
 data class Settings(
     val mistakeLimit: Boolean = true,
@@ -23,6 +25,7 @@ data class Settings(
     val haptics: Boolean = true,
     val theme: InkTheme = InkTheme.SUMI,
     val largeNumbers: Boolean = false,
+    val darkMode: DarkMode = DarkMode.SYSTEM,
 )
 
 /**
@@ -131,6 +134,9 @@ class GameRepository(context: Context) {
             ?.let { name -> InkTheme.entries.firstOrNull { it.name == name } }
             ?: InkTheme.SUMI,
         largeNumbers = prefs.getBoolean(KEY_LARGE_NUMBERS, false),
+        darkMode = prefs.getString(KEY_DARK_MODE, null)
+            ?.let { name -> DarkMode.entries.firstOrNull { it.name == name } }
+            ?: DarkMode.SYSTEM,
     )
 
     fun saveSettings(settings: Settings) {
@@ -142,6 +148,7 @@ class GameRepository(context: Context) {
             .putBoolean(KEY_HAPTICS, settings.haptics)
             .putString(KEY_THEME, settings.theme.name)
             .putBoolean(KEY_LARGE_NUMBERS, settings.largeNumbers)
+            .putString(KEY_DARK_MODE, settings.darkMode.name)
             .apply()
     }
 
@@ -223,5 +230,6 @@ class GameRepository(context: Context) {
         private const val KEY_HAPTICS = "haptics"
         private const val KEY_THEME = "theme"
         private const val KEY_LARGE_NUMBERS = "large_numbers"
+        private const val KEY_DARK_MODE = "dark_mode"
     }
 }
