@@ -2,4 +2,6 @@
     <string name="app_name">Sumi</string>
     <string name="widget_name">Daily puzzle</string>
     <string name="widget_description">Today\'s daily puzzle, your streak and this week</string>
+    <string name="widget_streak_name">Streak</string>
+    <string name="widget_streak_description">Your daily streak, with a button to play today\'s puzzle</string>
 </resources>
