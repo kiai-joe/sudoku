@@ -181,6 +181,8 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
         if (isWide(maxWidth, maxHeight)) {
             // Board on the left as big as the height allows; everything else beside it.
             val board = min(maxHeight - 16.dp, maxWidth * 0.56f)
+            // A tablet has the height for a 3×3 pad of big keys; a phone on its side keeps the row.
+            val gridPad = maxHeight >= 560.dp
             Row(
                 Modifier
                     .fillMaxSize()
@@ -199,7 +201,7 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
                     StatusRow(state, game)
                     CheckMessage(state)
                     Spacer(Modifier.height(18.dp))
-                    Controls(state, game, actions, onExit, won)
+                    Controls(state, game, actions, onExit, won, gridPad)
                     Spacer(Modifier.height(12.dp))
                 }
             }
@@ -283,7 +285,14 @@ private fun BoardArea(
 
 /** Under or beside the board: the win summary, an open hint, or the tools and number pad. */
 @Composable
-private fun Controls(state: UiState, game: GameState, actions: GameActions, onExit: () -> Unit, won: Boolean) {
+private fun Controls(
+    state: UiState,
+    game: GameState,
+    actions: GameActions,
+    onExit: () -> Unit,
+    won: Boolean,
+    gridPad: Boolean = false,
+) {
     val hint = state.hint
     if (won) {
         WinPanel(state, game, onNewGame = { actions.newLike(game) }, onHome = onExit)
@@ -305,13 +314,17 @@ private fun Controls(state: UiState, game: GameState, actions: GameActions, onEx
             onFill = actions::fillCandidates,
             onHint = actions::hint,
         )
-        Spacer(Modifier.height(16.dp))
-        NumberPad(
-            remaining = { game.remaining(it, checking = state.settings.instantCheck) },
-            notesMode = state.notesMode,
-            onDigit = actions::input,
-            largeNumbers = state.settings.largeNumbers,
-        )
+        Spacer(Modifier.height(if (gridPad) 24.dp else 16.dp))
+        Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+            NumberPad(
+                remaining = { game.remaining(it, checking = state.settings.instantCheck) },
+                notesMode = state.notesMode,
+                onDigit = actions::input,
+                largeNumbers = state.settings.largeNumbers,
+                grid = gridPad,
+                modifier = if (gridPad) Modifier.widthIn(max = 380.dp) else Modifier,
+            )
+        }
     }
 }
 

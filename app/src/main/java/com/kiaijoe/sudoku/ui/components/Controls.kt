@@ -123,6 +123,10 @@ private fun ToolButton(
     }
 }
 
+/**
+ * The number keys. In one row by default; with [grid], three rows of three
+ * bigger keys, for a tablet with room beside the board.
+ */
 @Composable
 fun NumberPad(
     remaining: (Int) -> Int,
@@ -130,66 +134,99 @@ fun NumberPad(
     onDigit: (Int) -> Unit,
     modifier: Modifier = Modifier,
     largeNumbers: Boolean = false,
+    grid: Boolean = false,
 ) {
-    val c = Sumi.colors
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        for (digit in 1..9) {
-            val left = remaining(digit)
-            val done = left <= 0
-            Box(
-                Modifier
-                    .weight(1f)
-                    // Taller in large mode so the bigger digit still leaves room for the count under it.
-                    .aspectRatio(if (largeNumbers) 0.6f else 0.72f)
-                    .then(
-                        when {
-                            done -> Modifier.background(c.surfaceSunk, TileShape)
-                            notesMode -> Modifier.background(c.aiSoft, TileShape)
-                            else -> Modifier.card(c, TileShape, elevation = 4.dp)
-                        },
-                    )
-                    .clip(TileShape)
-                    .clickable(enabled = !done, role = Role.Button) { onDigit(digit) }
-                    .clearAndSetSemantics {
-                        contentDescription = if (done) "$digit, all placed" else "$digit, $left left"
-                        role = Role.Button
-                        if (done) disabled()
-                        onClick { onDigit(digit); true }
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    Modifier.fillMaxSize(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text(
-                        text = digit.toString(),
-                        fontFamily = Sora,
-                        fontSize = when {
-                            largeNumbers && notesMode -> 24.sp
-                            largeNumbers -> 32.sp
-                            notesMode -> 20.sp
-                            else -> 26.sp
-                        },
-                        lineHeight = if (largeNumbers) 34.sp else 28.sp,
-                        fontWeight = if (notesMode) FontWeight.Medium else FontWeight.SemiBold,
-                        color = if (done) c.inkMuted.copy(alpha = 0.5f) else c.ai,
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    if (done) {
-                        Icon(Lucide.Check, contentDescription = null, tint = c.inkMuted, modifier = Modifier.size(12.dp))
-                    } else {
-                        Text(
-                            text = left.toString(),
-                            style = MaterialTheme.typography.bodySmall,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 11.sp,
-                            lineHeight = 12.sp,
-                            color = c.inkMuted,
+    if (grid) {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            for (row in 0 until 3) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    for (col in 0 until 3) {
+                        val digit = row * 3 + col + 1
+                        PadKey(
+                            digit, remaining(digit), notesMode, largeNumbers, big = true, onDigit = onDigit,
+                            // Wider than tall, so three rows sit comfortably under the tools.
+                            modifier = Modifier.weight(1f).aspectRatio(if (largeNumbers) 1.15f else 1.35f),
                         )
                     }
                 }
+            }
+        }
+    } else {
+        Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            for (digit in 1..9) {
+                PadKey(
+                    digit, remaining(digit), notesMode, largeNumbers, big = false, onDigit = onDigit,
+                    // Taller in large mode so the bigger digit still leaves room for the count under it.
+                    modifier = Modifier.weight(1f).aspectRatio(if (largeNumbers) 0.6f else 0.72f),
+                )
+            }
+        }
+    }
+}
+
+/** One number key: the digit in indigo with how many are left under it, or a tick once all nine are placed. */
+@Composable
+private fun PadKey(
+    digit: Int,
+    left: Int,
+    notesMode: Boolean,
+    largeNumbers: Boolean,
+    big: Boolean,
+    onDigit: (Int) -> Unit,
+    modifier: Modifier,
+) {
+    val c = Sumi.colors
+    val done = left <= 0
+    Box(
+        modifier
+            .then(
+                when {
+                    done -> Modifier.background(c.surfaceSunk, TileShape)
+                    notesMode -> Modifier.background(c.aiSoft, TileShape)
+                    else -> Modifier.card(c, TileShape, elevation = 4.dp)
+                },
+            )
+            .clip(TileShape)
+            .clickable(enabled = !done, role = Role.Button) { onDigit(digit) }
+            .clearAndSetSemantics {
+                contentDescription = if (done) "$digit, all placed" else "$digit, $left left"
+                role = Role.Button
+                if (done) disabled()
+                onClick { onDigit(digit); true }
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            val size = when {
+                largeNumbers && notesMode -> 24
+                largeNumbers -> 32
+                notesMode -> 20
+                else -> 26
+            }.let { if (big) it + 8 else it }
+            Text(
+                text = digit.toString(),
+                fontFamily = Sora,
+                fontSize = size.sp,
+                lineHeight = (size + 2).sp,
+                fontWeight = if (notesMode) FontWeight.Medium else FontWeight.SemiBold,
+                color = if (done) c.inkMuted.copy(alpha = 0.5f) else c.ai,
+            )
+            Spacer(Modifier.height(if (big) 4.dp else 2.dp))
+            if (done) {
+                Icon(Lucide.Check, contentDescription = null, tint = c.inkMuted, modifier = Modifier.size(if (big) 16.dp else 12.dp))
+            } else {
+                Text(
+                    text = left.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (big) 13.sp else 11.sp,
+                    lineHeight = if (big) 14.sp else 12.sp,
+                    color = c.inkMuted,
+                )
             }
         }
     }

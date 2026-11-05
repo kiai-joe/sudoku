@@ -306,6 +306,18 @@ class ScreenshotTest {
         )
     }
 
+    /** Notes mode on a tablet: the 3×3 pad of big keys in its soft indigo. */
+    @Test
+    @Config(qualifiers = TABLET_LANDSCAPE)
+    fun notesTabletDark() = capture("notes_tablet_dark", dark = true) {
+        val g = Fixtures.midGame()
+        GameScreen(
+            state = UiState(game = g, selected = Fixtures.selectedCell(g), notesMode = true),
+            actions = GameActions.None,
+            onExit = {},
+        )
+    }
+
     @Test
     @Config(qualifiers = TABLET_LANDSCAPE)
     fun winTablet() = capture("win_tablet_light", dark = false) {
