@@ -42,6 +42,19 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.kiaijoe.sudoku.ui.components.rememberReduceMotion
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -206,6 +219,9 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
                 }
             }
         } else {
+            // How tall the hint sheet is, so the column can scroll the board clear of it.
+            var sheetHeight by remember { mutableStateOf(0.dp) }
+            val density = LocalDensity.current
             Column(
                 Modifier
                     .widthIn(max = 560.dp)
@@ -219,9 +235,69 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
                 Spacer(Modifier.height(12.dp))
                 BoardArea(state, game, actions, feedback, won, sawPlaying, Modifier.fillMaxWidth().aspectRatio(1f))
                 Spacer(Modifier.height(18.dp))
-                Controls(state, game, actions, onExit, won)
-                Spacer(Modifier.height(16.dp))
+                if (state.hint != null && !won) {
+                    // The hint sheet sits over this space instead of the tools and number pad.
+                    Spacer(Modifier.height(sheetHeight))
+                } else {
+                    Controls(state, game, actions, onExit, won)
+                    Spacer(Modifier.height(16.dp))
+                }
             }
+            HintSheet(
+                hint = state.hint.takeIf { !won },
+                actions = actions,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .onSizeChanged { sheetHeight = with(density) { it.height.toDp() } },
+            )
+        }
+    }
+}
+
+/**
+ * On a phone held upright, an open hint slides up from the bottom as a sheet
+ * over the tools and number pad, leaving the board in view above it. With
+ * Android's Remove animations on, it appears and goes without moving.
+ */
+@Composable
+private fun HintSheet(hint: HintUi?, actions: GameActions, modifier: Modifier = Modifier) {
+    val c = Sumi.colors
+    val reduceMotion = rememberReduceMotion()
+    // Keep showing the last hint while the sheet slides away. A plain holder, not
+    // state, so remembering it doesn't recompose anything.
+    val last = remember { arrayOfNulls<HintUi>(1) }
+    if (hint != null) last[0] = hint
+    AnimatedVisibility(
+        visible = hint != null,
+        modifier = modifier,
+        enter = if (reduceMotion) EnterTransition.None else slideInVertically(tween(250)) { it } + fadeIn(tween(150)),
+        exit = if (reduceMotion) ExitTransition.None else slideOutVertically(tween(200)) { it } + fadeOut(tween(150)),
+    ) {
+        val current = last[0] ?: return@AnimatedVisibility
+        val shape = RoundedCornerShape(topStart = 32.dp, topEnd = 32.dp)
+        Column(
+            Modifier
+                .widthIn(max = 640.dp)
+                .fillMaxWidth()
+                .card(c, shape, elevation = 16.dp)
+                .semantics { paneTitle = "Hint" }
+                .padding(start = 20.dp, end = 20.dp, top = 10.dp, bottom = 20.dp),
+        ) {
+            Box(
+                Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .size(width = 40.dp, height = 4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(c.line),
+            )
+            Spacer(Modifier.height(16.dp))
+            HintContent(
+                hint = current,
+                onNext = actions::hintNext,
+                onPlace = actions::hintPlace,
+                onErase = actions::hintEraseMistake,
+                onClose = actions::closeHint,
+            )
         }
     }
 }
@@ -328,9 +404,23 @@ private fun Controls(
     }
 }
 
-/** The teaching hint, as a card under the board: what to look at, and the next step. */
+/** The teaching hint as a card, beside the board on a wide screen. */
 @Composable
 private fun HintPanel(
+    hint: HintUi,
+    onNext: () -> Unit,
+    onPlace: () -> Unit,
+    onErase: () -> Unit,
+    onClose: () -> Unit,
+) {
+    SumiCard(Modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(20.dp)) {
+        HintContent(hint, onNext, onPlace, onErase, onClose)
+    }
+}
+
+/** What a hint shows, in its card or its sheet: what to look at, and the next step. */
+@Composable
+private fun ColumnScope.HintContent(
     hint: HintUi,
     onNext: () -> Unit,
     onPlace: () -> Unit,
@@ -340,57 +430,55 @@ private fun HintPanel(
     val c = Sumi.colors
     val mistake = hint.plan as? HintPlan.FixMistake
     val card = hint.card
-    SumiCard(Modifier.fillMaxWidth(), padding = androidx.compose.foundation.layout.PaddingValues(20.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconBadge(
-                if (mistake != null) Lucide.Eye else Lucide.Lightbulb,
-                tint = c.ink,
-                background = c.kinSoft,
-                size = 40.dp,
-            )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                when {
-                    mistake != null -> "Check this cell"
-                    card != null -> card.title
-                    else -> "Hint"
-                },
-                style = MaterialTheme.typography.titleLarge,
-                color = c.ink,
-                modifier = Modifier.weight(1f).semantics { heading() },
-            )
-            if (hint.total > 1) SumiChip("Step ${hint.index + 1} of ${hint.total}", tone = ChipTone.Ai)
-        }
-        Spacer(Modifier.height(12.dp))
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconBadge(
+            if (mistake != null) Lucide.Eye else Lucide.Lightbulb,
+            tint = c.ink,
+            background = c.kinSoft,
+            size = 40.dp,
+        )
+        Spacer(Modifier.width(12.dp))
         Text(
             when {
-                mistake != null ->
-                    "The ${mistake.digit} here doesn't match the solution. Erase it, then ask for a hint again."
-                card != null -> card.text
-                else -> ""
+                mistake != null -> "Check this cell"
+                card != null -> card.title
+                else -> "Hint"
             },
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.titleLarge,
             color = c.ink,
+            modifier = Modifier.weight(1f).semantics { heading() },
         )
-        if (card != null && !card.isPlacement && card.eliminations.isNotEmpty()) {
-            Spacer(Modifier.height(6.dp))
-            Text(
-                "Crossed-out numbers on the board are the ones this rules out.",
-                style = MaterialTheme.typography.bodySmall,
-                color = c.inkMuted,
-            )
-        }
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            PillButton("Close", onClose, Modifier.weight(1f), tone = ButtonTone.Soft)
-            when {
-                mistake != null ->
-                    PillButton("Erase it", onErase, Modifier.weight(1f), icon = Lucide.Eraser)
-                card != null && card.isPlacement ->
-                    PillButton("Place ${card.placeDigit}", onPlace, Modifier.weight(1f), icon = Lucide.Check)
-                hint.hasNext ->
-                    PillButton("Next step", onNext, Modifier.weight(1f), trailingIcon = Lucide.ChevronRight)
-            }
+        if (hint.total > 1) SumiChip("Step ${hint.index + 1} of ${hint.total}", tone = ChipTone.Ai)
+    }
+    Spacer(Modifier.height(12.dp))
+    Text(
+        when {
+            mistake != null ->
+                "The ${mistake.digit} here doesn't match the solution. Erase it, then ask for a hint again."
+            card != null -> card.text
+            else -> ""
+        },
+        style = MaterialTheme.typography.bodyLarge,
+        color = c.ink,
+    )
+    if (card != null && !card.isPlacement && card.eliminations.isNotEmpty()) {
+        Spacer(Modifier.height(6.dp))
+        Text(
+            "Crossed-out numbers on the board are the ones this rules out.",
+            style = MaterialTheme.typography.bodySmall,
+            color = c.inkMuted,
+        )
+    }
+    Spacer(Modifier.height(18.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        PillButton("Close", onClose, Modifier.weight(1f), tone = ButtonTone.Soft)
+        when {
+            mistake != null ->
+                PillButton("Erase it", onErase, Modifier.weight(1f), icon = Lucide.Eraser)
+            card != null && card.isPlacement ->
+                PillButton("Place ${card.placeDigit}", onPlace, Modifier.weight(1f), icon = Lucide.Check)
+            hint.hasNext ->
+                PillButton("Next step", onNext, Modifier.weight(1f), trailingIcon = Lucide.ChevronRight)
         }
     }
 }
