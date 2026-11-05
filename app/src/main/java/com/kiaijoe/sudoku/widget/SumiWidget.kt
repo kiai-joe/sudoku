@@ -110,13 +110,14 @@ class SumiWidget : AppWidgetProvider() {
 
             views.setTextViewText(R.id.widget_action_text, model.action)
             if (model.solved) {
+                // Done: a matcha pill with a tick and the solve time.
                 views.setInt(R.id.widget_action, "setBackgroundResource", R.drawable.widget_pill_matcha_soft)
                 views.setTextColor(R.id.widget_action_text, context.getColor(R.color.widget_matcha))
-                views.setViewVisibility(R.id.widget_action_icon, View.GONE)
+                views.setImageViewResource(R.id.widget_action_icon, R.drawable.ic_widget_check_matcha)
             } else {
                 views.setInt(R.id.widget_action, "setBackgroundResource", R.drawable.widget_pill_ai)
                 views.setTextColor(R.id.widget_action_text, context.getColor(R.color.widget_on_ai))
-                views.setViewVisibility(R.id.widget_action_icon, View.VISIBLE)
+                views.setImageViewResource(R.id.widget_action_icon, R.drawable.ic_widget_play)
             }
 
             views.setContentDescription(android.R.id.background, model.description)

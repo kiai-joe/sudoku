@@ -39,7 +39,8 @@ class DailyWidgetModelTest {
     fun aSolvedDayShowsItsTime() {
         val m = dailyWidgetModel(thursday, mondayToWednesday + (thursday to 312L), inProgress = false, locale = Locale.UK)
         assertTrue(m.solved)
-        assertEquals("Solved · 05:12", m.action)
+        assertEquals("05:12", m.action)
+        assertTrue(m.description, m.description.contains("Solved in 05:12"))
         assertEquals(4, m.streak)
         assertEquals(DayState.SOLVED, m.days[3].state)
     }

@@ -15,7 +15,8 @@ data class WidgetDay(val letter: String, val number: Int, val state: DayState)
  * Everything the home-screen widget shows, worked out from the saved daily
  * record so it can be tested without a launcher.
  *
- * @property action the button: Play, Continue, or the solve time once today is done.
+ * @property action the button: Play, Continue, or once today is done just its
+ *   time, shown with a tick (the description says it in full).
  * @property description what a screen reader says for the whole widget.
  */
 data class DailyWidgetModel(
@@ -57,7 +58,7 @@ fun dailyWidgetModel(
     val streak = Daily.streak(results.keys, today)
     val solvedIn = results[today]
     val action = when {
-        solvedIn != null -> "Solved · ${formatTime(solvedIn)}"
+        solvedIn != null -> formatTime(solvedIn)
         inProgress -> "Continue"
         else -> "Play"
     }
