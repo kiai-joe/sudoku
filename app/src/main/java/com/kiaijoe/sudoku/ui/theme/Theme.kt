@@ -202,6 +202,24 @@ object Sumi {
         @Composable @ReadOnlyComposable get() = LocalSumiColors.current
 }
 
+/**
+ * Light or dark, chosen in Settings. [SYSTEM] follows the phone, which is how
+ * Sumi has always behaved; the other two hold it there. A palette with no
+ * light version (Indigo night) stays dark whatever this says.
+ */
+enum class DarkMode(val label: String) {
+    SYSTEM("System"),
+    LIGHT("Light"),
+    DARK("Dark"),
+}
+
+/** Whether the app draws dark in this mode, given the phone's own setting [systemDark]. */
+fun DarkMode.resolve(systemDark: Boolean): Boolean = when (this) {
+    DarkMode.SYSTEM -> systemDark
+    DarkMode.LIGHT -> false
+    DarkMode.DARK -> true
+}
+
 /** Whether [theme] draws dark, given the system setting [systemDark]. */
 fun InkTheme.isDark(systemDark: Boolean) = alwaysDark || systemDark
 

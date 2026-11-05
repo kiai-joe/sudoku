@@ -27,7 +27,7 @@ The look is soft and rounded: the board is nine rounded boxes on a sunk well ins
 - Progress per level: games played and solved, win rate, best time, average time, and how often you solve without hints.
 - Twelve achievements, from a first solve to a 30-day daily streak and an Expert Killer with no printed numbers. New ones show on the win screen; all are shown as seals under Progress, and tapping one shows what it needs and when you earned it. Ones already earned from saved statistics are awarded on first launch.
 - Accessibility: a Larger numbers setting; wrong numbers are underlined as well as red, so they don't rely on colour; every board cell is fully described to screen readers (value, pencil marks, Killer cage, and what a hint shows or rules out), achievement and weekday rows read as one sentence, and the ink wash and stamp animation are skipped when the system's Remove animations setting is on. `AccessibilityTest` checks what TalkBack hears.
-- Three palettes, picked in Settings: Sumi (Washi by day, Sumi night after dark), Indigo night (paper-white on deep indigo, always dark) and Bamboo (green-tinted paper). Sumi and Bamboo follow the system's light or dark setting.
+- Three palettes, picked in Settings: Sumi (Washi by day, Sumi night after dark), Indigo night (paper-white on deep indigo, always dark) and Bamboo (green-tinted paper). Sumi and Bamboo follow the phone's light or dark setting, or you can pick Light or Dark in Settings (the home-screen widgets still follow the phone).
 
 ## Privacy
 

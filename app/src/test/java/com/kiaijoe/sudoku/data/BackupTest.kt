@@ -3,6 +3,7 @@ package com.kiaijoe.sudoku.data
 import android.content.Context
 import com.kiaijoe.sudoku.engine.Achievement
 import com.kiaijoe.sudoku.engine.Difficulty
+import com.kiaijoe.sudoku.ui.theme.DarkMode
 import com.kiaijoe.sudoku.ui.theme.InkTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -38,7 +39,7 @@ class BackupTest {
         repo.recordDailyWin(day = 20_001, seconds = 280)
         repo.addAchievements(setOf(Achievement.FIRST_STAMP, Achievement.STEADY_HAND), day = 20_001)
         repo.markLessonDone("X_WING")
-        repo.saveSettings(Settings(theme = InkTheme.BAMBOO, largeNumbers = true, haptics = false))
+        repo.saveSettings(Settings(theme = InkTheme.BAMBOO, largeNumbers = true, haptics = false, darkMode = DarkMode.DARK))
     }
 
     @Test
@@ -58,6 +59,7 @@ class BackupTest {
         assertEquals(setOf(Achievement.FIRST_STAMP, Achievement.STEADY_HAND), repo.loadAchievements().keys)
         assertEquals(setOf("X_WING"), repo.loadLessonsDone())
         assertEquals(InkTheme.BAMBOO, repo.loadSettings().theme)
+        assertEquals(DarkMode.DARK, repo.loadSettings().darkMode)
     }
 
     @Test
