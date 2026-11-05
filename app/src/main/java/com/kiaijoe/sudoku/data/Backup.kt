@@ -1,6 +1,7 @@
 package com.kiaijoe.sudoku.data
 
 import android.content.SharedPreferences
+import com.kiaijoe.sudoku.engine.tr
 import org.json.JSONArray
 import org.json.JSONException
 import org.json.JSONObject
@@ -61,7 +62,7 @@ object Backup {
             verify()
         } catch (e: Exception) {
             write(prefs, before)
-            throw BackupException("This backup has values Sumi can't read, so nothing was changed.")
+            throw BackupException(tr("This backup has values Sumi can't read, so nothing was changed.", "Nakala hii ina thamani ambazo Sumi haiwezi kusoma, kwa hiyo hakuna kilichobadilishwa."))
         }
         return entries.size
     }
@@ -70,14 +71,14 @@ object Backup {
         val root = try {
             JSONObject(text)
         } catch (e: JSONException) {
-            throw BackupException("This file isn't a Sumi backup.")
+            throw BackupException(tr("This file isn't a Sumi backup.", "Faili hili si nakala ya Sumi."))
         }
-        if (root.optString("format") != FORMAT) throw BackupException("This file isn't a Sumi backup.")
+        if (root.optString("format") != FORMAT) throw BackupException(tr("This file isn't a Sumi backup.", "Faili hili si nakala ya Sumi."))
         val version = root.optInt("version", -1)
         if (version !in 1..VERSION) {
-            throw BackupException("This backup is from a newer version of Sumi. Update Sumi, then try again.")
+            throw BackupException(tr("This backup is from a newer version of Sumi. Update Sumi, then try again.", "Nakala hii ni ya toleo jipya zaidi la Sumi. Sasisha Sumi, kisha ujaribu tena."))
         }
-        val entries = root.optJSONObject("entries") ?: throw BackupException("This backup is empty.")
+        val entries = root.optJSONObject("entries") ?: throw BackupException(tr("This backup is empty.", "Nakala hii ni tupu."))
         val out = LinkedHashMap<String, Any>()
         try {
             for (key in entries.keys()) {
@@ -89,11 +90,11 @@ object Backup {
                     "boolean" -> entry.getBoolean("value")
                     "float" -> entry.getDouble("value").toFloat()
                     "strings" -> entry.getJSONArray("value").let { a -> (0 until a.length()).map { a.getString(it) }.toSet() }
-                    else -> throw BackupException("This backup has values Sumi can't read, so nothing was changed.")
+                    else -> throw BackupException(tr("This backup has values Sumi can't read, so nothing was changed.", "Nakala hii ina thamani ambazo Sumi haiwezi kusoma, kwa hiyo hakuna kilichobadilishwa."))
                 }
             }
         } catch (e: JSONException) {
-            throw BackupException("This backup is damaged, so nothing was changed.")
+            throw BackupException(tr("This backup is damaged, so nothing was changed.", "Nakala hii imeharibika, kwa hiyo hakuna kilichobadilishwa."))
         }
         return out
     }

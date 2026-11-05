@@ -6,11 +6,23 @@ import kotlin.random.Random
  * Levels are graded by the hardest technique a puzzle needs (see
  * [Technique]), not by how many clues it has.
  */
-enum class Difficulty(val label: String, val techniques: String) {
-    EASY("Easy", "Singles only"),
-    MEDIUM("Medium", "Pointing and pairs"),
-    HARD("Hard", "X-Wing and XY-Wing"),
-    EXPERT("Expert", "Swordfish and XYZ-Wing"),
+enum class Difficulty(
+    private val en: String,
+    private val sw: String,
+    private val techniquesEn: String,
+    private val techniquesSw: String,
+) {
+    EASY("Easy", "Rahisi", "Singles only", "Pekee tu"),
+    MEDIUM("Medium", "Kati", "Pointing and pairs", "Kuelekeza na jozi"),
+    HARD("Hard", "Ngumu", "X-Wing and XY-Wing", "X-Wing na XY-Wing"),
+    EXPERT("Expert", "Bingwa", "Swordfish and XYZ-Wing", "Swordfish na XYZ-Wing"),
+    ;
+
+    /** The level's name in the phone's language. */
+    val label: String get() = tr(en, sw)
+
+    /** What the level asks of the player, for the level buttons. */
+    val techniques: String get() = tr(techniquesEn, techniquesSw)
 }
 
 /**

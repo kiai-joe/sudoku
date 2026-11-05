@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.components
 
+import com.kiaijoe.sudoku.engine.tr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -47,17 +48,22 @@ fun GameToolbar(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-        ToolButton(Lucide.Undo2, "Undo", enabled = canUndo, onClick = onUndo)
-        ToolButton(Lucide.Eraser, "Erase", onClick = onErase)
+        ToolButton(Lucide.Undo2, tr("Undo", "Tendua"), enabled = canUndo, onClick = onUndo)
+        ToolButton(Lucide.Eraser, tr("Erase", "Futa"), onClick = onErase)
         ToolButton(
             icon = Lucide.Pencil,
-            label = "Notes",
+            label = tr("Notes", "Penseli"),
             active = notesMode,
-            state = if (notesMode) "on" else "off",
+            state = if (notesMode) tr("on", "imewashwa") else tr("off", "imezimwa"),
             onClick = onToggleNotes,
         )
-        ToolButton(Lucide.Grid3x3, "Fill", onClick = onFill, description = "Fill in all candidates")
-        ToolButton(Lucide.Lightbulb, "Hint", onClick = onHint)
+        ToolButton(
+            Lucide.Grid3x3,
+            tr("Fill", "Jaza"),
+            onClick = onFill,
+            description = tr("Fill in all candidates", "Jaza namba zote zinazowezekana"),
+        )
+        ToolButton(Lucide.Lightbulb, tr("Hint", "Dokezo"), onClick = onHint)
     }
 }
 
@@ -190,7 +196,11 @@ private fun PadKey(
             .clip(TileShape)
             .clickable(enabled = !done, role = Role.Button) { onDigit(digit) }
             .clearAndSetSemantics {
-                contentDescription = if (done) "$digit, all placed" else "$digit, $left left"
+                contentDescription = if (done) {
+                    tr("$digit, all placed", "$digit, zote zimewekwa")
+                } else {
+                    tr("$digit, $left left", "$digit, zimebaki $left")
+                }
                 role = Role.Button
                 if (done) disabled()
                 onClick { onDigit(digit); true }

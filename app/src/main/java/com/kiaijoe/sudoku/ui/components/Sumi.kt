@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.components
 
+import com.kiaijoe.sudoku.engine.tr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -231,7 +232,7 @@ fun SumiTopBar(
     onBack: (() -> Unit)?,
     modifier: Modifier = Modifier,
     backIcon: ImageVector = Lucide.ArrowLeft,
-    backDescription: String = "Back",
+    backDescription: String = tr("Back", "Rudi"),
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     Box(

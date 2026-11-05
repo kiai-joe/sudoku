@@ -14,6 +14,7 @@ import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.GameStatus
 import com.kiaijoe.sudoku.engine.Generator
 import com.kiaijoe.sudoku.engine.HintPlan
+import com.kiaijoe.sudoku.engine.Lang
 import com.kiaijoe.sudoku.engine.Hints
 import com.kiaijoe.sudoku.engine.Killer
 import com.kiaijoe.sudoku.engine.Progress
@@ -36,6 +37,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import java.time.LocalDate
+import java.util.Locale
 import kotlin.random.Random
 
 /**
@@ -403,6 +405,95 @@ class ScreenshotTest {
 
     private fun settings(dark: Boolean) = capture(if (dark) "settings_dark" else "settings_light", dark) {
         SettingsScreen(settings = Settings(), onChange = {}, onBack = {})
+    }
+
+    // --- Swahili -------------------------------------------------------------
+
+    /** Runs [block] with the app in Swahili, as on a phone set to Kiswahili (Tanzania). */
+    private fun swahili(block: () -> Unit) {
+        val before = Locale.getDefault()
+        Lang.forced = Lang.SW
+        Locale.setDefault(Locale("sw", "TZ"))
+        try {
+            block()
+        } finally {
+            Lang.forced = null
+            Locale.setDefault(before)
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun homeSwahili() = swahili {
+        capture("home_sw_light", dark = false) {
+            HomeScreen(
+                state = Fixtures.midGame().let {
+                    UiState(game = it, savedGame = it, daily = Fixtures.daily, killerDaily = Fixtures.killerDaily)
+                },
+                onContinue = {},
+                onPlayDaily = {},
+                onCalendar = {},
+                onNewGame = {},
+                onNewKiller = {},
+                onSettings = {},
+                onTab = {},
+            )
+        }
+    }
+
+    @Test
+    fun hintSwahili() = swahili {
+        capture("hint_sw_light", dark = false) {
+            val (g, plan) = Fixtures.eliminationHint()
+            GameScreen(state = UiState(game = g, hint = HintUi(plan)), actions = GameActions.None, onExit = {})
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun lessonSwahili() = swahili {
+        capture("lesson_xwing_sw_light", dark = false) {
+            val index = Tutorial.lessons.indexOfFirst { it.technique == Technique.X_WING }
+            LessonScreen(
+                index = index,
+                example = Tutorial.example(Tutorial.lessons[index]),
+                loading = false,
+                onNextLesson = {},
+                onBack = {},
+                onPractice = {},
+            )
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun calendarSwahili() = swahili {
+        capture("calendar_sw_light", dark = false) {
+            CalendarScreen(daily = Fixtures.daily, killerDaily = Fixtures.killerDaily, onBack = {}, onTab = {})
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun settingsSwahili() = swahili {
+        capture("settings_sw_light", dark = false) {
+            SettingsScreen(settings = Settings(), onChange = {}, onBack = {})
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun statsSwahili() = swahili {
+        capture("stats_sw_light", dark = false) {
+            StatsScreen(
+                stats = Fixtures.stats,
+                killerStats = DifficultyStats(played = 3, won = 2, bestSeconds = 1210),
+                achievements = Fixtures.achievements,
+                onReset = {},
+                onBack = {},
+                onTab = {},
+            )
+        }
     }
 
     /** Progress in the dark palette, with the floating bar. */

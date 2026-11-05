@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui
 
+import com.kiaijoe.sudoku.engine.tr
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -167,9 +168,12 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         _ui.update { it.copy(achievements = repo.loadAchievements()) }
         updateTimer()
         refreshWidget()
-        BackupResult(ok = true, message = "Restored. Your games, stats and settings are back.")
+        BackupResult(ok = true, message = tr(
+            "Restored. Your games, stats and settings are back.",
+            "Imerejeshwa. Michezo, takwimu na mipangilio yako imerudi.",
+        ))
     } catch (e: BackupException) {
-        BackupResult(ok = false, message = e.message ?: "This backup couldn't be restored.")
+        BackupResult(ok = false, message = e.message ?: tr("This backup couldn't be restored.", "Nakala hii haikuweza kurejeshwa."))
     }
 
     /** What the saved statistics add up to, for achievements. */
@@ -418,9 +422,12 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 flagged = wrong,
                 checks = it.checks + 1,
                 checkMessage = when (wrong.size) {
-                    0 -> "Everything so far is right."
-                    1 -> "1 number is wrong. It's marked in red."
-                    else -> "${wrong.size} numbers are wrong. They're marked in red."
+                    0 -> tr("Everything so far is right.", "Kila kitu hadi sasa ni sahihi.")
+                    1 -> tr("1 number is wrong. It's marked in red.", "Namba 1 si sahihi. Imewekwa alama nyekundu.")
+                    else -> tr(
+                        "${wrong.size} numbers are wrong. They're marked in red.",
+                        "Namba ${wrong.size} si sahihi. Zimewekwa alama nyekundu.",
+                    )
                 },
             )
         }

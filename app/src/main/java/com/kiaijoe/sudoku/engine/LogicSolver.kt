@@ -4,23 +4,32 @@ package com.kiaijoe.sudoku.engine
  * Solving techniques a person uses, easiest first. [level] is the
  * difficulty a puzzle gets when this is the hardest technique it needs.
  */
-enum class Technique(val label: String, val level: Difficulty, val killerOnly: Boolean = false) {
-    NAKED_SINGLE("Naked single", Difficulty.EASY),
-    HIDDEN_SINGLE("Hidden single", Difficulty.EASY),
-    CAGE("Cage combinations", Difficulty.EASY, killerOnly = true),
-    FORTY_FIVE("45 rule", Difficulty.MEDIUM, killerOnly = true),
-    POINTING("Pointing", Difficulty.MEDIUM),
-    CLAIMING("Box/line reduction", Difficulty.MEDIUM),
-    NAKED_PAIR("Naked pair", Difficulty.MEDIUM),
-    HIDDEN_PAIR("Hidden pair", Difficulty.MEDIUM),
-    NAKED_TRIPLE("Naked triple", Difficulty.MEDIUM),
-    HIDDEN_TRIPLE("Hidden triple", Difficulty.HARD),
-    X_WING("X-Wing", Difficulty.HARD),
-    XY_WING("XY-Wing", Difficulty.HARD),
-    NAKED_QUAD("Naked quad", Difficulty.HARD),
-    HIDDEN_QUAD("Hidden quad", Difficulty.EXPERT),
-    SWORDFISH("Swordfish", Difficulty.EXPERT),
-    XYZ_WING("XYZ-Wing", Difficulty.EXPERT),
+enum class Technique(
+    private val en: String,
+    private val sw: String,
+    val level: Difficulty,
+    val killerOnly: Boolean = false,
+) {
+    NAKED_SINGLE("Naked single", "Pekee wazi", Difficulty.EASY),
+    HIDDEN_SINGLE("Hidden single", "Pekee fiche", Difficulty.EASY),
+    CAGE("Cage combinations", "Michanganyiko ya kizimba", Difficulty.EASY, killerOnly = true),
+    FORTY_FIVE("45 rule", "Kanuni ya 45", Difficulty.MEDIUM, killerOnly = true),
+    POINTING("Pointing", "Kuelekeza", Difficulty.MEDIUM),
+    CLAIMING("Box/line reduction", "Upunguzaji wa sanduku na mstari", Difficulty.MEDIUM),
+    NAKED_PAIR("Naked pair", "Jozi wazi", Difficulty.MEDIUM),
+    HIDDEN_PAIR("Hidden pair", "Jozi fiche", Difficulty.MEDIUM),
+    NAKED_TRIPLE("Naked triple", "Tatu wazi", Difficulty.MEDIUM),
+    HIDDEN_TRIPLE("Hidden triple", "Tatu fiche", Difficulty.HARD),
+    X_WING("X-Wing", "X-Wing", Difficulty.HARD),
+    XY_WING("XY-Wing", "XY-Wing", Difficulty.HARD),
+    NAKED_QUAD("Naked quad", "Nne wazi", Difficulty.HARD),
+    HIDDEN_QUAD("Hidden quad", "Nne fiche", Difficulty.EXPERT),
+    SWORDFISH("Swordfish", "Swordfish", Difficulty.EXPERT),
+    XYZ_WING("XYZ-Wing", "XYZ-Wing", Difficulty.EXPERT),
+    ;
+
+    /** The technique's name in the phone's language. */
+    val label: String get() = tr(en, sw)
 }
 
 enum class HouseKind { ROW, COLUMN, BOX }

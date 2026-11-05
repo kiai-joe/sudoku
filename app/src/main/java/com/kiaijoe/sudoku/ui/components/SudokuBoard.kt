@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.components
 
+import com.kiaijoe.sudoku.engine.tr
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
@@ -239,17 +240,28 @@ internal fun cellDescription(
     cage: Cage? = null,
 ): String = buildString {
     val value = game.values[index]
-    append("Row ${Grid.row(index) + 1}, column ${Grid.col(index) + 1}, ")
+    val row = Grid.row(index) + 1
+    val col = Grid.col(index) + 1
+    append(tr("Row $row, column $col, ", "Mstari $row, safu $col, "))
     when {
-        value == 0 -> append("empty")
-        game.isGiven(index) -> append("$value, given")
-        wrongShown -> append("$value, incorrect")
+        value == 0 -> append(tr("empty", "kitupu"))
+        game.isGiven(index) -> append(tr("$value, given", "$value, imetolewa"))
+        wrongShown -> append(tr("$value, incorrect", "$value, si sahihi"))
         else -> append(value)
     }
-    if (value == 0 && game.notes[index] != 0) append(", notes ${digitsText(game.notes[index])}")
-    if (cage != null) append(", cage of ${cage.cells.size} adding to ${cage.sum}")
-    if (hintShown != 0) append(", hint candidates ${digitsText(hintShown)}")
-    if (hintStruck != 0) append(", ruled out ${digitsText(hintStruck)}")
+    if (value == 0 && game.notes[index] != 0) {
+        append(tr(", notes ", ", penseli ")).append(digitsText(game.notes[index]))
+    }
+    if (cage != null) {
+        append(
+            tr(
+                ", cage of ${cage.cells.size} adding to ${cage.sum}",
+                ", kizimba cha ${cage.cells.size} chenye jumla ya ${cage.sum}",
+            ),
+        )
+    }
+    if (hintShown != 0) append(tr(", hint candidates ", ", namba za dokezo ")).append(digitsText(hintShown))
+    if (hintStruck != 0) append(tr(", ruled out ", ", zimeondolewa ")).append(digitsText(hintStruck))
 }
 
 private fun digitsText(mask: Int) = (1..9).filter { mask and (1 shl (it - 1)) != 0 }.joinToString(", ")

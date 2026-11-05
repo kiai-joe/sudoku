@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.theme
 
+import com.kiaijoe.sudoku.engine.tr
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -28,15 +29,18 @@ import com.kiaijoe.sudoku.R
  *
  * @property alwaysDark the palette has no light version and ignores the system setting.
  */
-enum class InkTheme(val label: String, val alwaysDark: Boolean = false) {
+enum class InkTheme(private val en: String, private val sw: String, val alwaysDark: Boolean = false) {
     /** Washi by day, Sumi night after dark: ink on paper, indigo marks, gold selection. */
-    SUMI("Sumi"),
+    SUMI("Sumi", "Sumi"),
 
     /** Aizome: paper-white on deep indigo, for playing at night. */
-    INDIGO_NIGHT("Indigo night", alwaysDark = true),
+    INDIGO_NIGHT("Indigo night", "Usiku wa nili", alwaysDark = true),
 
     /** Take: green-tinted paper and bamboo-green marks. */
-    BAMBOO("Bamboo"),
+    BAMBOO("Bamboo", "Mianzi"),
+    ;
+
+    val label: String get() = tr(en, sw)
 }
 
 /**
@@ -208,10 +212,13 @@ object Sumi {
  * Sumi has always behaved; the other two hold it there. A palette with no
  * light version (Indigo night) stays dark whatever this says.
  */
-enum class DarkMode(val label: String) {
-    SYSTEM("System"),
-    LIGHT("Light"),
-    DARK("Dark"),
+enum class DarkMode(private val en: String, private val sw: String) {
+    SYSTEM("System", "Mfumo"),
+    LIGHT("Light", "Mwanga"),
+    DARK("Dark", "Giza"),
+    ;
+
+    val label: String get() = tr(en, sw)
 }
 
 /** Whether the app draws dark in this mode, given the phone's own setting [systemDark]. */

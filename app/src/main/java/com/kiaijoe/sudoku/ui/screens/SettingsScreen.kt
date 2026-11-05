@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.screens
 
+import com.kiaijoe.sudoku.engine.tr
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -101,9 +102,9 @@ fun SettingsScreen(
                 withContext(Dispatchers.IO) {
                     context.contentResolver.openOutputStream(uri, "wt")!!.use { it.write(text.toByteArray()) }
                 }
-                BackupResult(ok = true, message = "Backup saved. Keep it somewhere safe, like Drive or your computer.")
+                BackupResult(ok = true, message = tr("Backup saved. Keep it somewhere safe, like Drive or your computer.", "Nakala imehifadhiwa. Iweke mahali salama, kama Drive au kompyuta yako."))
             } catch (e: Exception) {
-                BackupResult(ok = false, message = "The backup couldn't be saved there. Try another place.")
+                BackupResult(ok = false, message = tr("The backup couldn't be saved there. Try another place.", "Nakala haikuweza kuhifadhiwa hapo. Jaribu mahali pengine."))
             }
         }
     }
@@ -115,13 +116,13 @@ fun SettingsScreen(
                     context.contentResolver.openInputStream(uri)!!.use { it.readBytes().toString(Charsets.UTF_8) }
                 }
             } catch (e: Exception) {
-                result = BackupResult(ok = false, message = "That file couldn't be opened.")
+                result = BackupResult(ok = false, message = tr("That file couldn't be opened.", "Faili hilo halikuweza kufunguliwa."))
             }
         }
     }
     Page {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            SumiTopBar("Settings", onBack = onBack)
+            SumiTopBar(tr("Settings", "Mipangilio"), onBack = onBack)
             Column(
                 Modifier
                     .fillMaxSize()
@@ -130,7 +131,7 @@ fun SettingsScreen(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 Column(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
-                    Section("Look")
+                    Section(tr("Look", "Mwonekano"))
                     val systemDark = isSystemInDarkTheme()
                     ThemePicker(
                         selected = settings.theme,
@@ -146,7 +147,7 @@ fun SettingsScreen(
                     if (settings.theme.alwaysDark) {
                         Spacer(Modifier.height(6.dp))
                         Text(
-                            "${settings.theme.label} is always dark.",
+                            tr("${settings.theme.label} is always dark.", "${settings.theme.label} huwa giza kila wakati."),
                             style = MaterialTheme.typography.bodySmall,
                             color = Sumi.colors.inkMuted,
                             modifier = Modifier.padding(horizontal = 4.dp),
@@ -157,24 +158,24 @@ fun SettingsScreen(
                         rows = listOf<@Composable () -> Unit>({
                             SwitchRow(
                                 Lucide.Type,
-                                "Larger numbers",
-                                "Board and keys a quarter bigger",
+                                tr("Larger numbers", "Namba kubwa zaidi"),
+                                tr("Board and keys a quarter bigger", "Ubao na vitufe vikubwa kwa robo"),
                                 settings.largeNumbers,
                             ) { onChange(settings.copy(largeNumbers = it)) }
                         }),
                     )
 
-                    Section("Play")
+                    Section(tr("Play", "Mchezo"))
                     ListCard(
                         rows = listOf<@Composable () -> Unit>(
                             {
                                 SwitchRow(
                                     Lucide.Eye,
-                                    "Show mistakes right away",
+                                    tr("Show mistakes right away", "Onyesha makosa papo hapo"),
                                     if (settings.instantCheck) {
-                                        "Wrong numbers turn red as you place them"
+                                        tr("Wrong numbers turn red as you place them", "Namba zisizo sahihi zinageuka nyekundu unapoziweka")
                                     } else {
-                                        "Nothing is marked until you tap Check"
+                                        tr("Nothing is marked until you tap Check", "Hakuna kinachowekwa alama hadi uguse Kagua")
                                     },
                                     settings.instantCheck,
                                 ) { onChange(settings.copy(instantCheck = it)) }
@@ -182,11 +183,11 @@ fun SettingsScreen(
                             {
                                 SwitchRow(
                                     Lucide.Flag,
-                                    "Mistake limit",
+                                    tr("Mistake limit", "Kikomo cha makosa"),
                                     if (settings.instantCheck) {
-                                        "End the game after $MISTAKE_LIMIT wrong numbers"
+                                        tr("End the game after $MISTAKE_LIMIT wrong numbers", "Maliza mchezo baada ya namba $MISTAKE_LIMIT zisizo sahihi")
                                     } else {
-                                        "Only applies when mistakes are shown right away"
+                                        tr("Only applies when mistakes are shown right away", "Inatumika tu makosa yanapoonyeshwa papo hapo")
                                     },
                                     settings.mistakeLimit && settings.instantCheck,
                                     enabled = settings.instantCheck,
@@ -195,50 +196,50 @@ fun SettingsScreen(
                             {
                                 SwitchRow(
                                     Lucide.Pencil,
-                                    "Tidy pencil marks",
-                                    "Clear matching notes when you place a number",
+                                    tr("Tidy pencil marks", "Safisha alama za penseli"),
+                                    tr("Clear matching notes when you place a number", "Futa alama za penseli zinazolingana unapoweka namba"),
                                     settings.autoRemoveNotes,
                                 ) { onChange(settings.copy(autoRemoveNotes = it)) }
                             },
                             {
                                 SwitchRow(
                                     Lucide.Grid3x3,
-                                    "Highlight same numbers",
-                                    "Shade every cell with the selected number",
+                                    tr("Highlight same numbers", "Angazia namba zinazofanana"),
+                                    tr("Shade every cell with the selected number", "Weka kivuli kila kisanduku chenye namba iliyochaguliwa"),
                                     settings.highlightSameNumbers,
                                 ) { onChange(settings.copy(highlightSameNumbers = it)) }
                             },
                         ),
                     )
 
-                    Section("Feel")
+                    Section(tr("Feel", "Mguso"))
                     ListCard(
                         rows = listOf<@Composable () -> Unit>({
                             SwitchRow(
                                 Lucide.Vibrate,
-                                "Vibration",
-                                "A light tap when you place a number or finish a row, column or box",
+                                tr("Vibration", "Mtetemo"),
+                                tr("A light tap when you place a number or finish a row, column or box", "Mguso mwepesi unapoweka namba au kukamilisha mstari, safu au sanduku"),
                                 settings.haptics,
                             ) { onChange(settings.copy(haptics = it)) }
                         }),
                     )
 
-                    Section("Your progress")
+                    Section(tr("Your progress", "Maendeleo yako"))
                     ListCard(
                         rows = listOf<@Composable () -> Unit>(
                             {
                                 ListRow(
                                     Lucide.Download,
-                                    "Save a backup file",
-                                    subtitle = "Games, stats, streak, achievements and settings",
+                                    tr("Save a backup file", "Hifadhi faili la nakala"),
+                                    subtitle = tr("Games, stats, streak, achievements and settings", "Michezo, takwimu, mfululizo, tuzo na mipangilio"),
                                     onClick = { saveFile.launch("sumi-backup-${LocalDate.now()}.json") },
                                 ) { RowChevron() }
                             },
                             {
                                 ListRow(
                                     Lucide.Upload,
-                                    "Restore from a backup",
-                                    subtitle = "Bring your progress over from another phone",
+                                    tr("Restore from a backup", "Rejesha kutoka kwenye nakala"),
+                                    subtitle = tr("Bring your progress over from another phone", "Leta maendeleo yako kutoka simu nyingine"),
                                     onClick = { openFile.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
                                 ) { RowChevron() }
                             },
@@ -247,7 +248,7 @@ fun SettingsScreen(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         result?.message
-                            ?: "Android's own backup also brings Sumi across when you set up a new phone, if it's turned on.",
+                            ?: tr("Android's own backup also brings Sumi across when you set up a new phone, if it's turned on.", "Nakala ya Android yenyewe pia huhamisha Sumi unapoweka simu mpya, ikiwa imewashwa."),
                         style = MaterialTheme.typography.bodySmall,
                         color = when (result?.ok) {
                             true -> c.matcha
@@ -263,8 +264,8 @@ fun SettingsScreen(
                             // Opens in the browser; Sumi itself has no internet access.
                             ListRow(
                                 Lucide.ShieldCheck,
-                                "Privacy",
-                                subtitle = "Sumi collects nothing and works offline",
+                                tr("Privacy", "Faragha"),
+                                subtitle = tr("Sumi collects nothing and works offline", "Sumi haikusanyi chochote na inafanya kazi bila mtandao"),
                                 onClick = { uriHandler.openUri(PRIVACY_POLICY_URL) },
                             ) { RowChevron() }
                         }),
@@ -279,17 +280,17 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { pending = null },
             containerColor = c.surface,
-            title = { Text("Restore this backup?", style = MaterialTheme.typography.titleLarge) },
+            title = { Text(tr("Restore this backup?", "Rejesha nakala hii?"), style = MaterialTheme.typography.titleLarge) },
             text = {
                 Text(
-                    "It replaces the games, stats, streak, achievements and settings on this phone.",
+                    tr("It replaces the games, stats, streak, achievements and settings on this phone.", "Inabadilisha michezo, takwimu, mfululizo, tuzo na mipangilio iliyo kwenye simu hii."),
                     style = MaterialTheme.typography.bodyLarge,
                 )
             },
             confirmButton = {
-                PillButton("Restore", { pending = null; result = onRestoreBackup(text) }, height = 44.dp)
+                PillButton(tr("Restore", "Rejesha"), { pending = null; result = onRestoreBackup(text) }, height = 44.dp)
             },
-            dismissButton = { PillButton("Cancel", { pending = null }, tone = ButtonTone.Ghost, height = 44.dp) },
+            dismissButton = { PillButton(tr("Cancel", "Ghairi"), { pending = null }, tone = ButtonTone.Ghost, height = 44.dp) },
         )
     }
 }

@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.screens
 
+import com.kiaijoe.sudoku.engine.tr
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -82,8 +83,8 @@ fun StatsScreen(
     val c = Sumi.colors
 
     TabPage(Tab.Progress, onTab) {
-        ScreenTitle("Progress") {
-            PillButton("Reset", { confirmReset = true }, tone = ButtonTone.Ghost, height = 40.dp)
+        ScreenTitle(tr("Progress", "Maendeleo")) {
+            PillButton(tr("Reset", "Futa"), { confirmReset = true }, tone = ButtonTone.Ghost, height = 40.dp)
         }
         Spacer(Modifier.height(14.dp))
         Row(
@@ -106,14 +107,14 @@ fun StatsScreen(
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatTile(
                     s.won.toString(),
-                    if (s.played == 0) "Solved" else "Solved of ${s.played} · ${s.winRate}%",
+                    if (s.played == 0) tr("Solved", "Yametatuliwa") else tr("Solved of ${s.played} · ${s.winRate}%", "Yametatuliwa kati ya ${s.played} · ${s.winRate}%"),
                     Modifier.weight(1f).fillMaxHeight(),
                 )
-                StatTile(s.bestSeconds?.let(::formatTime) ?: "—", "Best time", Modifier.weight(1f).fillMaxHeight())
+                StatTile(s.bestSeconds?.let(::formatTime) ?: "—", tr("Best time", "Muda bora"), Modifier.weight(1f).fillMaxHeight())
             }
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StatTile(s.averageSeconds?.let(::formatTime) ?: "—", "Average", Modifier.weight(1f).fillMaxHeight())
-                StatTile(s.noHintRate?.let { "$it%" } ?: "—", "Without hints", Modifier.weight(1f).fillMaxHeight())
+                StatTile(s.averageSeconds?.let(::formatTime) ?: "—", tr("Average", "Wastani"), Modifier.weight(1f).fillMaxHeight())
+                StatTile(s.noHintRate?.let { "$it%" } ?: "—", tr("Without hints", "Bila madokezo"), Modifier.weight(1f).fillMaxHeight())
             }
         }
         // Wins from before these were kept count in "Solved" but not in the average.
@@ -121,9 +122,18 @@ fun StatsScreen(
             Spacer(Modifier.height(10.dp))
             Text(
                 when (s.timedWins) {
-                    0 -> "Average and hints start counting from your next win."
-                    1 -> "Average and hints count the 1 win since they were added."
-                    else -> "Average and hints count the ${s.timedWins} wins since they were added."
+                    0 -> tr(
+                        "Average and hints start counting from your next win.",
+                        "Wastani na madokezo vinaanza kuhesabiwa kuanzia ushindi wako ujao.",
+                    )
+                    1 -> tr(
+                        "Average and hints count the 1 win since they were added.",
+                        "Wastani na madokezo vinahesabu ushindi 1 tangu viongezwe.",
+                    )
+                    else -> tr(
+                        "Average and hints count the ${s.timedWins} wins since they were added.",
+                        "Wastani na madokezo vinahesabu ushindi ${s.timedWins} tangu viongezwe.",
+                    )
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = c.inkMuted,
@@ -132,9 +142,9 @@ fun StatsScreen(
 
         Spacer(Modifier.height(22.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Overline("Achievements", Modifier.weight(1f))
+            Overline(tr("Achievements", "Tuzo"), Modifier.weight(1f))
             Text(
-                "${achievements.size} of ${Achievement.entries.size}",
+                tr("${achievements.size} of ${Achievement.entries.size}", "${achievements.size} kati ya ${Achievement.entries.size}"),
                 style = MaterialTheme.typography.bodySmall,
                 color = c.inkMuted,
             )
@@ -160,13 +170,17 @@ fun StatsScreen(
             title = { Text(a.title, style = MaterialTheme.typography.titleLarge, textAlign = TextAlign.Center) },
             text = {
                 Text(
-                    a.description + "." + if (day != null) "\nEarned ${earnedDate(day)}." else "\nNot earned yet.",
+                    a.description + "." + if (day != null) {
+                        tr("\nEarned ${earnedDate(day)}.", "\nIlipatikana ${earnedDate(day)}.")
+                    } else {
+                        tr("\nNot earned yet.", "\nBado haijapatikana.")
+                    },
                     style = MaterialTheme.typography.bodyLarge,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth(),
                 )
             },
-            confirmButton = { PillButton("Done", { open = null }, tone = ButtonTone.Soft, height = 44.dp) },
+            confirmButton = { PillButton(tr("Done", "Sawa"), { open = null }, tone = ButtonTone.Soft, height = 44.dp) },
         )
     }
 
@@ -174,15 +188,15 @@ fun StatsScreen(
         AlertDialog(
             onDismissRequest = { confirmReset = false },
             containerColor = c.surface,
-            title = { Text("Reset statistics?", style = MaterialTheme.typography.titleLarge) },
+            title = { Text(tr("Reset statistics?", "Futa takwimu?"), style = MaterialTheme.typography.titleLarge) },
             text = {
                 Text(
-                    "Games played, wins and best times will be cleared. Achievements you've earned stay.",
+                    tr("Games played, wins and best times will be cleared. Achievements you've earned stay.", "Michezo iliyochezwa, ushindi na muda bora vitafutwa. Tuzo ulizopata zitabaki."),
                     style = MaterialTheme.typography.bodyLarge,
                 )
             },
-            confirmButton = { PillButton("Reset", { confirmReset = false; onReset() }, tone = ButtonTone.Seal, height = 44.dp) },
-            dismissButton = { PillButton("Cancel", { confirmReset = false }, tone = ButtonTone.Ghost, height = 44.dp) },
+            confirmButton = { PillButton(tr("Reset", "Futa"), { confirmReset = false; onReset() }, tone = ButtonTone.Seal, height = 44.dp) },
+            dismissButton = { PillButton(tr("Cancel", "Ghairi"), { confirmReset = false }, tone = ButtonTone.Ghost, height = 44.dp) },
         )
     }
 }
@@ -224,7 +238,7 @@ private fun SealMark(a: Achievement, earned: Boolean, size: Int) {
 private fun Seal(a: Achievement, day: Long?, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val c = Sumi.colors
     val tap = onClick
-    val spoken = a.title + ". " + a.description + ". " + if (day != null) "Earned ${earnedDate(day)}" else "Not earned yet"
+    val spoken = a.title + ". " + a.description + ". " + if (day != null) tr("Earned ${earnedDate(day)}", "Ilipatikana ${earnedDate(day)}") else tr("Not earned yet", "Bado haijapatikana")
     Column(
         modifier
             .clip(RoundedCornerShape(16.dp))

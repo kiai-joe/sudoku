@@ -1,6 +1,7 @@
 package com.kiaijoe.sudoku.widget
 
 import com.kiaijoe.sudoku.engine.Daily
+import com.kiaijoe.sudoku.engine.Lang
 import com.kiaijoe.sudoku.ui.formatTime
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -55,35 +56,37 @@ fun dailyWidgetModel(
             },
         )
     }
+    val sw = Lang.of(locale) == Lang.SW
+    fun t(en: String, swahili: String) = if (sw) swahili else en
     val streak = Daily.streak(results.keys, today)
     val solvedIn = results[today]
     val action = when {
         solvedIn != null -> formatTime(solvedIn)
-        inProgress -> "Continue"
-        else -> "Play"
+        inProgress -> t("Continue", "Endelea")
+        else -> t("Play", "Cheza")
     }
     val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
     val month = date.month.getDisplayName(TextStyle.FULL, locale)
     val label = Daily.label(today)
     val description = buildString {
-        append("Daily puzzle, $dayName, $label. ")
+        append(t("Daily puzzle, $dayName, $label. ", "Fumbo la leo, $dayName, $label. "))
         append(
             when {
-                solvedIn != null -> "Solved in ${formatTime(solvedIn)}. "
-                inProgress -> "In progress. "
-                else -> "Not started. "
+                solvedIn != null -> t("Solved in ${formatTime(solvedIn)}. ", "Limetatuliwa kwa ${formatTime(solvedIn)}. ")
+                inProgress -> t("In progress. ", "Linaendelea. ")
+                else -> t("Not started. ", "Halijaanzwa. ")
             },
         )
         append(
             when (streak) {
-                0 -> "No streak yet."
-                1 -> "1-day streak."
-                else -> "$streak-day streak."
+                0 -> t("No streak yet.", "Bado hakuna mfululizo.")
+                1 -> t("1-day streak.", "Mfululizo wa siku 1.")
+                else -> t("$streak-day streak.", "Mfululizo wa siku $streak.")
             },
         )
     }
     return DailyWidgetModel(
-        overline = "Daily · $dayName ${date.dayOfMonth} $month".uppercase(locale),
+        overline = (t("Daily", "Leo") + " · $dayName ${date.dayOfMonth} $month").uppercase(locale),
         title = label,
         streak = streak,
         days = days,

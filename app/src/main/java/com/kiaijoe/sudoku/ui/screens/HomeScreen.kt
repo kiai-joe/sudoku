@@ -1,5 +1,6 @@
 package com.kiaijoe.sudoku.ui.screens
 
+import com.kiaijoe.sudoku.engine.tr
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -95,12 +96,15 @@ fun HomeScreen(
                     tone = ChipTone.Shu,
                     icon = Lucide.Flame,
                     modifier = Modifier.clearAndSetSemantics {
-                        contentDescription = if (streak == 1) "1-day streak" else "$streak-day streak"
+                        contentDescription = tr(
+                            if (streak == 1) "1-day streak" else "$streak-day streak",
+                            "Mfululizo wa siku $streak",
+                        )
                     },
                 )
                 Spacer(Modifier.width(8.dp))
             }
-            IconTile(Lucide.Settings, "Settings", onClick = onSettings)
+            IconTile(Lucide.Settings, tr("Settings", "Mipangilio"), onClick = onSettings)
         }
         Spacer(Modifier.height(18.dp))
 
@@ -114,14 +118,16 @@ fun HomeScreen(
                 Spacer(Modifier.height(14.dp))
                 ContinueCard(
                     title = "${if (game.isKiller) "Killer · " else ""}${game.difficulty.label}",
-                    detail = "${formatTime(game.elapsedSeconds)} · ${game.values.count { it != 0 }} of 81 filled",
+                    detail = formatTime(game.elapsedSeconds) + " · " + game.values.count { it != 0 }.let { filled ->
+                        tr("$filled of 81 filled", "$filled kati ya 81 vimejazwa")
+                    },
                     onClick = onContinue,
                 )
             }
         }
         // The four levels and Killer.
         val newGame: @Composable ColumnScope.() -> Unit = {
-            Overline("New game")
+            Overline(tr("New game", "Mchezo mpya"))
             Spacer(Modifier.height(10.dp))
             Difficulty.entries.chunked(2).forEach { pair ->
                 Row(
@@ -161,14 +167,14 @@ fun HomeScreen(
 
     pending?.let { d ->
         ConfirmDialog(
-            title = "Start a new ${d.label} game?",
+            title = tr("Start a new ${d.label} game?", "Anza mchezo mpya wa ${d.label}?"),
             onConfirm = { pending = null; onNewGame(d) },
             onDismiss = { pending = null },
         )
     }
     pendingKiller?.let { d ->
         ConfirmDialog(
-            title = "Start a ${d.label} Killer game?",
+            title = tr("Start a ${d.label} Killer game?", "Anza mchezo wa Killer wa ${d.label}?"),
             onConfirm = { pendingKiller = null; onNewKiller(d) },
             onDismiss = { pendingKiller = null },
         )
@@ -181,9 +187,9 @@ private fun ConfirmDialog(title: String, onConfirm: () -> Unit, onDismiss: () ->
         onDismissRequest = onDismiss,
         containerColor = Sumi.colors.surface,
         title = { Text(title, style = MaterialTheme.typography.titleLarge) },
-        text = { Text("Your game in progress will be replaced.", style = MaterialTheme.typography.bodyLarge) },
-        confirmButton = { PillButton("Start", onConfirm, height = 44.dp) },
-        dismissButton = { PillButton("Cancel", onDismiss, tone = ButtonTone.Ghost, height = 44.dp) },
+        text = { Text(tr("Your game in progress will be replaced.", "Mchezo wako unaoendelea utabadilishwa."), style = MaterialTheme.typography.bodyLarge) },
+        confirmButton = { PillButton(tr("Start", "Anza"), onConfirm, height = 44.dp) },
+        dismissButton = { PillButton(tr("Cancel", "Ghairi"), onDismiss, tone = ButtonTone.Ghost, height = 44.dp) },
     )
 }
 
@@ -212,7 +218,7 @@ private fun ContinueCard(title: String, detail: String, onClick: () -> Unit) {
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text("Continue", style = MaterialTheme.typography.titleLarge, color = c.onAi)
+            Text(tr("Continue", "Endelea"), style = MaterialTheme.typography.titleLarge, color = c.onAi)
             Text("$title · $detail", style = MaterialTheme.typography.bodySmall, color = c.onAi.copy(alpha = 0.85f))
         }
         Icon(Lucide.ChevronRight, contentDescription = null, tint = c.onAi, modifier = Modifier.size(22.dp))
@@ -262,7 +268,7 @@ private fun KillerCard(onPick: (Difficulty) -> Unit) {
                 .fillMaxWidth()
                 .clickable(role = Role.Button) { open = !open }
                 .semantics(mergeDescendants = true) {
-                    stateDescription = if (open) "Expanded" else "Collapsed"
+                    stateDescription = if (open) tr("Expanded", "Imefunguliwa") else tr("Collapsed", "Imefungwa")
                 }
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -271,7 +277,7 @@ private fun KillerCard(onPick: (Difficulty) -> Unit) {
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("Killer Sudoku", style = MaterialTheme.typography.titleMedium, color = c.ink)
-                Text("Four levels · cages that add up", style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
+                Text(tr("Four levels · cages that add up", "Viwango vinne · vizimba vyenye jumla"), style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
             }
             Icon(
                 Lucide.ChevronRight,
