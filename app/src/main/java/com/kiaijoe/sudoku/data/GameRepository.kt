@@ -5,6 +5,7 @@ import com.kiaijoe.sudoku.engine.Achievement
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameCodec
 import com.kiaijoe.sudoku.engine.GameState
+import com.kiaijoe.sudoku.engine.Variant
 import com.kiaijoe.sudoku.ui.theme.DarkMode
 import com.kiaijoe.sudoku.ui.theme.InkTheme
 
@@ -18,6 +19,8 @@ import com.kiaijoe.sudoku.ui.theme.InkTheme
  * @property darkMode light, dark, or following the phone.
  * @property gentleHints hints start with a nudge, then the technique, then
  *   the full explanation; off shows the full explanation at once.
+ * @property zen no timer or mistake count on screen and no mistake limit;
+ *   wins still count, untimed.
  */
 data class Settings(
     val mistakeLimit: Boolean = true,
@@ -29,6 +32,7 @@ data class Settings(
     val largeNumbers: Boolean = false,
     val darkMode: DarkMode = DarkMode.SYSTEM,
     val gentleHints: Boolean = true,
+    val zen: Boolean = false,
 )
 
 /**
@@ -78,6 +82,7 @@ class GameRepository(context: Context) {
         loadSettings()
         loadStats()
         loadKillerStats()
+        loadVariantStats()
         loadLessonsDone()
     }
 
@@ -151,6 +156,7 @@ class GameRepository(context: Context) {
             ?.let { name -> DarkMode.entries.firstOrNull { it.name == name } }
             ?: DarkMode.SYSTEM,
         gentleHints = prefs.getBoolean(KEY_GENTLE_HINTS, true),
+        zen = prefs.getBoolean(KEY_ZEN, false),
     )
 
     fun saveSettings(settings: Settings) {
@@ -164,6 +170,7 @@ class GameRepository(context: Context) {
             .putBoolean(KEY_LARGE_NUMBERS, settings.largeNumbers)
             .putString(KEY_DARK_MODE, settings.darkMode.name)
             .putBoolean(KEY_GENTLE_HINTS, settings.gentleHints)
+            .putBoolean(KEY_ZEN, settings.zen)
             .apply()
     }
 
@@ -171,6 +178,15 @@ class GameRepository(context: Context) {
 
     /** Killer games keep their own record, apart from the classic levels. */
     fun loadKillerStats(): DifficultyStats = loadStats(KILLER)
+
+    /** Sudoku X and Jigsaw keep their own records too, all levels together. */
+    fun loadVariantStats(): Map<Variant, DifficultyStats> =
+        VARIANTS.associateWith { loadStats(it.name) }
+
+    fun recordVariantStart(variant: Variant) = recordStart(variant.name)
+
+    fun recordVariantWin(variant: Variant, seconds: Long, hints: Int, timed: Boolean = true): Boolean =
+        recordWin(variant.name, seconds, hints, timed)
 
     private fun loadStats(name: String): DifficultyStats {
         val best = prefs.getLong(key(name, "best"), -1L)
@@ -194,12 +210,21 @@ class GameRepository(context: Context) {
     }
 
     /** Records a win and returns true when it beats the previous best time. */
-    fun recordWin(difficulty: Difficulty, seconds: Long, hints: Int): Boolean = recordWin(difficulty.name, seconds, hints)
+    fun recordWin(difficulty: Difficulty, seconds: Long, hints: Int, timed: Boolean = true): Boolean =
+        recordWin(difficulty.name, seconds, hints, timed)
 
-    fun recordKillerWin(seconds: Long, hints: Int): Boolean = recordWin(KILLER, seconds, hints)
+    fun recordKillerWin(seconds: Long, hints: Int, timed: Boolean = true): Boolean = recordWin(KILLER, seconds, hints, timed)
 
-    private fun recordWin(name: String, seconds: Long, hints: Int): Boolean {
+    /**
+     * Records a win. An untimed win (Zen mode) counts as solved but sets no
+     * best time and stays out of the average and the no-hint share.
+     */
+    private fun recordWin(name: String, seconds: Long, hints: Int, timed: Boolean = true): Boolean {
         val s = loadStats(name)
+        if (!timed) {
+            prefs.edit().putInt(key(name, "won"), s.won + 1).apply()
+            return false
+        }
         val isBest = s.bestSeconds == null || seconds < s.bestSeconds
         prefs.edit().apply {
             putInt(key(name, "won"), s.won + 1)
@@ -220,7 +245,7 @@ class GameRepository(context: Context) {
 
     fun resetStats() {
         prefs.edit().apply {
-            (Difficulty.entries.map { it.name } + KILLER).forEach { name ->
+            (Difficulty.entries.map { it.name } + KILLER + VARIANTS.map { it.name }).forEach { name ->
                 for (field in STAT_FIELDS) remove(key(name, field))
             }
         }.apply()
@@ -232,6 +257,7 @@ class GameRepository(context: Context) {
         /** The one preferences file that holds everything; the backup rules in res/xml name it. */
         const val PREFS_NAME = "sudoku"
         private const val KILLER = "KILLER"
+        private val VARIANTS = listOf(Variant.X, Variant.JIGSAW)
         private val STAT_FIELDS = listOf("played", "won", "best", "timed", "total", "nohint")
         private const val KEY_LESSONS_DONE = "lessons_done"
         private const val KEY_GAME = "current_game"
@@ -249,5 +275,6 @@ class GameRepository(context: Context) {
         private const val KEY_LARGE_NUMBERS = "large_numbers"
         private const val KEY_DARK_MODE = "dark_mode"
         private const val KEY_GENTLE_HINTS = "gentle_hints"
+        private const val KEY_ZEN = "zen"
     }
 }

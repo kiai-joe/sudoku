@@ -25,6 +25,7 @@ import com.kiaijoe.sudoku.ui.SudokuViewModel
 import com.kiaijoe.sudoku.ui.components.Tab
 import com.kiaijoe.sudoku.ui.screens.CalendarScreen
 import com.kiaijoe.sudoku.ui.screens.CombinationsScreen
+import com.kiaijoe.sudoku.ui.screens.EnterPuzzleScreen
 import com.kiaijoe.sudoku.ui.screens.ReplayScreen
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
@@ -67,7 +68,7 @@ class MainActivity : ComponentActivity() {
     private fun Intent?.wantsDaily() = this?.getBooleanExtra(SumiWidget.EXTRA_OPEN_DAILY, false) == true
 }
 
-private enum class Screen { Home, Game, Stats, Calendar, Learn, Lesson, Settings, Combinations, Replay }
+private enum class Screen { Home, Game, Stats, Calendar, Learn, Lesson, Settings, Combinations, Replay, EnterPuzzle }
 
 /** The screen each tab of the floating bar opens. */
 private val Tab.screen: Screen
@@ -134,7 +135,20 @@ private fun SudokuApp(openDailyRequests: Int, openKillerDaily: Boolean = false, 
                     screen = Screen.Game
                 },
                 onSettings = { screen = Screen.Settings },
+                onNewVariant = { difficulty, variant ->
+                    viewModel.newVariant(difficulty, variant)
+                    screen = Screen.Game
+                },
+                onEnterPuzzle = { screen = Screen.EnterPuzzle },
                 onTab = onTab,
+            )
+            Screen.EnterPuzzle -> EnterPuzzleScreen(
+                onBack = { screen = Screen.Home },
+                onPlay = { puzzle ->
+                    viewModel.playCustom(puzzle)
+                    screen = Screen.Game
+                },
+                replacesGame = state.canContinue,
             )
             Screen.Game -> GameScreen(
                 state = state,
@@ -208,6 +222,7 @@ private fun SudokuApp(openDailyRequests: Int, openKillerDaily: Boolean = false, 
             Screen.Stats -> StatsScreen(
                 stats = state.stats,
                 killerStats = state.killerStats,
+                variantStats = state.variantStats,
                 achievements = state.achievements,
                 onReset = viewModel::resetStats,
                 onBack = { screen = Screen.Home },

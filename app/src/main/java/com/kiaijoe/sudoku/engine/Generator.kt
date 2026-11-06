@@ -28,6 +28,7 @@ enum class Difficulty(
 /**
  * @property hardest the hardest technique the puzzle needs, as graded by [LogicSolver].
  * @property cages Killer Sudoku cages, or empty for a classic puzzle.
+ * @property shape which groups must hold 1 to 9: classic, Sudoku X or Jigsaw.
  */
 class Puzzle(
     val givens: IntArray,
@@ -35,6 +36,7 @@ class Puzzle(
     val difficulty: Difficulty,
     val hardest: Technique? = null,
     val cages: List<Cage> = emptyList(),
+    val shape: Shape = Shape.CLASSIC,
 )
 
 /**
@@ -48,16 +50,32 @@ class Puzzle(
  * are thrown away. Easy puzzles keep at least [EASY_CLUE_FLOOR] clues so they
  * also look easy.
  */
+/** The kinds of puzzle Sumi makes besides Killer: classic, Sudoku X (with diagonals) and Jigsaw. */
+enum class Variant(private val en: String, private val sw: String) {
+    CLASSIC("Classic", "Kawaida"),
+    X("Sudoku X", "Sudoku X"),
+    JIGSAW("Jigsaw", "Jigsaw"),
+    ;
+
+    val label: String get() = tr(en, sw)
+}
+
 object Generator {
     const val EASY_CLUE_FLOOR = 34
 
     /** Expert hits about 7% of attempts; this many makes a miss vanishingly rare. */
     private const val MAX_ATTEMPTS = 400
 
-    fun generate(difficulty: Difficulty, random: Random = Random.Default): Puzzle {
+    /**
+     * A puzzle at [difficulty]. [variant] picks the shape: classic, Sudoku X,
+     * or Jigsaw (a fresh random layout for each puzzle).
+     */
+    fun generate(difficulty: Difficulty, random: Random = Random.Default, variant: Variant = Variant.CLASSIC): Puzzle {
         var fallback: Puzzle? = null
+        // One Jigsaw layout per puzzle; only its numbers change between attempts.
+        val jigsaw = if (variant == Variant.JIGSAW) fillableJigsaw(random) else null
         for (i in 0 until MAX_ATTEMPTS) {
-            val candidate = attempt(difficulty, random)
+            val candidate = attempt(difficulty, random, variant, jigsaw)
             if (candidate.difficulty == difficulty) return candidate
             if (fallback == null || candidate.difficulty > fallback.difficulty) fallback = candidate
         }
@@ -66,18 +84,18 @@ object Generator {
     }
 
     /** One try at [target]. Returns a logic-solvable puzzle at or below [target]. */
-    private fun attempt(target: Difficulty, random: Random): Puzzle {
-        val solution = Solver.randomFilledGrid(random)
-        val givens = dig(solution, if (target == Difficulty.EASY) EASY_CLUE_FLOOR else 0, random)
+    private fun attempt(target: Difficulty, random: Random, variant: Variant, jigsaw: Shape?): Puzzle {
+        val (shape, solution) = filledGrid(variant, random, jigsaw)
+        val givens = dig(solution, if (target == Difficulty.EASY) EASY_CLUE_FLOOR else 0, random, shape)
 
-        var grade = LogicSolver(givens).solve(target)
+        var grade = LogicSolver(givens, shape = shape).solve(target)
         while (!grade.solved) {
             val stuck = (0 until Grid.CELLS).filter { grade.stuckValues[it] == 0 }.shuffled(random)
             var keepsItHard = -1
             for (cell in stuck) {
                 givens[cell] = solution[cell]
-                val trial = LogicSolver(givens).solve(target)
-                if (trial.solved && trial.level == target) return puzzle(givens, solution, trial)
+                val trial = LogicSolver(givens, shape = shape).solve(target)
+                if (trial.solved && trial.level == target) return puzzle(givens, solution, trial, shape)
                 if (!trial.solved && keepsItHard < 0) keepsItHard = cell
                 givens[cell] = 0
             }
@@ -85,19 +103,46 @@ object Generator {
             // again, or if every clue makes it too easy, accept the easier puzzle.
             val cell = if (keepsItHard >= 0) keepsItHard else stuck.first()
             givens[cell] = solution[cell]
-            grade = LogicSolver(givens).solve(target)
+            grade = LogicSolver(givens, shape = shape).solve(target)
         }
-        return puzzle(givens, solution, grade)
+        return puzzle(givens, solution, grade, shape)
     }
 
-    private fun puzzle(givens: IntArray, solution: IntArray, grade: Grade) =
-        Puzzle(givens.copyOf(), solution, grade.level ?: Difficulty.EXPERT, grade.hardest)
+    /**
+     * A shape for [variant] and a random filled grid for it. A Jigsaw layout
+     * that's slow to fill (or can't be) is swapped for another.
+     */
+    private fun filledGrid(variant: Variant, random: Random, jigsaw: Shape?): Pair<Shape, IntArray> = when (variant) {
+        Variant.CLASSIC -> Shape.CLASSIC to Solver.randomFilledGrid(random)
+        Variant.X -> Shape.X to Solver.randomFilledGrid(random, Shape.X)!!
+        Variant.JIGSAW -> {
+            val shape = jigsaw ?: fillableJigsaw(random)
+            // A layout that filled once fills again; allow more steps before giving up on it.
+            val grid = Solver.randomFilledGrid(random, shape, maxNodes = JIGSAW_FILL_NODES * 10)
+                ?: return filledGrid(variant, random, fillableJigsaw(random))
+            shape to grid
+        }
+    }
+
+    /** A random Jigsaw layout that a quick search can fill. */
+    private fun fillableJigsaw(random: Random): Shape {
+        while (true) {
+            val shape = Shape.jigsaw(Shape.randomJigsaw(random))
+            if (Solver.randomFilledGrid(random, shape, maxNodes = JIGSAW_FILL_NODES) != null) return shape
+        }
+    }
+
+    /** Search steps allowed to fill a Jigsaw layout before trying another. */
+    private const val JIGSAW_FILL_NODES = 20_000L
+
+    private fun puzzle(givens: IntArray, solution: IntArray, grade: Grade, shape: Shape) =
+        Puzzle(givens.copyOf(), solution, grade.level ?: Difficulty.EXPERT, grade.hardest, shape = shape)
 
     /**
      * Removes clues while the solution stays unique, down to [floor] clues:
      * rotationally symmetric pairs first, which looks nicer, then single cells.
      */
-    private fun dig(solution: IntArray, floor: Int, random: Random): IntArray {
+    private fun dig(solution: IntArray, floor: Int, random: Random, shape: Shape = Shape.CLASSIC): IntArray {
         val givens = solution.copyOf()
         var clues = Grid.CELLS
 
@@ -112,7 +157,7 @@ object Generator {
             val keepB = givens[mirror]
             givens[cell] = 0
             givens[mirror] = 0
-            if (Solver.hasUniqueSolution(givens)) {
+            if (Solver.hasUniqueSolution(givens, shape)) {
                 clues -= removed
             } else {
                 givens[cell] = keepA
@@ -125,7 +170,7 @@ object Generator {
             if (givens[cell] == 0) continue
             val keep = givens[cell]
             givens[cell] = 0
-            if (Solver.hasUniqueSolution(givens)) clues-- else givens[cell] = keep
+            if (Solver.hasUniqueSolution(givens, shape)) clues-- else givens[cell] = keep
         }
         return givens
     }

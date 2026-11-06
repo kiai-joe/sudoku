@@ -1,6 +1,7 @@
 package com.kiaijoe.sudoku.ui
 
 import com.kiaijoe.sudoku.engine.Difficulty
+import com.kiaijoe.sudoku.engine.Variant
 
 /**
  * What the game screen can ask for. [SudokuViewModel] implements it; tests
@@ -10,6 +11,7 @@ interface GameActions {
     fun setGameScreenActive(active: Boolean)
     fun newGame(difficulty: Difficulty)
     fun newKiller(difficulty: Difficulty)
+    fun newVariant(difficulty: Difficulty, variant: Variant)
     fun restart()
     fun togglePause()
     fun select(cell: Int)
@@ -33,6 +35,7 @@ interface GameActions {
         override fun setGameScreenActive(active: Boolean) = Unit
         override fun newGame(difficulty: Difficulty) = Unit
         override fun newKiller(difficulty: Difficulty) = Unit
+        override fun newVariant(difficulty: Difficulty, variant: Variant) = Unit
         override fun restart() = Unit
         override fun togglePause() = Unit
         override fun select(cell: Int) = Unit

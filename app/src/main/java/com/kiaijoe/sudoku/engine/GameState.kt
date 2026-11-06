@@ -22,6 +22,8 @@ data class LogEntry(val cell: Int, val value: Int, val second: Long, val hint: B
  * [log] is every change to the board's numbers since the start, for the replay.
  * [marks] is the player's colour mark on each cell (0 none, 1 or 2), or
  * empty when there are none.
+ * [shape] says which groups hold 1 to 9: classic, Sudoku X or Jigsaw.
+ * [custom] marks a puzzle the player typed in.
  */
 data class GameState(
     val difficulty: Difficulty,
@@ -41,7 +43,16 @@ data class GameState(
     val afterLoss: Boolean = false,
     val log: List<LogEntry> = emptyList(),
     val marks: List<Int> = emptyList(),
+    val shape: Shape = Shape.CLASSIC,
+    val custom: Boolean = false,
 ) {
+    /** Which kind of puzzle this is, besides Killer. */
+    val variant: Variant get() = when {
+        shape.isJigsaw -> Variant.JIGSAW
+        shape.diagonals -> Variant.X
+        else -> Variant.CLASSIC
+    }
+
     /** [cell]'s colour mark: 0 for none, or 1 or 2. */
     fun mark(cell: Int): Int = marks.getOrElse(cell) { 0 }
 
@@ -58,7 +69,7 @@ data class GameState(
         if (values[cell] != 0) {
             0
         } else {
-            Grid.peers[cell].fold(Grid.ALL_DIGITS) { mask, peer ->
+            shape.peers[cell].fold(Grid.ALL_DIGITS) { mask, peer ->
                 val v = values[peer]
                 if (v != 0) mask and bit(v).inv() else mask
             }
@@ -117,7 +128,7 @@ data class GameState(
         val newNotes = notes.toMutableList().also { it[cell] = 0 }
         val correct = digit == solution[cell]
         if ((correct || !checking) && autoRemoveNotes) {
-            for (peer in Grid.peers[cell]) newNotes[peer] = newNotes[peer] and bit(digit).inv()
+            for (peer in shape.peers[cell]) newNotes[peer] = newNotes[peer] and bit(digit).inv()
         }
         val newMistakes = if (correct || !checking) mistakes else mistakes + 1
         val next = copy(values = newValues, notes = newNotes, mistakes = newMistakes)
@@ -161,7 +172,7 @@ data class GameState(
         for (cell in 0 until Grid.CELLS) {
             if (values[cell] != 0) continue
             var mask = Grid.ALL_DIGITS
-            for (peer in Grid.peers[cell]) {
+            for (peer in shape.peers[cell]) {
                 val v = values[peer]
                 if (v != 0) mask = mask and bit(v).inv()
             }
@@ -170,10 +181,9 @@ data class GameState(
         return copy(notes = newNotes)
     }
 
-    /** The row, column and box through [cell] that are now completely and correctly filled. */
+    /** The houses through [cell] (row, column, box and any diagonal) that are now completely and correctly filled. */
     fun completedHouses(cell: Int): List<House> =
-        listOf(House.ROWS[Grid.row(cell)], House.COLUMNS[Grid.col(cell)], House.BOXES[Grid.box(cell)])
-            .filter { house -> house.cells.all { isCorrect(it) } }
+        shape.housesOf[cell].filter { house -> house.cells.all { isCorrect(it) } }
 
     /** Back to the starting grid. Time, mistakes and hints are reset. */
     /** The same puzzle from the start. Restarting a lost game marks it [afterLoss]. */
@@ -203,6 +213,7 @@ data class GameState(
             notes = List(Grid.CELLS) { 0 },
             hardest = puzzle.hardest,
             cages = puzzle.cages,
+            shape = puzzle.shape,
         )
     }
 }

@@ -44,6 +44,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.Killer
+import com.kiaijoe.sudoku.engine.Variant
 import com.kiaijoe.sudoku.ui.UiState
 import com.kiaijoe.sudoku.ui.components.ButtonTone
 import com.kiaijoe.sudoku.ui.components.CardShape
@@ -73,10 +74,15 @@ fun HomeScreen(
     onNewGame: (Difficulty) -> Unit,
     onNewKiller: (Difficulty) -> Unit,
     onSettings: () -> Unit,
+    onNewVariant: (Difficulty, Variant) -> Unit = { _, _ -> },
+    onEnterPuzzle: () -> Unit = {},
     onTab: ((Tab) -> Unit)? = null,
 ) {
-    var pending by remember { mutableStateOf<Difficulty?>(null) }
-    var pendingKiller by remember { mutableStateOf<Difficulty?>(null) }
+    // A new game waiting on "your game in progress will be replaced": its title and how to start it.
+    var pending by remember { mutableStateOf<Pair<String, () -> Unit>?>(null) }
+    fun start(title: String, go: () -> Unit) {
+        if (state.canContinue) pending = title to go else go()
+    }
     val c = Sumi.colors
 
     TabPage(Tab.Home, onTab, maxContentWidth = 1040.dp) {
@@ -117,15 +123,16 @@ fun HomeScreen(
             if (state.canContinue && game != null) {
                 Spacer(Modifier.height(12.dp))
                 ContinueCard(
-                    title = "${if (game.isKiller) "Killer · " else ""}${game.difficulty.label}",
-                    detail = formatTime(game.elapsedSeconds) + " · " + game.values.count { it != 0 }.let { filled ->
-                        tr("$filled of 81 filled", "$filled kati ya 81 vimejazwa")
-                    },
+                    title = game.title(),
+                    detail = (if (state.settings.zen) "" else formatTime(game.elapsedSeconds) + " · ") +
+                        game.values.count { it != 0 }.let { filled ->
+                            tr("$filled of 81 filled", "$filled kati ya 81 vimejazwa")
+                        },
                     onClick = onContinue,
                 )
             }
         }
-        // The four levels and Killer.
+        // The four levels, then the other ways to play.
         val newGame: @Composable ColumnScope.() -> Unit = {
             Overline(tr("New game", "Mchezo mpya"))
             Spacer(Modifier.height(8.dp))
@@ -139,14 +146,53 @@ fun HomeScreen(
                             name = d.label,
                             detail = d.techniques,
                             icon = d.icon,
-                            onClick = { if (state.canContinue) pending = d else onNewGame(d) },
+                            onClick = { start(tr("Start a new ${d.label} game?", "Anza mchezo mpya wa ${d.label}?")) { onNewGame(d) } },
                             modifier = Modifier.weight(1f).fillMaxHeight(),
                         )
                     }
                 }
                 Spacer(Modifier.height(12.dp))
             }
-            KillerCard(onPick = { d -> if (state.canContinue) pendingKiller = d else onNewKiller(d) })
+            Spacer(Modifier.height(12.dp))
+            Overline(tr("More ways to play", "Njia zaidi za kucheza"))
+            Spacer(Modifier.height(8.dp))
+            PlayCard(
+                icon = Lucide.SquareDashed,
+                title = "Killer Sudoku",
+                subtitle = tr("Four levels · cages that add up", "Viwango vinne · vizimba vyenye jumla"),
+                levelTitle = { "Killer · ${it.label}" },
+                levelDetail = { Killer.describe(it) },
+                onPick = { d -> start(tr("Start a ${d.label} Killer game?", "Anza mchezo wa Killer wa ${d.label}?")) { onNewKiller(d) } },
+            )
+            Spacer(Modifier.height(12.dp))
+            PlayCard(
+                icon = Lucide.SquareX,
+                title = Variant.X.label,
+                subtitle = tr("Four levels · both diagonals hold 1 to 9 too", "Viwango vinne · milalo yote miwili pia ina 1 hadi 9"),
+                levelTitle = { "${Variant.X.label} · ${it.label}" },
+                levelDetail = { it.techniques },
+                onPick = { d -> start(tr("Start a ${d.label} Sudoku X game?", "Anza mchezo wa Sudoku X wa ${d.label}?")) { onNewVariant(d, Variant.X) } },
+            )
+            Spacer(Modifier.height(12.dp))
+            PlayCard(
+                icon = Lucide.Puzzle,
+                title = Variant.JIGSAW.label,
+                subtitle = tr("Four levels · odd shapes instead of boxes", "Viwango vinne · maumbo ya ajabu badala ya masanduku"),
+                levelTitle = { "${Variant.JIGSAW.label} · ${it.label}" },
+                levelDetail = { it.techniques },
+                onPick = { d -> start(tr("Start a ${d.label} Jigsaw game?", "Anza mchezo wa Jigsaw wa ${d.label}?")) { onNewVariant(d, Variant.JIGSAW) } },
+            )
+            Spacer(Modifier.height(12.dp))
+            LevelTile(
+                name = tr("Enter a puzzle", "Ingiza fumbo"),
+                detail = tr(
+                    "Type one in from a book or paper. Sumi checks it and gives hints.",
+                    "Liandike kutoka kitabu au gazeti. Sumi hulikagua na kutoa madokezo.",
+                ),
+                icon = Lucide.SquarePen,
+                onClick = onEnterPuzzle,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
         BoxWithConstraints {
             if (maxWidth >= 720.dp) {
@@ -165,18 +211,11 @@ fun HomeScreen(
         }
     }
 
-    pending?.let { d ->
+    pending?.let { (title, go) ->
         ConfirmDialog(
-            title = tr("Start a new ${d.label} game?", "Anza mchezo mpya wa ${d.label}?"),
-            onConfirm = { pending = null; onNewGame(d) },
+            title = title,
+            onConfirm = { pending = null; go() },
             onDismiss = { pending = null },
-        )
-    }
-    pendingKiller?.let { d ->
-        ConfirmDialog(
-            title = tr("Start a ${d.label} Killer game?", "Anza mchezo wa Killer wa ${d.label}?"),
-            onConfirm = { pendingKiller = null; onNewKiller(d) },
-            onDismiss = { pendingKiller = null },
         )
     }
 }
@@ -252,9 +291,16 @@ private fun LevelTile(
     }
 }
 
-/** Killer Sudoku: one card that opens to its four levels. */
+/** A way to play (Killer, Sudoku X, Jigsaw): one card that opens to its four levels. */
 @Composable
-private fun KillerCard(onPick: (Difficulty) -> Unit) {
+private fun PlayCard(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    levelTitle: (Difficulty) -> String,
+    levelDetail: (Difficulty) -> String,
+    onPick: (Difficulty) -> Unit,
+) {
     val c = Sumi.colors
     var open by rememberSaveable { mutableStateOf(false) }
     Column(
@@ -273,11 +319,11 @@ private fun KillerCard(onPick: (Difficulty) -> Unit) {
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconBadge(Lucide.SquareDashed, tint = c.shu, background = c.shuSoft, size = 44.dp)
+            IconBadge(icon, tint = c.shu, background = c.shuSoft, size = 44.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Killer Sudoku", style = MaterialTheme.typography.titleMedium, color = c.ink)
-                Text(tr("Four levels · cages that add up", "Viwango vinne · vizimba vyenye jumla"), style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
+                Text(title, style = MaterialTheme.typography.titleMedium, color = c.ink)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
             }
             Icon(
                 Lucide.ChevronRight,
@@ -300,8 +346,8 @@ private fun KillerCard(onPick: (Difficulty) -> Unit) {
                     Icon(d.icon, contentDescription = null, tint = c.shu, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.width(14.dp))
                     Column(Modifier.weight(1f)) {
-                        Text("Killer · ${d.label}", style = MaterialTheme.typography.labelLarge, color = c.ink)
-                        Text(Killer.describe(d), style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
+                        Text(levelTitle(d), style = MaterialTheme.typography.labelLarge, color = c.ink)
+                        Text(levelDetail(d), style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
                     }
                     Icon(Lucide.Play, contentDescription = null, tint = c.inkMuted, modifier = Modifier.size(18.dp))
                 }

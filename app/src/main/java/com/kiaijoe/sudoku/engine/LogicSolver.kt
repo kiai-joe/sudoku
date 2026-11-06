@@ -32,23 +32,33 @@ enum class Technique(
     val label: String get() = tr(en, sw)
 }
 
-enum class HouseKind { ROW, COLUMN, BOX }
+/** What kind of group a [House] is: a row, a column, a 3×3 box, a Jigsaw region, or a Sudoku X diagonal. */
+enum class HouseKind { ROW, COLUMN, BOX, REGION, DIAGONAL }
 
-/** A row, column or box. [index] runs 0-8; boxes go left to right, top to bottom. */
-data class House(val kind: HouseKind, val index: Int) {
-    /** The nine cells, in reading order. Shared; do not modify. */
-    val cells: IntArray get() = CELLS[kind.ordinal][index]
+/**
+ * A group of nine cells that must hold 1 to 9 once. [index] runs 0-8 (boxes
+ * left to right, top to bottom); diagonals are 0 (top-left to bottom-right)
+ * and 1 (top-right to bottom-left). [cells] are in reading order; shared, do
+ * not modify. Two houses are equal when their kind and index are.
+ */
+class House(val kind: HouseKind, val index: Int, val cells: IntArray) {
+    private val member = BooleanArray(Grid.CELLS).also { m -> cells.forEach { m[it] = true } }
+
+    /** Whether [cell] is in this house. */
+    operator fun contains(cell: Int) = member[cell]
+
+    override fun equals(other: Any?) = other is House && other.kind == kind && other.index == index
+    override fun hashCode() = kind.hashCode() * 31 + index
+    override fun toString() = "$kind $index"
 
     companion object {
-        private val CELLS: Array<Array<IntArray>> = arrayOf(
-            Array(9) { r -> IntArray(9) { c -> r * 9 + c } },
-            Array(9) { c -> IntArray(9) { r -> r * 9 + c } },
-            Array(9) { b -> IntArray(9) { i -> ((b / 3) * 3 + i / 3) * 9 + (b % 3) * 3 + i % 3 } },
+        val ROWS = List(9) { r -> House(HouseKind.ROW, r, IntArray(9) { c -> r * 9 + c }) }
+        val COLUMNS = List(9) { c -> House(HouseKind.COLUMN, c, IntArray(9) { r -> r * 9 + c }) }
+        val BOXES = List(9) { b -> House(HouseKind.BOX, b, IntArray(9) { i -> ((b / 3) * 3 + i / 3) * 9 + (b % 3) * 3 + i % 3 }) }
+        val DIAGONALS = listOf(
+            House(HouseKind.DIAGONAL, 0, IntArray(9) { i -> i * 9 + i }),
+            House(HouseKind.DIAGONAL, 1, IntArray(9) { i -> i * 9 + (8 - i) }),
         )
-
-        val ROWS = List(9) { House(HouseKind.ROW, it) }
-        val COLUMNS = List(9) { House(HouseKind.COLUMN, it) }
-        val BOXES = List(9) { House(HouseKind.BOX, it) }
     }
 }
 
@@ -116,7 +126,11 @@ class Grade(
  * techniques in [Technique], always trying the easiest one that makes
  * progress. The hardest technique needed sets the puzzle's difficulty.
  */
-class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList()) {
+class LogicSolver(
+    givens: IntArray,
+    private val cages: List<Cage> = emptyList(),
+    private val shape: Shape = Shape.CLASSIC,
+) {
     private val values = IntArray(Grid.CELLS)
     private val cands = IntArray(Grid.CELLS) { Grid.ALL_DIGITS }
 
@@ -195,7 +209,7 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
         cands[cell] = 0
         version[cell]++
         val bit = bit(digit)
-        for (peer in Grid.peers[cell]) {
+        for (peer in shape.peers[cell]) {
             if (cands[peer] and bit != 0) {
                 cands[peer] = cands[peer] and bit.inv()
                 version[peer]++
@@ -223,7 +237,7 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
                 return Step(
                     Technique.NAKED_SINGLE, cell, d,
                     pattern = listOf(cell),
-                    houses = listOf(House.ROWS[Grid.row(cell)], House.COLUMNS[Grid.col(cell)], House.BOXES[Grid.box(cell)]),
+                    houses = listOf(House.ROWS[Grid.row(cell)], House.COLUMNS[Grid.col(cell)], shape.boxOf(cell)),
                     digits = bit(d),
                 )
             }
@@ -233,7 +247,7 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
 
     private fun hiddenSingle(): Step? {
         // Boxes first: the place people look for these.
-        for (house in BOXES_FIRST) {
+        for (house in shape.boxesFirst) {
             val unit = house.cells
             for (d in 1..9) {
                 var only = -1
@@ -380,7 +394,7 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
         if (open.isEmpty() || open.size > 4) return null
         val rest = sum - cells.sumOf { values[it] }
         val possible = Killer.possibleDigits(open.map { cands[it] }, rest, used = 0) { i, j ->
-            Grid.arePeers(open[i], open[j]) || cageOf[open[i]] == cageOf[open[j]]
+            shape.arePeers(open[i], open[j]) || cageOf[open[i]] == cageOf[open[j]]
         }
         val elim = HashMap<Int, Int>()
         for ((i, cell) in open.withIndex()) {
@@ -392,40 +406,32 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
 
     // --- Intersections ---------------------------------------------------
 
-    /** A digit confined to one row or column inside a box leaves the rest of that line. */
-    private fun pointing(): Step? {
-        for (boxHouse in House.BOXES) {
-            val box = boxHouse.cells
-            for (d in 1..9) {
-                val cells = box.filter { cands[it] and bit(d) != 0 }
-                if (cells.size < 2) continue
-                val line = when {
-                    cells.all { Grid.row(it) == Grid.row(cells[0]) } -> House.ROWS[Grid.row(cells[0])]
-                    cells.all { Grid.col(it) == Grid.col(cells[0]) } -> House.COLUMNS[Grid.col(cells[0])]
-                    else -> continue
-                }
-                val elim = eliminate(line.cells.filter { it !in box }, bit(d))
-                if (elim.isNotEmpty()) {
-                    return Step(Technique.POINTING, eliminations = elim, pattern = cells, houses = listOf(boxHouse, line), digits = bit(d))
-                }
-            }
-        }
-        return null
-    }
+    /**
+     * A digit confined to one line (row, column or diagonal) inside a box
+     * leaves the rest of that line.
+     */
+    private fun pointing(): Step? = intersection(shape.boxes, shape.lines, Technique.POINTING)
 
-    /** A digit confined to one box inside a row or column leaves the rest of that box. */
-    private fun claiming(): Step? {
-        for (lineHouse in House.ROWS + House.COLUMNS) {
-            val line = lineHouse.cells
+    /** A digit confined to one box inside a line leaves the rest of that box. */
+    private fun claiming(): Step? = intersection(shape.lines, shape.boxes, Technique.CLAIMING)
+
+    /**
+     * For each house in [inside] and digit: when every place the digit can go
+     * there lies in one house of [across], the digit can't go anywhere else
+     * in that house. Works for 3×3 boxes, Jigsaw regions and X diagonals alike.
+     */
+    private fun intersection(inside: List<House>, across: List<House>, technique: Technique): Step? {
+        for (a in inside) {
             for (d in 1..9) {
-                val cells = line.filter { cands[it] and bit(d) != 0 }
+                val cells = a.cells.filter { cands[it] and bit(d) != 0 }
                 if (cells.size < 2) continue
-                val b = Grid.box(cells[0])
-                if (!cells.all { Grid.box(it) == b }) continue
-                val box = House.BOXES[b]
-                val elim = eliminate(box.cells.filter { it !in line }, bit(d))
-                if (elim.isNotEmpty()) {
-                    return Step(Technique.CLAIMING, eliminations = elim, pattern = cells, houses = listOf(lineHouse, box), digits = bit(d))
+                // Only the houses through the first cell can hold them all.
+                for (b in across) {
+                    if (b == a || cells[0] !in b || !cells.all { it in b }) continue
+                    val elim = eliminate(b.cells.filter { it !in a }, bit(d))
+                    if (elim.isNotEmpty()) {
+                        return Step(technique, eliminations = elim, pattern = cells, houses = listOf(a, b), digits = bit(d))
+                    }
                 }
             }
         }
@@ -436,7 +442,7 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
 
     /** k cells in a unit that between them hold only k digits: those digits leave the unit's other cells. */
     private fun nakedSubset(k: Int, technique: Technique): Step? {
-        for (house in ALL_UNITS) {
+        for (house in shape.units) {
             val unit = house.cells
             val open = unit.filter { values[it] == 0 && Integer.bitCount(cands[it]) in 2..k }
             if (open.size < k) continue
@@ -456,7 +462,7 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
 
     /** k digits that fit only in the same k cells of a unit: those cells lose every other digit. */
     private fun hiddenSubset(k: Int, technique: Technique): Step? {
-        for (house in ALL_UNITS) {
+        for (house in shape.units) {
             val unit = house.cells
             // For each open digit, the positions (0-8) in the unit where it can go.
             val digits = ArrayList<Int>()
@@ -551,7 +557,7 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
         for (pivot in 0 until Grid.CELLS) {
             val pc = cands[pivot]
             if (values[pivot] != 0 || Integer.bitCount(pc) != 2) continue
-            val pincers = Grid.peers[pivot].filter {
+            val pincers = shape.peers[pivot].filter {
                 values[it] == 0 && Integer.bitCount(cands[it]) == 2 && Integer.bitCount(cands[it] and pc) == 1
             }
             for (i in pincers.indices) for (j in i + 1 until pincers.size) {
@@ -563,7 +569,7 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
                 val c = ca and cb and pc.inv()
                 if (Integer.bitCount(c) != 1) continue
                 val targets = (0 until Grid.CELLS).filter {
-                    it != a && it != b && it != pivot && Grid.arePeers(it, a) && Grid.arePeers(it, b)
+                    it != a && it != b && it != pivot && shape.arePeers(it, a) && shape.arePeers(it, b)
                 }
                 val elim = eliminate(targets, c)
                 if (elim.isNotEmpty()) return Step(Technique.XY_WING, eliminations = elim, pattern = listOf(pivot, a, b), digits = c)
@@ -577,7 +583,7 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
         for (pivot in 0 until Grid.CELLS) {
             val pc = cands[pivot]
             if (values[pivot] != 0 || Integer.bitCount(pc) != 3) continue
-            val pincers = Grid.peers[pivot].filter {
+            val pincers = shape.peers[pivot].filter {
                 values[it] == 0 && Integer.bitCount(cands[it]) == 2 && (cands[it] and pc.inv()) == 0
             }
             for (i in pincers.indices) for (j in i + 1 until pincers.size) {
@@ -586,8 +592,8 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
                 if ((cands[a] or cands[b]) != pc) continue
                 val c = cands[a] and cands[b]
                 if (Integer.bitCount(c) != 1) continue
-                val targets = Grid.peers[pivot].filter {
-                    it != a && it != b && Grid.arePeers(it, a) && Grid.arePeers(it, b)
+                val targets = shape.peers[pivot].filter {
+                    it != a && it != b && shape.arePeers(it, a) && shape.arePeers(it, b)
                 }
                 val elim = eliminate(targets, c)
                 if (elim.isNotEmpty()) return Step(Technique.XYZ_WING, eliminations = elim, pattern = listOf(pivot, a, b), digits = c)
@@ -612,8 +618,6 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
         private fun bit(d: Int) = 1 shl (d - 1)
         private fun digitOf(mask: Int) = Integer.numberOfTrailingZeros(mask) + 1
 
-        private val ALL_UNITS: List<House> = House.ROWS + House.COLUMNS + House.BOXES
-
         /**
          * Areas the 45 rule looks at, smallest first: each box, then runs of
          * one to four whole rows, and of one to four whole columns.
@@ -624,7 +628,6 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
                 for (length in 1..4) for (start in 0..9 - length) add(lines.subList(start, start + length))
             }
         }.sortedBy { it.size }
-        private val BOXES_FIRST: List<House> = House.BOXES + House.ROWS + House.COLUMNS
 
         private val comboCache = HashMap<Long, List<IntArray>>()
 
@@ -646,6 +649,7 @@ class LogicSolver(givens: IntArray, private val cages: List<Cage> = emptyList())
         }
 
         /** Grades a puzzle using every technique. */
-        fun grade(givens: IntArray, cages: List<Cage> = emptyList()): Grade = LogicSolver(givens, cages).solve()
+        fun grade(givens: IntArray, cages: List<Cage> = emptyList(), shape: Shape = Shape.CLASSIC): Grade =
+            LogicSolver(givens, cages, shape).solve()
     }
 }

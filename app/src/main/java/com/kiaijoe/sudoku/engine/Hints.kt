@@ -55,7 +55,7 @@ object Hints {
         if (game.isSolved) return HintPlan.NothingLeft
 
         val known = IntArray(Grid.CELLS) { if (game.isGiven(it) || game.isCorrect(it)) game.values[it] else 0 }
-        val solver = LogicSolver(known, game.cages)
+        val solver = LogicSolver(known, game.cages, game.shape)
         val cards = ArrayList<HintCard>()
         while (cards.size < MAX_STEPS) {
             val step = solver.nextStep() ?: break
@@ -63,7 +63,7 @@ object Hints {
             solver.apply(step)
             if (step.isPlacement) return HintPlan.Teach(condense(cards))
         }
-        // Logic ran out (only possible with puzzles from before grading): reveal a cell.
+        // Logic ran out (a typed-in puzzle that needs guessing, or one from before grading): reveal a cell.
         val cell = (0 until Grid.CELLS).first { known[it] == 0 }
         val digit = game.solution[cell]
         return HintPlan.Teach(
@@ -212,18 +212,18 @@ object Hints {
 
             Technique.POINTING -> tr(
                 "In ${houseName(h[0])}, $d can only go in ${houseName(h[1])}. Whichever cell it takes, " +
-                    "${houseName(h[1])} gets its $d from this box, so $d can't go anywhere else in ${houseName(h[1])}.",
+                    "${houseName(h[1])} gets its $d from ${thisBox(h[0])}, so $d can't go anywhere else in ${houseName(h[1])}.",
                 "Katika ${houseName(h[0])}, $d ${can(step.digits)} kwenda tu katika ${houseName(h[1])}. " +
-                    "Kisanduku chochote itakachochukua, $d ya ${houseName(h[1])} inatoka kwenye sanduku hili, " +
+                    "Kisanduku chochote itakachochukua, $d ya ${houseName(h[1])} inatoka kwenye ${thisBox(h[0])}, " +
                     "kwa hiyo $d ${cant(step.digits)} kwenda kwingine popote katika ${houseName(h[1])}.",
             )
 
             Technique.CLAIMING -> tr(
                 "In ${houseName(h[0])}, $d can only go inside ${houseName(h[1])}. So ${houseName(h[1])} gets its " +
-                    "$d from ${houseName(h[0])}, and $d can't go anywhere else in that box.",
+                    "$d from ${houseName(h[0])}, and $d can't go anywhere else in ${thatBox(h[1])}.",
                 "Katika ${houseName(h[0])}, $d ${can(step.digits)} kwenda tu ndani ya ${houseName(h[1])}. " +
                     "Kwa hiyo $d ya ${houseName(h[0])} lazima iwe ndani ya ${houseName(h[1])}, " +
-                    "na $d ${cant(step.digits)} kwenda kwingine popote katika sanduku hilo.",
+                    "na $d ${cant(step.digits)} kwenda kwingine popote katika ${thatBox(h[1])}.",
             )
 
             Technique.CAGE -> cageText(step, cands, value)
@@ -452,6 +452,19 @@ object Hints {
         HouseKind.ROW -> tr("row ${house.index + 1}", "mstari wa ${house.index + 1}")
         HouseKind.COLUMN -> tr("column ${house.index + 1}", "safu ya ${house.index + 1}")
         HouseKind.BOX -> tr(BOX_NAMES[house.index], BOX_NAMES_SW[house.index])
+        HouseKind.REGION -> {
+            // A Jigsaw region, named by its top-left cell.
+            val first = house.cells.min()
+            tr(
+                "the shape starting at row ${Grid.row(first) + 1}, column ${Grid.col(first) + 1}",
+                "umbo linaloanzia mstari wa ${Grid.row(first) + 1}, safu ya ${Grid.col(first) + 1}",
+            )
+        }
+        HouseKind.DIAGONAL -> if (house.index == 0) {
+            tr("the diagonal from top left to bottom right", "mshazari kutoka juu kushoto hadi chini kulia")
+        } else {
+            tr("the diagonal from top right to bottom left", "mshazari kutoka juu kulia hadi chini kushoto")
+        }
     }
 
     fun cellName(cell: Int) = tr(
@@ -466,6 +479,12 @@ object Hints {
     /** "rows 2 and 7", "columns 1, 4 and 8". */
     private fun linesName(lines: List<House>): String =
         "${linesWord(lines[0])} ${joinAnd(lines.map { (it.index + 1).toString() })}"
+
+    /** "this box", or "this shape" for a Jigsaw region. */
+    private fun thisBox(h: House) = if (h.kind == HouseKind.REGION) tr("this shape", "umbo hili") else tr("this box", "sanduku hili")
+
+    /** "that box", or "that shape" for a Jigsaw region. */
+    private fun thatBox(h: House) = if (h.kind == HouseKind.REGION) tr("that shape", "umbo hilo") else tr("that box", "sanduku hilo")
 
     private fun plural(h: House) = if (h.kind == HouseKind.ROW) "rows" else "columns"
 

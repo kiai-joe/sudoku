@@ -23,23 +23,27 @@ object GameCodec {
         if (state.afterLoss) "1" else "0",
         if (state.log.isEmpty()) "-" else state.log.joinToString(";") { "${it.cell}.${it.value}.${it.second}${if (it.hint) ".h" else ""}" },
         if (state.marks.isEmpty()) "-" else state.marks.joinToString(""),
+        state.shape.encode(),
+        if (state.custom) "1" else "0",
     ).joinToString("|")
 
     /**
      * Returns null for anything that isn't a well-formed save. Older saves
      * have 10 fields (before grading), 11 (before daily puzzles), 12 (before
      * Killer), 13 (before checks, practice and restarts were saved), 16
-     * (before the replay log) or 17 (before colour marks).
+     * (before the replay log), 17 (before colour marks) or 18 (before Sudoku X,
+     * Jigsaw and typed-in puzzles).
      */
     fun decode(text: String): GameState? = runCatching {
         val parts = text.split("|")
-        if (parts.size !in 10..18 || parts[0] != VERSION) return null
+        if (parts.size !in 10..20 || parts[0] != VERSION) return null
+        val shape = parts.getOrNull(18)?.let { Shape.decode(it) ?: return null } ?: Shape.CLASSIC
         val givens = digits(parts[2])
         val solution = digits(parts[3])
         val values = digits(parts[4])
         val notes = parts[5].split(",").map { it.toInt() }
         if (notes.size != Grid.CELLS || notes.any { it !in 0..Grid.ALL_DIGITS }) return null
-        if (!Grid.isValidSolution(solution.toIntArray())) return null
+        if (!shape.isValidSolution(solution.toIntArray())) return null
         GameState(
             difficulty = Difficulty.valueOf(parts[1]),
             givens = givens,
@@ -58,6 +62,8 @@ object GameCodec {
             afterLoss = parts.getOrNull(15) == "1",
             log = parts.getOrNull(16)?.takeIf { it != "-" }?.let(::log).orEmpty(),
             marks = parts.getOrNull(17)?.takeIf { it != "-" }?.let(::marks).orEmpty(),
+            shape = shape,
+            custom = parts.getOrNull(19) == "1",
         )
     }.getOrNull()
 

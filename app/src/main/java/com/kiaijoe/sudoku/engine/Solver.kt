@@ -5,63 +5,70 @@ import kotlin.random.Random
 /**
  * Bitmask backtracking solver. It always branches on the empty cell with the
  * fewest candidates, which keeps uniqueness checks fast enough to run many
- * times while a puzzle is being generated.
+ * times while a puzzle is being generated. It works on any [Shape]: classic,
+ * Sudoku X or Jigsaw.
  */
 object Solver {
 
     /** Returns the solution, or null when the grid has none. 0 marks an empty cell. */
-    fun solve(grid: IntArray): IntArray? {
+    fun solve(grid: IntArray, shape: Shape = Shape.CLASSIC): IntArray? {
         val out = IntArray(Grid.CELLS)
-        return if (run(grid, limit = 1, random = null, out = out) == 1) out else null
+        return if (run(grid, shape, limit = 1, random = null, out = out) == 1) out else null
     }
 
     /** Counts solutions, stopping once [limit] is reached. */
-    fun countSolutions(grid: IntArray, limit: Int = 2): Int = run(grid, limit, random = null, out = null)
+    fun countSolutions(grid: IntArray, limit: Int = 2, shape: Shape = Shape.CLASSIC): Int =
+        run(grid, shape, limit, random = null, out = null)
 
-    fun hasUniqueSolution(grid: IntArray): Boolean = countSolutions(grid, limit = 2) == 1
+    fun hasUniqueSolution(grid: IntArray, shape: Shape = Shape.CLASSIC): Boolean = countSolutions(grid, limit = 2, shape = shape) == 1
 
-    /** A complete, valid grid with digits chosen at random. */
-    fun randomFilledGrid(random: Random): IntArray {
+    /**
+     * A complete, valid grid with digits chosen at random, or null if
+     * [maxNodes] search steps weren't enough (some Jigsaw layouts are slow or
+     * impossible to fill; the caller then tries another layout).
+     */
+    fun randomFilledGrid(random: Random, shape: Shape = Shape.CLASSIC, maxNodes: Long = Long.MAX_VALUE): IntArray? {
         val out = IntArray(Grid.CELLS)
-        run(IntArray(Grid.CELLS), limit = 1, random = random, out = out)
-        return out
+        val found = run(IntArray(Grid.CELLS), shape, limit = 1, random = random, out = out, maxNodes = maxNodes)
+        return if (found == 1) out else null
     }
 
-    private fun run(grid: IntArray, limit: Int, random: Random?, out: IntArray?): Int {
+    /** A classic filled grid; always succeeds. */
+    fun randomFilledGrid(random: Random): IntArray = randomFilledGrid(random, Shape.CLASSIC)!!
+
+    private class Search(val shape: Shape, val limit: Int, val random: Random?, val out: IntArray?, val maxNodes: Long) {
+        /** For each cell, the indices of its houses in [Shape.houses]. */
+        val cellHouses: Array<IntArray> = shape.houseIndicesOf
+        val used = IntArray(shape.houses.size)
+        var nodes = 0L
+    }
+
+    private fun run(grid: IntArray, shape: Shape, limit: Int, random: Random?, out: IntArray?, maxNodes: Long = Long.MAX_VALUE): Int {
         require(grid.size == Grid.CELLS) { "Grid must have 81 cells" }
         val g = grid.copyOf()
-        val rows = IntArray(Grid.SIZE)
-        val cols = IntArray(Grid.SIZE)
-        val boxes = IntArray(Grid.SIZE)
+        val s = Search(shape, limit, random, out, maxNodes)
         for (cell in 0 until Grid.CELLS) {
             val d = g[cell]
             if (d == 0) continue
             if (d !in 1..9) return 0
             val bit = 1 shl (d - 1)
-            val r = Grid.row(cell); val c = Grid.col(cell); val b = Grid.box(cell)
-            if ((rows[r] or cols[c] or boxes[b]) and bit != 0) return 0
-            rows[r] = rows[r] or bit
-            cols[c] = cols[c] or bit
-            boxes[b] = boxes[b] or bit
+            for (h in s.cellHouses[cell]) {
+                if (s.used[h] and bit != 0) return 0
+                s.used[h] = s.used[h] or bit
+            }
         }
-        return search(g, rows, cols, boxes, limit, random, out)
+        return search(g, s, limit)
     }
 
-    private fun search(
-        g: IntArray,
-        rows: IntArray,
-        cols: IntArray,
-        boxes: IntArray,
-        limit: Int,
-        random: Random?,
-        out: IntArray?,
-    ): Int {
+    private fun search(g: IntArray, s: Search, limit: Int): Int {
+        if (++s.nodes > s.maxNodes) return 0
         var best = -1
         var bestMask = 0
         var bestCount = 10
         for (cell in 0 until Grid.CELLS) {
             if (g[cell] != 0) continue
-            val used = rows[Grid.row(cell)] or cols[Grid.col(cell)] or boxes[Grid.box(cell)]
+            var used = 0
+            for (h in s.cellHouses[cell]) used = used or s.used[h]
             val mask = Grid.ALL_DIGITS and used.inv()
             val count = Integer.bitCount(mask)
             if (count == 0) return 0
@@ -71,29 +78,25 @@ object Solver {
             }
         }
         if (best == -1) {
-            out?.let { g.copyInto(it) }
+            s.out?.let { g.copyInto(it) }
             return 1
         }
 
         val digits = IntArray(bestCount)
         var n = 0
         for (d in 1..9) if (bestMask and (1 shl (d - 1)) != 0) digits[n++] = d
-        random?.let { digits.shuffle(it) }
+        s.random?.let { digits.shuffle(it) }
 
-        val r = Grid.row(best); val c = Grid.col(best); val b = Grid.box(best)
+        val houses = s.cellHouses[best]
         var total = 0
         for (d in digits) {
             val bit = 1 shl (d - 1)
             g[best] = d
-            rows[r] = rows[r] or bit
-            cols[c] = cols[c] or bit
-            boxes[b] = boxes[b] or bit
-            total += search(g, rows, cols, boxes, limit - total, random, out)
+            for (h in houses) s.used[h] = s.used[h] or bit
+            total += search(g, s, limit - total)
             g[best] = 0
-            rows[r] = rows[r] and bit.inv()
-            cols[c] = cols[c] and bit.inv()
-            boxes[b] = boxes[b] and bit.inv()
-            if (total >= limit) break
+            for (h in houses) s.used[h] = s.used[h] and bit.inv()
+            if (total >= limit || s.nodes > s.maxNodes) break
         }
         return total
     }

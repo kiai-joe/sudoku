@@ -2,6 +2,7 @@ package com.kiaijoe.sudoku.ui
 
 import com.kiaijoe.sudoku.engine.GameState
 import com.kiaijoe.sudoku.engine.tr
+import com.kiaijoe.sudoku.ui.screens.title
 import java.time.LocalDate
 import java.time.format.TextStyle
 import java.util.Locale
@@ -19,8 +20,8 @@ import java.util.Locale
  * 🟥🟥🟥🟥⬜⬜⬜ 🔥 4
  * ```
  */
-fun shareText(game: GameState, daily: DailyUi? = null, locale: Locale = Locale.getDefault()): String {
-    val level = (if (game.isKiller) "Killer · " else "") + game.difficulty.label
+fun shareText(game: GameState, daily: DailyUi? = null, locale: Locale = Locale.getDefault(), timed: Boolean = true): String {
+    val level = game.title()
     val time = formatTime(game.elapsedSeconds)
     val lines = mutableListOf<String>()
     val day = game.daily
@@ -30,10 +31,10 @@ fun shareText(game: GameState, daily: DailyUi? = null, locale: Locale = Locale.g
         val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
         val month = date.month.getDisplayName(TextStyle.FULL, locale)
         lines += "Sumi · $kind · $dayName ${date.dayOfMonth} $month"
-        lines += "${game.difficulty.label} · $time"
+        lines += if (timed) "${game.difficulty.label} · $time" else game.difficulty.label
     } else {
         lines += "Sumi · $level"
-        lines += tr("Solved in $time", "Limetatuliwa kwa $time")
+        lines += if (timed) tr("Solved in $time", "Limetatuliwa kwa $time") else tr("Solved", "Limetatuliwa")
     }
     lines += effort(game.mistakes, game.hintsUsed)
     if (day != null) {

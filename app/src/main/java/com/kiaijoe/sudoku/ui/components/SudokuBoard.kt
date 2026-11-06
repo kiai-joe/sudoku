@@ -1,6 +1,8 @@
 package com.kiaijoe.sudoku.ui.components
 
 import com.kiaijoe.sudoku.engine.tr
+import androidx.compose.ui.graphics.StrokeCap
+import com.kiaijoe.sudoku.engine.Shape
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
@@ -129,49 +131,112 @@ fun SudokuBoard(
         val noteSize = with(density) { (geo.cell * if (largeNumbers) 0.30f else 0.25f).toSp() }
         val boxShape = RoundedCornerShape(min(16.dp, geo.box * 0.14f))
 
-        for (b in 0 until 9) {
-            val br = b / 3
-            val bc = b % 3
-            Box(
-                Modifier
-                    .offset(geo.boxOrigin(bc), geo.boxOrigin(br))
-                    .size(geo.box)
-                    .clip(boxShape)
-                    .background(colors.line),
-            ) {
-                for (k in 0 until 9) {
-                    val r = br * 3 + k / 3
-                    val c = bc * 3 + k % 3
-                    val index = r * 9 + c
-                    Cell(
-                        game = game,
-                        index = index,
-                        background = if (hint != null || mistakeCell != null) {
-                            hintBackground(index, hint, mistakeCell, colors)
-                        } else {
-                            cellBackground(game, index, selected, selectedDigit, colors, wrongShown(index), index in spotCells)
-                        },
-                        wrongShown = wrongShown(index),
-                        isSelected = index == selected && hint == null,
-                        cage = cageOf[index],
-                        hintShown = hint?.candidates?.get(index) ?: 0,
-                        hintStruck = hint?.eliminations?.get(index) ?: 0,
-                        selectedDigit = selectedDigit,
-                        digitSize = digitSize,
-                        noteSize = noteSize,
-                        colors = colors,
-                        washAlpha = { wash?.alpha(index) ?: 0f },
-                        onClick = { onSelect(index) },
-                        onLongClick = onLongPress?.let { { it(index) } },
-                        modifier = Modifier
-                            .offset(geo.inBox(c), geo.inBox(r))
-                            .size(geo.cell),
-                    )
+        // One cell, drawn the same in every layout.
+        val cellAt: @Composable (Int, Modifier) -> Unit = { index, cellModifier ->
+            Cell(
+                game = game,
+                index = index,
+                background = if (hint != null || mistakeCell != null) {
+                    hintBackground(index, hint, mistakeCell, colors)
+                } else {
+                    cellBackground(game, index, selected, selectedDigit, colors, wrongShown(index), index in spotCells)
+                },
+                wrongShown = wrongShown(index),
+                isSelected = index == selected && hint == null,
+                cage = cageOf[index],
+                hintShown = hint?.candidates?.get(index) ?: 0,
+                hintStruck = hint?.eliminations?.get(index) ?: 0,
+                selectedDigit = selectedDigit,
+                digitSize = digitSize,
+                noteSize = noteSize,
+                colors = colors,
+                washAlpha = { wash?.alpha(index) ?: 0f },
+                onClick = { onSelect(index) },
+                onLongClick = onLongPress?.let { { it(index) } },
+                modifier = cellModifier,
+            )
+        }
+
+        if (game.shape.isJigsaw) {
+            JigsawGrid(game.shape, maxWidth, colors, cellAt)
+        } else {
+            for (b in 0 until 9) {
+                val br = b / 3
+                val bc = b % 3
+                Box(
+                    Modifier
+                        .offset(geo.boxOrigin(bc), geo.boxOrigin(br))
+                        .size(geo.box)
+                        .clip(boxShape)
+                        .background(colors.line),
+                ) {
+                    for (k in 0 until 9) {
+                        val r = br * 3 + k / 3
+                        val c = bc * 3 + k % 3
+                        cellAt(r * 9 + c, Modifier.offset(geo.inBox(c), geo.inBox(r)).size(geo.cell))
+                    }
                 }
             }
+            if (game.shape.diagonals) DiagonalOverlay(geo, colors)
         }
 
         if (game.isKiller) CageOverlay(game.cages, geo, colors)
+    }
+}
+
+/**
+ * A Jigsaw board: one even grid of cells (there are no 3×3 boxes to gap
+ * between), with a bold line wherever two neighbouring cells belong to
+ * different regions, so each region's shape stands out.
+ */
+@Composable
+private fun JigsawGrid(shape: Shape, width: Dp, colors: BoardColors, cellAt: @Composable (Int, Modifier) -> Unit) {
+    val pad = 6.dp
+    val hair = 1.dp
+    val cell = (width - pad * 2 - hair * 8) / 9
+    fun origin(k: Int): Dp = pad + (cell + hair) * k
+    Box(
+        Modifier
+            .offset(pad, pad)
+            .size(width - pad * 2)
+            .clip(RoundedCornerShape(16.dp))
+            .background(colors.line),
+    )
+    for (index in 0 until Grid.CELLS) {
+        cellAt(index, Modifier.offset(origin(Grid.col(index)), origin(Grid.row(index))).size(cell))
+    }
+    Canvas(Modifier.fillMaxSize()) {
+        val bold = 3.dp.toPx()
+        val line = colors.given.copy(alpha = 0.85f)
+        val step = (cell + hair).toPx()
+        val start = pad.toPx()
+        for (i in 0 until Grid.CELLS) {
+            val r = Grid.row(i)
+            val c = Grid.col(i)
+            // Right edge, between this cell and the next in the row.
+            if (c < 8 && shape.regionOf[i] != shape.regionOf[i + 1]) {
+                val x = start + step * (c + 1) - hair.toPx() / 2
+                drawLine(line, Offset(x, start + step * r), Offset(x, start + step * (r + 1) - hair.toPx()), bold, StrokeCap.Round)
+            }
+            // Bottom edge, between this cell and the one below.
+            if (r < 8 && shape.regionOf[i] != shape.regionOf[i + 9]) {
+                val y = start + step * (r + 1) - hair.toPx() / 2
+                drawLine(line, Offset(start + step * c, y), Offset(start + step * (c + 1) - hair.toPx(), y), bold, StrokeCap.Round)
+            }
+        }
+    }
+}
+
+/** Sudoku X: a faint line along each long diagonal, through the centres of its cells. */
+@Composable
+private fun DiagonalOverlay(geo: BoardGeometry, colors: BoardColors) {
+    Canvas(Modifier.fillMaxSize()) {
+        val half = geo.cell.toPx() / 2
+        fun centre(k: Int) = geo.origin(k).toPx() + half
+        val ink = colors.entered.copy(alpha = 0.22f)
+        val width = 2.dp.toPx()
+        drawLine(ink, Offset(centre(0), centre(0)), Offset(centre(8), centre(8)), width, StrokeCap.Round)
+        drawLine(ink, Offset(centre(8), centre(0)), Offset(centre(0), centre(8)), width, StrokeCap.Round)
     }
 }
 
@@ -307,7 +372,7 @@ private fun cellBackground(
     game.mark(index) == 1 -> colors.markA
     game.mark(index) == 2 -> colors.markB
     selectedDigit != null && game.values[index] == selectedDigit -> colors.sameNumber
-    selected != null && Grid.arePeers(index, selected) -> colors.peer
+    selected != null && game.shape.arePeers(index, selected) -> colors.peer
     else -> colors.cell
 }
 
