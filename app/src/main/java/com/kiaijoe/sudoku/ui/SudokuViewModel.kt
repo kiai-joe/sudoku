@@ -21,6 +21,8 @@ import com.kiaijoe.sudoku.engine.Hints
 import com.kiaijoe.sudoku.engine.Killer
 import com.kiaijoe.sudoku.engine.Lesson
 import com.kiaijoe.sudoku.engine.Progress
+import com.kiaijoe.sudoku.engine.Puzzle
+import com.kiaijoe.sudoku.engine.Variant
 import com.kiaijoe.sudoku.engine.Technique
 import com.kiaijoe.sudoku.engine.Tutorial
 import com.kiaijoe.sudoku.widget.SumiWidget
@@ -61,6 +63,7 @@ data class UiState(
     val settings: Settings = Settings(),
     val stats: Map<Difficulty, DifficultyStats> = emptyMap(),
     val killerStats: DifficultyStats = DifficultyStats(),
+    val variantStats: Map<Variant, DifficultyStats> = emptyMap(),
     val achievements: Map<Achievement, Long> = emptyMap(),
     val newAchievements: List<Achievement> = emptyList(),
     /** Lessons finished, by lesson id (the technique name for whole-technique lessons). */
@@ -154,6 +157,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             settings = repo.loadSettings(),
             stats = repo.loadStats(),
             killerStats = repo.loadKillerStats(),
+            variantStats = repo.loadVariantStats(),
             lessonsDone = repo.loadLessonsDone(),
             achievements = repo.loadAchievements(),
         )
@@ -191,6 +195,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         return Progress(
             won = repo.loadStats().mapValues { it.value.won },
             killerWon = repo.loadKillerStats().won,
+            variantWon = repo.loadVariantStats().values.sumOf { it.won },
             dailySolved = daily.size,
             longestStreak = Daily.longestStreak(daily.keys),
             dailyDays = daily.keys,
@@ -231,6 +236,24 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             repo.saveGame(game)
             show(game, savedGame = game)
         }
+    }
+
+    /** Starts a Sudoku X or Jigsaw game. It takes the regular game's slot, like any new game. */
+    override fun newVariant(difficulty: Difficulty, variant: Variant) {
+        startLoading()
+        viewModelScope.launch {
+            val game = GameState.from(withContext(Dispatchers.Default) { Generator.generate(difficulty, variant = variant) })
+            repo.recordVariantStart(variant)
+            repo.saveGame(game)
+            show(game, savedGame = game)
+        }
+    }
+
+    /** Plays a puzzle the player typed in and [CustomPuzzle] checked. It takes the regular game's slot; it isn't in the stats. */
+    fun playCustom(puzzle: Puzzle) {
+        val game = GameState.from(puzzle).copy(custom = true)
+        repo.saveGame(game)
+        show(game, savedGame = game)
     }
 
     /**
@@ -381,7 +404,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 g.place(
                     cell = cell,
                     digit = digit,
-                    mistakeLimit = if (settings.mistakeLimit && checking) MISTAKE_LIMIT else null,
+                    mistakeLimit = if (settings.mistakeLimit && checking && !settings.zen) MISTAKE_LIMIT else null,
                     autoRemoveNotes = settings.autoRemoveNotes,
                     checking = checking,
                 )
@@ -537,10 +560,15 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 repo.recordDailyWin(day, next.elapsedSeconds, killer = next.isKiller)
                 refreshWidget()
                 best = false
-            } else if (next.isKiller) {
-                best = repo.recordKillerWin(next.elapsedSeconds, next.hintsUsed)
             } else {
-                best = repo.recordWin(next.difficulty, next.elapsedSeconds, next.hintsUsed)
+                // Zen mode wins count, untimed.
+                val timed = !s.settings.zen
+                best = when {
+                    next.custom -> false
+                    next.isKiller -> repo.recordKillerWin(next.elapsedSeconds, next.hintsUsed, timed)
+                    next.variant != Variant.CLASSIC -> repo.recordVariantWin(next.variant, next.elapsedSeconds, next.hintsUsed, timed)
+                    else -> repo.recordWin(next.difficulty, next.elapsedSeconds, next.hintsUsed, timed)
+                }
             }
             undoStack.clear()
         }
@@ -553,6 +581,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 lastWinWasBest = best,
                 stats = if (next.status == GameStatus.WON) repo.loadStats() else it.stats,
                 killerStats = if (next.status == GameStatus.WON) repo.loadKillerStats() else it.killerStats,
+                variantStats = if (next.status == GameStatus.WON) repo.loadVariantStats() else it.variantStats,
                 newAchievements = newAchievements,
                 achievements = if (newAchievements.isEmpty()) it.achievements else repo.loadAchievements(),
                 feedback = when (next.status) {
@@ -596,7 +625,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
 
     fun resetStats() {
         repo.resetStats()
-        _ui.update { it.copy(stats = repo.loadStats(), killerStats = repo.loadKillerStats()) }
+        _ui.update { it.copy(stats = repo.loadStats(), killerStats = repo.loadKillerStats(), variantStats = repo.loadVariantStats()) }
     }
 
     // --- Timer ----------------------------------------------------------

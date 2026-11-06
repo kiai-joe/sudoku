@@ -103,14 +103,17 @@ import com.kiaijoe.sudoku.ui.components.TimerText
 import com.kiaijoe.sudoku.ui.components.card
 import com.kiaijoe.sudoku.ui.components.icon
 import com.kiaijoe.sudoku.ui.formatTime
+import com.kiaijoe.sudoku.engine.Variant
 import com.kiaijoe.sudoku.ui.icons.Lucide
 import com.kiaijoe.sudoku.ui.theme.Sumi
 import kotlinx.coroutines.delay
 
-/** The level as a title: "Medium", "Killer · Medium", "Daily · Killer Medium". */
-private fun GameState.title(): String = when {
+/** The level as a title: "Medium", "Killer · Medium", "Sudoku X · Hard", "Daily · Killer Medium". */
+internal fun GameState.title(): String = when {
     daily != null -> tr("Daily", "Leo") + " · ${if (isKiller) "Killer " else ""}${difficulty.label}"
+    custom -> tr("Your puzzle", "Fumbo lako") + " · ${difficulty.label}"
     isKiller -> "Killer · ${difficulty.label}"
+    variant != Variant.CLASSIC -> "${variant.label} · ${difficulty.label}"
     else -> difficulty.label
 }
 
@@ -602,7 +605,11 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
     val best = state.stats[game.difficulty]?.bestSeconds
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            tr("Solved in ${formatTime(game.elapsedSeconds)}", "Limetatuliwa kwa ${formatTime(game.elapsedSeconds)}"),
+            if (state.settings.zen) {
+                tr("Solved", "Limetatuliwa")
+            } else {
+                tr("Solved in ${formatTime(game.elapsedSeconds)}", "Limetatuliwa kwa ${formatTime(game.elapsedSeconds)}")
+            },
             style = MaterialTheme.typography.displaySmall,
             color = c.ink,
             textAlign = TextAlign.Center,
@@ -617,7 +624,7 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
             add {
                 ListRow(
                     icon = if (game.isKiller) Lucide.SquareDashed else game.difficulty.icon,
-                    title = if (game.isKiller) "Killer · ${game.difficulty.label}" else game.difficulty.label,
+                    title = if (game.daily != null) game.difficulty.label.let { if (game.isKiller) "Killer · $it" else it } else game.title(),
                     subtitle = game.hardest?.let { tr("Hardest step: ${it.label.lowercase()}", "Hatua ngumu zaidi: ${it.label.lowercase()}") },
                 )
             }
@@ -625,7 +632,7 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
                 ListRow(
                     icon = Lucide.ListChecks,
                     title = "${mistakesCount(game.mistakes)} · ${hintsCount(game.hintsUsed)}",
-                    subtitle = if (best != null && !state.lastWinWasBest) {
+                    subtitle = if (best != null && !state.lastWinWasBest && !state.settings.zen && !game.custom && game.variant == Variant.CLASSIC && !game.isKiller) {
                         tr("Your best is ${formatTime(best)}", "Muda wako bora ni ${formatTime(best)}")
                     } else {
                         null
@@ -675,7 +682,7 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
                     val daily = if (game.isKiller) state.killerDaily else state.daily
                     val send = Intent(Intent.ACTION_SEND)
                         .setType("text/plain")
-                        .putExtra(Intent.EXTRA_TEXT, shareText(game, daily.takeIf { game.daily != null }))
+                        .putExtra(Intent.EXTRA_TEXT, shareText(game, daily.takeIf { game.daily != null }, timed = !state.settings.zen))
                     context.startActivity(Intent.createChooser(send, null))
                 },
                 Modifier.weight(1f),
@@ -707,6 +714,12 @@ private fun StatusRow(state: UiState, game: GameState) {
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         val checking = state.settings.instantCheck
+        if (state.settings.zen) {
+            // Zen: nothing counting up or down, just the hints taken.
+            Text(tr("Zen", "Utulivu"), style = MaterialTheme.typography.labelMedium, color = c.inkMuted)
+            Text(tr("Hints ${game.hintsUsed}", "Madokezo ${game.hintsUsed}"), style = MaterialTheme.typography.labelMedium, color = c.inkMuted)
+            return@Row
+        }
         val mistakesText = when {
             !checking -> tr("Checks ${game.checks}", "Ukaguzi ${game.checks}")
             state.settings.mistakeLimit -> tr("Mistakes ${game.mistakes} of $MISTAKE_LIMIT", "Makosa ${game.mistakes} kati ya $MISTAKE_LIMIT")
@@ -727,8 +740,11 @@ private fun StatusRow(state: UiState, game: GameState) {
 }
 
 /** Starts another game of the same kind as [game]. */
-private fun GameActions.newLike(game: GameState) =
-    if (game.isKiller) newKiller(game.difficulty) else newGame(game.difficulty)
+private fun GameActions.newLike(game: GameState) = when {
+    game.isKiller -> newKiller(game.difficulty)
+    game.variant != Variant.CLASSIC && !game.custom -> newVariant(game.difficulty, game.variant)
+    else -> newGame(game.difficulty)
+}
 
 /**
  * A short vibration for each input, and a longer pattern for a solved puzzle

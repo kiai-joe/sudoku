@@ -170,6 +170,17 @@ fun SettingsScreen(
                         rows = listOf<@Composable () -> Unit>(
                             {
                                 SwitchRow(
+                                    Lucide.Leaf,
+                                    tr("Zen mode", "Hali ya utulivu"),
+                                    tr(
+                                        "No timer, no mistake count and no limit. Solves still count, untimed.",
+                                        "Hakuna saa, hesabu ya makosa wala kikomo. Mafumbo yaliyotatuliwa bado yanahesabiwa, bila muda.",
+                                    ),
+                                    settings.zen,
+                                ) { onChange(settings.copy(zen = it)) }
+                            },
+                            {
+                                SwitchRow(
                                     Lucide.Eye,
                                     tr("Show mistakes right away", "Onyesha makosa papo hapo"),
                                     if (settings.instantCheck) {
@@ -184,13 +195,13 @@ fun SettingsScreen(
                                 SwitchRow(
                                     Lucide.Flag,
                                     tr("Mistake limit", "Kikomo cha makosa"),
-                                    if (settings.instantCheck) {
-                                        tr("End the game after $MISTAKE_LIMIT wrong numbers", "Maliza mchezo baada ya namba $MISTAKE_LIMIT zisizo sahihi")
-                                    } else {
-                                        tr("Only applies when mistakes are shown right away", "Inatumika tu makosa yanapoonyeshwa papo hapo")
+                                    when {
+                                        settings.zen -> tr("Off in Zen mode", "Imezimwa katika hali ya utulivu")
+                                        settings.instantCheck -> tr("End the game after $MISTAKE_LIMIT wrong numbers", "Maliza mchezo baada ya namba $MISTAKE_LIMIT zisizo sahihi")
+                                        else -> tr("Only applies when mistakes are shown right away", "Inatumika tu makosa yanapoonyeshwa papo hapo")
                                     },
-                                    settings.mistakeLimit && settings.instantCheck,
-                                    enabled = settings.instantCheck,
+                                    settings.mistakeLimit && settings.instantCheck && !settings.zen,
+                                    enabled = settings.instantCheck && !settings.zen,
                                 ) { onChange(settings.copy(mistakeLimit = it)) }
                             },
                             {

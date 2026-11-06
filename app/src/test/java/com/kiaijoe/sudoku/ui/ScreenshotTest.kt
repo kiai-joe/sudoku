@@ -20,8 +20,10 @@ import com.kiaijoe.sudoku.engine.Killer
 import com.kiaijoe.sudoku.engine.Progress
 import com.kiaijoe.sudoku.engine.Technique
 import com.kiaijoe.sudoku.engine.Tutorial
+import com.kiaijoe.sudoku.engine.Variant
 import com.kiaijoe.sudoku.ui.screens.CalendarScreen
 import com.kiaijoe.sudoku.ui.screens.CombinationsScreen
+import com.kiaijoe.sudoku.ui.screens.EnterPuzzleScreen
 import com.kiaijoe.sudoku.ui.screens.ReplayScreen
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
@@ -162,6 +164,45 @@ class ScreenshotTest {
             actions = GameActions.None,
             onExit = {},
         )
+    }
+
+    // --- Sudoku X, Jigsaw, Zen and a typed-in puzzle ------------------------
+
+    @Test
+    fun sudokuXLight() = capture("sudoku_x_light", dark = false) {
+        val g = Fixtures.variantGame(Variant.X)
+        GameScreen(state = UiState(game = g, selected = Fixtures.selectedCell(g)), actions = GameActions.None, onExit = {})
+    }
+
+    @Test fun jigsawLight() = jigsaw(dark = false)
+
+    @Test fun jigsawDark() = jigsaw(dark = true)
+
+    private fun jigsaw(dark: Boolean) = capture(if (dark) "jigsaw_dark" else "jigsaw_light", dark) {
+        val g = Fixtures.variantGame(Variant.JIGSAW)
+        GameScreen(state = UiState(game = g, selected = Fixtures.selectedCell(g)), actions = GameActions.None, onExit = {})
+    }
+
+    /** Zen mode: no timer and no mistake count. */
+    @Test
+    fun zenLight() = capture("game_zen_light", dark = false) {
+        val g = Fixtures.midGame()
+        GameScreen(
+            state = UiState(game = g, selected = Fixtures.selectedCell(g), settings = Settings(zen = true)),
+            actions = GameActions.None,
+            onExit = {},
+        )
+    }
+
+    /** Typing in a puzzle, with a repeated number marked. */
+    @Test
+    fun enterPuzzleLight() = capture("enter_puzzle_light", dark = false) {
+        EnterPuzzleScreen(onBack = {}, onPlay = {}, replacesGame = true, initial = Fixtures.typedIn(), initialSelected = 40)
+    }
+
+    @Test
+    fun enterPuzzleDark() = capture("enter_puzzle_dark", dark = true) {
+        EnterPuzzleScreen(onBack = {}, onPlay = {}, replacesGame = false, initial = Fixtures.typedIn(), initialSelected = 40)
     }
 
     /** A Killer hint explaining a cage. */
@@ -682,6 +723,23 @@ private object Fixtures {
     }
 
     fun selectedCell(g: GameState) = (0 until 81).filter { g.values[it] == 0 }[6]
+
+    /** A Medium Sudoku X or Jigsaw game a few moves in. */
+    fun variantGame(variant: Variant): GameState {
+        var g = GameState.from(Generator.generate(Difficulty.MEDIUM, Random(5), variant))
+        repeat(8) { g = placeNextHint(g) }
+        return g.copy(elapsedSeconds = 131)
+    }
+
+    /** A puzzle half typed in from a book: the first five rows, with one 7 typed twice in row 5. */
+    fun typedIn(): String {
+        val givens = Generator.generate(Difficulty.EASY, Random(2)).givens.copyOf()
+        for (i in 45 until 81) givens[i] = 0
+        val row = 36 until 45
+        val d = row.map { givens[it] }.first { it != 0 }
+        givens[row.first { givens[it] == 0 }] = d
+        return givens.joinToString("")
+    }
 
     /** A Hard game at the point where the next hint rules out candidates, with that hint. */
     fun eliminationHint(): Pair<GameState, HintPlan> {

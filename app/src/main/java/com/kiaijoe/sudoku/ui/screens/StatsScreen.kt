@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.data.DifficultyStats
 import com.kiaijoe.sudoku.engine.Achievement
 import com.kiaijoe.sudoku.engine.Difficulty
+import com.kiaijoe.sudoku.engine.Variant
 import com.kiaijoe.sudoku.ui.components.ButtonTone
 import com.kiaijoe.sudoku.ui.components.ChipTone
 import com.kiaijoe.sudoku.ui.components.Overline
@@ -69,14 +70,19 @@ fun StatsScreen(
     onReset: () -> Unit,
     onBack: () -> Unit,
     killerStats: DifficultyStats = DifficultyStats(),
+    variantStats: Map<Variant, DifficultyStats> = emptyMap(),
     achievements: Map<Achievement, Long> = emptyMap(),
     onTab: ((Tab) -> Unit)? = null,
 ) {
     BackHandler(onBack = onBack)
     var confirmReset by remember { mutableStateOf(false) }
-    // Which level the figures are for: 0..3 the classic levels, 4 Killer. Opens on the one played most.
+    // The figures for each chip: the four classic levels, then Killer, Sudoku X and Jigsaw.
+    val others = listOf(Variant.X, Variant.JIGSAW)
+    val all = Difficulty.entries.map { stats[it] ?: DifficultyStats() } + killerStats +
+        others.map { variantStats[it] ?: DifficultyStats() }
+    // Which chip is picked. Opens on the one played most.
     var level by rememberSaveable {
-        val played = Difficulty.entries.map { stats[it]?.played ?: 0 } + killerStats.played
+        val played = all.map { it.played }
         mutableStateOf(played.indices.maxBy { played[it] })
     }
     var open by remember { mutableStateOf<Achievement?>(null) }
@@ -91,7 +97,7 @@ fun StatsScreen(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            val labels = Difficulty.entries.map { it.label } + "Killer"
+            val labels = Difficulty.entries.map { it.label } + "Killer" + others.map { it.label }
             labels.forEachIndexed { i, label ->
                 SumiChip(
                     label,
@@ -102,7 +108,7 @@ fun StatsScreen(
             }
         }
         Spacer(Modifier.height(12.dp))
-        val s = if (level < Difficulty.entries.size) stats[Difficulty.entries[level]] ?: DifficultyStats() else killerStats
+        val s = all.getOrElse(level) { DifficultyStats() }
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 StatTile(
@@ -121,20 +127,11 @@ fun StatsScreen(
         if (s.timedWins < s.won) {
             Spacer(Modifier.height(10.dp))
             Text(
-                when (s.timedWins) {
-                    0 -> tr(
-                        "Average and hints start counting from your next win.",
-                        "Wastani na madokezo vinaanza kuhesabiwa kuanzia ushindi wako ujao.",
-                    )
-                    1 -> tr(
-                        "Average and hints count the 1 win since they were added.",
-                        "Wastani na madokezo vinahesabu ushindi 1 tangu viongezwe.",
-                    )
-                    else -> tr(
-                        "Average and hints count the ${s.timedWins} wins since they were added.",
-                        "Wastani na madokezo vinahesabu ushindi ${s.timedWins} tangu viongezwe.",
-                    )
-                },
+                tr(
+                    "Average and hints count timed wins only, ${s.timedWins} of ${s.won}. Zen wins and older ones count as solved.",
+                    "Wastani na madokezo vinahesabu ushindi uliopimwa muda tu, ${s.timedWins} kati ya ${s.won}. " +
+                        "Ushindi wa hali ya utulivu na wa zamani unahesabiwa kama yaliyotatuliwa.",
+                ),
                 style = MaterialTheme.typography.bodySmall,
                 color = c.inkMuted,
             )

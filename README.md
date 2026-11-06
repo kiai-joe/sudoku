@@ -57,7 +57,23 @@ and install it, allowing "Install unknown apps" for your browser when asked. New
   - Medium: the 45 rule, with innies and outies.
   - Hard: classic techniques too.
   - Expert: the same with no printed numbers at all.
+- **Sudoku X.** Both long diagonals must hold 1 to 9 as well, drawn as faint lines across the board. Four levels, graded the same way, and hints know about the diagonals.
+- **Jigsaw.** The 3×3 boxes are replaced by nine odd shapes of nine cells, each holding 1 to 9. Every puzzle has its own new layout. Four levels, with hints that name the shapes.
+- **Enter a puzzle.** Type in one from a book or a newspaper. Sumi marks any repeated number, checks there's exactly one solution, grades it by technique, and then plays it with hints like any other game.
 - **Daily puzzles.** There are two each day, the same for everyone, made from the date so they work offline. The classic one rises from Easy on Monday to Expert on Sunday, and so does a daily Killer. Each has its own streak and calendar, and neither replaces your regular game.
+
+<table>
+  <tr>
+    <td><img src="app/src/test/screenshots/sudoku_x_light.png" width="200" alt="Sudoku X"></td>
+    <td><img src="app/src/test/screenshots/jigsaw_light.png" width="200" alt="Jigsaw"></td>
+    <td><img src="app/src/test/screenshots/enter_puzzle_light.png" width="200" alt="Entering a puzzle"></td>
+  </tr>
+  <tr>
+    <td align="center">Sudoku X</td>
+    <td align="center">Jigsaw</td>
+    <td align="center">Enter a puzzle</td>
+  </tr>
+</table>
 
 ### Playing
 
@@ -68,6 +84,7 @@ and install it, allowing "Install unknown apps" for your browser when asked. New
 - **Highlight a number.** Long-press a number key to light up every cell where that number can still go, and the cells that already hold it. Long-press it again to turn it off.
 - **Colour marks.** Long-press a cell to tint it green, then gold, then clear it, to keep track of chains and pairs. Marks are saved with the game and read out by screen readers.
 - **Timer.** It pauses when you leave, and a manual pause hides the board.
+- **Zen mode.** Turn it on in Settings for no timer, no mistake count and no mistake limit. Solves still count in your stats, just untimed.
 - **Saving.** The game is saved after every move.
 
 ### Learning
@@ -80,7 +97,7 @@ and install it, allowing "Install unknown apps" for your browser when asked. New
 
 ### Progress
 
-- **Stats per level.** Games played and solved, win rate, best and average time, and how often you solve without hints.
+- **Stats per level.** Games played and solved, win rate, best and average time, and how often you solve without hints, for each classic level and for Killer, Sudoku X and Jigsaw.
 - **25 achievements, shown as seals.** They range from a first solve to a 30-day streak. There are fast and clean solves, an Expert with mistakes hidden, a Swordfish puzzle, 100 solves, every lesson, a full Monday-to-Sunday week, and daily Killer streaks.
 - **A new phone keeps your progress.** Android's backup and phone-to-phone transfer include your progress, or you can save and restore a backup file from Settings.
 
@@ -163,9 +180,11 @@ APKs are signed with the debug key in `app/signing/debug.keystore`, so every bui
 app/src/main/java/com/kiaijoe/sudoku/
 ├── engine/          Pure Kotlin game logic, no Android dependencies
 │   ├── Grid.kt          Cell indexing, peers, solution check
+│   ├── Shape.kt         Which groups hold 1 to 9: classic, Sudoku X, Jigsaw layouts
 │   ├── Solver.kt        Bitmask backtracking solver and solution counter
 │   ├── LogicSolver.kt   Human-style solver that grades puzzles by technique
 │   ├── Generator.kt     Graded, unique-solution puzzle generator and levels
+│   ├── CustomPuzzle.kt  Checks and grades a puzzle typed in by the player
 │   ├── Killer.kt        Killer cages, cage combinations and the Killer generator
 │   ├── Hints.kt         Turns solver steps into explained, step-by-step hints
 │   ├── Tutorial.kt      Lessons, worked examples and practice puzzles
@@ -181,7 +200,7 @@ app/src/main/java/com/kiaijoe/sudoku/
 
 ### How puzzles are graded
 
-`LogicSolver` solves with pencil-mark candidates the way a person does, always using the easiest technique that makes progress. The hardest technique it needs sets the level. The generator digs clues out of a random grid while the solution stays unique, grades the result, and where logic gets stuck adds back the clue that lands the puzzle on the requested level. Easy puzzles keep at least 34 clues. A puzzle takes about 0–75 ms to generate on a desktop JVM, with Expert the slowest.
+`LogicSolver` solves with pencil-mark candidates the way a person does, always using the easiest technique that makes progress. The hardest technique it needs sets the level. The generator digs clues out of a random grid while the solution stays unique, grades the result, and where logic gets stuck adds back the clue that lands the puzzle on the requested level. Easy puzzles keep at least 34 clues. A puzzle takes about 0–75 ms to generate on a desktop JVM, with Expert the slowest. Jigsaw takes a second or two, because each one first needs a fresh layout that a full grid fits into.
 
 ## Credits
 
