@@ -76,13 +76,14 @@ fun LearnScreen(
     onBack: () -> Unit,
     onTab: ((Tab) -> Unit)? = null,
     done: Set<String> = emptySet(),
+    onCombinations: (() -> Unit)? = null,
 ) {
     BackHandler(onBack = onBack)
     val c = Sumi.colors
     val total = Tutorial.lessons.size
-    val finished = Tutorial.lessons.count { it.technique.name in done }
+    val finished = Tutorial.lessons.count { it.id in done }
     // The first lesson not yet finished, easiest first.
-    val next = Tutorial.lessons.indexOfFirst { it.technique.name !in done }
+    val next = Tutorial.lessons.indexOfFirst { it.id !in done }
     TabPage(Tab.Learn, onTab) {
         ScreenTitle(tr("Learn", "Jifunze"), tr("Short lessons, each on a real board.", "Masomo mafupi, kila moja kwenye ubao halisi."))
         Spacer(Modifier.height(16.dp))
@@ -118,7 +119,7 @@ fun LearnScreen(
             if (next >= 0) {
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    tr("Next up: ${Tutorial.lessons[next].technique.label}", "Linalofuata: ${Tutorial.lessons[next].technique.label}"),
+                    tr("Next up: ${Tutorial.lessons[next].title}", "Linalofuata: ${Tutorial.lessons[next].title}"),
                     style = MaterialTheme.typography.bodyMedium,
                     color = c.inkMuted,
                 )
@@ -138,14 +139,14 @@ fun LearnScreen(
             ListCard(
                 rows = lessons.map { (index, lesson) ->
                     @Composable {
-                        val isDone = lesson.technique.name in done
+                        val isDone = lesson.id in done
                         ListRow(
                             icon = when {
                                 isDone -> Lucide.Check
                                 killer -> icon
                                 else -> Lucide.BookOpen
                             },
-                            title = lesson.technique.label,
+                            title = lesson.title,
                             subtitle = lesson.summary,
                             iconColor = when {
                                 isDone -> c.matcha
@@ -176,6 +177,26 @@ fun LearnScreen(
                     }
                 },
             )
+            if (killer && onCombinations != null) {
+                Spacer(Modifier.height(12.dp))
+                ListCard(
+                    rows = listOf(
+                        @Composable {
+                            ListRow(
+                                icon = Lucide.Sigma,
+                                title = tr("Combinations cheat sheet", "Orodha ya michanganyiko"),
+                                subtitle = tr(
+                                    "Every way to make each sum, in 2 to 5 cells",
+                                    "Kila njia ya kupata kila jumla, katika visanduku 2 hadi 5",
+                                ),
+                                iconColor = c.shu,
+                                iconBackground = c.shuSoft,
+                                onClick = onCombinations,
+                            ) { RowChevron() }
+                        },
+                    ),
+                )
+            }
         }
     }
 }
@@ -266,7 +287,7 @@ fun LessonScreen(
                         val last = cards.last()
                         val row = Grid.row(last.placeCell) + 1
                         val col = Grid.col(last.placeCell) + 1
-                        val technique = lesson.technique.label.lowercase()
+                        val technique = (cards.getOrNull(example.start)?.technique ?: lesson.technique).label.lowercase()
                         tr(
                             "So row $row, column $col is ${last.placeDigit}." +
                                 if (cards.size > 1) " The $technique made that possible." else "",
@@ -319,12 +340,19 @@ fun LessonScreen(
             )
             Spacer(Modifier.height(6.dp))
             Text(
-                tr(
-                    "A fresh ${if (lesson.killer) "Killer " else ""}${lesson.level.label} puzzle that needs a " +
-                        "${lesson.technique.label.lowercase()} somewhere along the way.",
-                    "Fumbo jipya la ${if (lesson.killer) "Killer " else ""}${lesson.level.label} linalohitaji " +
-                        "${lesson.technique.label.lowercase()} mahali fulani njiani.",
-                ),
+                if (lesson.focus != null) {
+                    tr(
+                        "A fresh Killer ${lesson.level.label} puzzle where this comes up along the way.",
+                        "Fumbo jipya la Killer ${lesson.level.label} ambapo hili linajitokeza njiani.",
+                    )
+                } else {
+                    tr(
+                        "A fresh ${if (lesson.killer) "Killer " else ""}${lesson.level.label} puzzle that needs a " +
+                            "${lesson.technique.label.lowercase()} somewhere along the way.",
+                        "Fumbo jipya la ${if (lesson.killer) "Killer " else ""}${lesson.level.label} linalohitaji " +
+                            "${lesson.technique.label.lowercase()} mahali fulani njiani.",
+                    )
+                },
                 style = MaterialTheme.typography.bodySmall,
                 color = c.inkMuted,
                 modifier = width,
@@ -333,7 +361,7 @@ fun LessonScreen(
         if (onNextLesson != null) {
             Spacer(Modifier.height(12.dp))
             PillButton(
-                tr("Next: ${Tutorial.lessons[index + 1].technique.label}", "Linalofuata: ${Tutorial.lessons[index + 1].technique.label}"),
+                tr("Next: ${Tutorial.lessons[index + 1].title}", "Linalofuata: ${Tutorial.lessons[index + 1].title}"),
                 onNextLesson,
                 width,
                 tone = ButtonTone.Soft,
@@ -349,7 +377,7 @@ fun LessonScreen(
 
     Page {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            SumiTopBar(lesson.technique.label, onBack = onBack) {
+            SumiTopBar(lesson.title, onBack = onBack) {
                 if (cards.isNotEmpty()) {
                     SumiChip(tr("${minOf(step, cards.size - 1) + 1} of ${cards.size}", "${minOf(step, cards.size - 1) + 1} kati ya ${cards.size}"), tone = ChipTone.Ai)
                 }

@@ -24,6 +24,7 @@ import com.kiaijoe.sudoku.engine.Tutorial
 import com.kiaijoe.sudoku.ui.SudokuViewModel
 import com.kiaijoe.sudoku.ui.components.Tab
 import com.kiaijoe.sudoku.ui.screens.CalendarScreen
+import com.kiaijoe.sudoku.ui.screens.CombinationsScreen
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
 import com.kiaijoe.sudoku.ui.screens.LearnScreen
@@ -59,7 +60,7 @@ class MainActivity : ComponentActivity() {
     private fun Intent?.wantsDaily() = this?.getBooleanExtra(SumiWidget.EXTRA_OPEN_DAILY, false) == true
 }
 
-private enum class Screen { Home, Game, Stats, Calendar, Learn, Lesson, Settings }
+private enum class Screen { Home, Game, Stats, Calendar, Learn, Lesson, Settings, Combinations }
 
 /** The screen each tab of the floating bar opens. */
 private val Tab.screen: Screen
@@ -147,7 +148,9 @@ private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewM
                 onBack = { screen = Screen.Home },
                 onTab = onTab,
                 done = state.lessonsDone,
+                onCombinations = { screen = Screen.Combinations },
             )
+            Screen.Combinations -> CombinationsScreen(onBack = { screen = Screen.Learn })
             Screen.Lesson -> {
                 // Building an example replays a real puzzle, so do it off the main thread.
                 val example by produceState<Example?>(null, lessonIndex) {
@@ -164,7 +167,7 @@ private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewM
                         null
                     },
                     onBack = { screen = Screen.Learn },
-                    onComplete = { viewModel.completeLesson(Tutorial.lessons[lessonIndex].technique.name) },
+                    onComplete = { viewModel.completeLesson(Tutorial.lessons[lessonIndex].id) },
                     onPractice = if (Tutorial.hasPractice(Tutorial.lessons[lessonIndex])) {
                         {
                             viewModel.practice(Tutorial.lessons[lessonIndex])

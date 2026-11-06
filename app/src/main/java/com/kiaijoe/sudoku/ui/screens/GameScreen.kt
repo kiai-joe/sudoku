@@ -29,6 +29,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -129,6 +132,8 @@ fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
         LaunchedEffect(Unit) { onExit() }
         return
     }
+    // The combinations cheat sheet, opened over a Killer game.
+    var showCombinations by rememberSaveable { mutableStateOf(false) }
     Page {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
             SumiTopBar(
@@ -142,6 +147,13 @@ fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
                 if (game != null && game.status == GameStatus.PLAYING && !state.generating) {
                     if (!state.settings.instantCheck && !state.paused) {
                         IconTile(Lucide.CheckCheck, tr("Check", "Kagua"), onClick = actions::check)
+                    }
+                    if (game.isKiller && !state.paused) {
+                        IconTile(
+                            Lucide.Sigma,
+                            tr("Cage combinations", "Michanganyiko ya vizimba"),
+                            onClick = { showCombinations = true },
+                        )
                     }
                     IconTile(
                         if (state.paused) Lucide.Play else Lucide.Pause,
@@ -161,6 +173,17 @@ fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
 
     if (game != null && !state.generating) {
         EndDialogs(game, actions)
+    }
+    if (showCombinations && game != null) {
+        // Open on the selected cell's cage size, so its sum is right there.
+        val cageSize = state.selected?.let { cell -> game.cages.firstOrNull { cell in it.cells }?.cells?.size }
+        // Its own full-screen window, so the board underneath can't be tapped through it.
+        Dialog(
+            onDismissRequest = { showCombinations = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            CombinationsScreen(onBack = { showCombinations = false }, initialSize = (cageSize ?: 2).coerceIn(2, 5))
+        }
     }
 }
 

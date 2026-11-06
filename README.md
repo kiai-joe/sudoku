@@ -72,6 +72,8 @@ and install it, allowing "Install unknown apps" for your browser when asked. New
 
 - **Teaching hints.** A hint finds the easiest next step on your board, highlights the cells involved, and explains it in plain words ("In the centre box, 4 can only go in row 5…"). Candidates a step rules out are crossed out on the board. A wrong number is pointed out first. On a phone the hint slides up as a sheet, so the board stays in view.
 - **Lessons.** There's a lesson for every technique, each with a worked example from a real puzzle that you step through on the board. Learn tracks which lessons you've finished.
+- **A Killer course.** Nine lessons take you from the rules through cages with one answer, the last cell of a cage, cage combinations and how they meet the grid, to the 45 rule (innies, outies, and across several rows) and classic techniques in Killer.
+- **Combinations cheat sheet.** Every way to make each sum in 2 to 5 cells, with the one-answer sums marked and the numbers a sum always uses. Open it from Learn, or from the Σ button in any Killer game, where it opens on the size of the selected cell's cage.
 - **Practice.** **Practise on a new puzzle** starts a fresh puzzle that needs the lesson's technique.
 
 ### Progress

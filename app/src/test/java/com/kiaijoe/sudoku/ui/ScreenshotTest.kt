@@ -21,6 +21,7 @@ import com.kiaijoe.sudoku.engine.Progress
 import com.kiaijoe.sudoku.engine.Technique
 import com.kiaijoe.sudoku.engine.Tutorial
 import com.kiaijoe.sudoku.ui.screens.CalendarScreen
+import com.kiaijoe.sudoku.ui.screens.CombinationsScreen
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
 import com.kiaijoe.sudoku.ui.screens.LearnScreen
@@ -406,6 +407,47 @@ class ScreenshotTest {
         SettingsScreen(settings = Settings(), onChange = {}, onBack = {})
     }
 
+    // --- Killer course -------------------------------------------------------
+
+    /** The combinations cheat sheet, on three-cell cages. */
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun combinationsLight() = capture("combinations_light", dark = false) {
+        CombinationsScreen(onBack = {}, initialSize = 3)
+    }
+
+    @Test
+    fun combinationsDark() = capture("combinations_dark", dark = true) {
+        CombinationsScreen(onBack = {}, initialSize = 2)
+    }
+
+    /** The whole Learn list, with the Killer course and the cheat sheet row. */
+    @Test
+    @Config(qualifiers = "w411dp-h2600dp-xxhdpi")
+    fun learnFullLight() = capture("learn_full_light", dark = false) {
+        LearnScreen(onOpen = {}, onBack = {}, onTab = {}, done = Fixtures.lessonsDone, onCombinations = {})
+    }
+
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun lessonOutiesLight() = killerLesson("KILLER_OUTIES", "lesson_outies_light")
+
+    @Test
+    @Config(qualifiers = "w411dp-h1300dp-xxhdpi")
+    fun lessonOneAnswerLight() = killerLesson("KILLER_ONE_ANSWER", "lesson_one_answer_light")
+
+    private fun killerLesson(id: String, name: String) = capture(name, dark = false) {
+        val index = Tutorial.lessons.indexOfFirst { it.id == id }
+        LessonScreen(
+            index = index,
+            example = Tutorial.example(Tutorial.lessons[index]),
+            loading = false,
+            onNextLesson = {},
+            onBack = {},
+            onPractice = {},
+        )
+    }
+
     // --- Swahili -------------------------------------------------------------
 
     /** Runs [block] with the app in Swahili, as on a phone set to Kiswahili (Tanzania). */
@@ -578,7 +620,7 @@ private object Fixtures {
     }
 
     /** The first five lessons finished. */
-    val lessonsDone: Set<String> = Tutorial.lessons.take(5).map { it.technique.name }.toSet()
+    val lessonsDone: Set<String> = Tutorial.lessons.take(5).map { it.id }.toSet()
 
     /** A few achievements earned in late October and early November 2026. */
     val achievements: Map<Achievement, Long> = mapOf(
