@@ -206,7 +206,7 @@ class GameRepository(context: Context) {
         return isBest
     }
 
-    /** Lessons finished, by technique name. */
+    /** Lessons finished, by lesson id (the technique name for whole-technique lessons). */
     fun loadLessonsDone(): Set<String> = prefs.getStringSet(KEY_LESSONS_DONE, emptySet()).orEmpty().toSet()
 
     fun markLessonDone(technique: String) {

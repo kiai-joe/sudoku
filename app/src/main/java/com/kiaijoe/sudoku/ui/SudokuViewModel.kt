@@ -63,7 +63,7 @@ data class UiState(
     val killerStats: DifficultyStats = DifficultyStats(),
     val achievements: Map<Achievement, Long> = emptyMap(),
     val newAchievements: List<Achievement> = emptyList(),
-    /** Lessons finished, by technique name. */
+    /** Lessons finished, by lesson id (the technique name for whole-technique lessons). */
     val lessonsDone: Set<String> = emptySet(),
 ) {
     val canContinue: Boolean get() = savedGame?.status == GameStatus.PLAYING && !generating

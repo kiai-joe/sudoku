@@ -60,7 +60,7 @@ data class House(val kind: HouseKind, val index: Int) {
  * form the pattern (in a fixed order per technique), [houses] the rows,
  * columns and boxes involved, and [digits] the bitmask of digits it is about.
  */
-class Step(
+data class Step(
     val technique: Technique,
     val cell: Int = -1,
     val digit: Int = 0,

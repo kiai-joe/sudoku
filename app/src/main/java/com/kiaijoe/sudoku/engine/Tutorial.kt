@@ -3,14 +3,19 @@ package com.kiaijoe.sudoku.engine
 import kotlin.random.Random
 
 /**
- * One technique in the Learn section.
+ * One lesson in the Learn section.
  *
  * The worked example is a position from a real generated puzzle: generate
  * [level] with seed [seed], then make [moves] hinted moves. The next hint
- * then starts with [technique]. The generator is deterministic, so this is
- * the same position on every device; TutorialTest checks it still holds.
- * [seed] is null when the technique has no example (see HIDDEN_QUAD).
- * Killer lessons use a Killer puzzle at [level] instead.
+ * then has a step using [technique] (and, with a [focus], the kind of step
+ * the lesson is about), where the lesson opens. The generator is
+ * deterministic, so this is the same position on every device; TutorialTest
+ * checks it still holds. [seed] is null when the technique has no example
+ * (see HIDDEN_QUAD). Killer lessons use a Killer puzzle at [level] instead.
+ *
+ * [id] is how a finished lesson is saved; it's the technique's name for the
+ * lessons that teach a whole technique, so older progress still counts.
+ * [titleEn] names the lesson when it isn't simply the technique.
  */
 data class Lesson(
     val technique: Technique,
@@ -22,12 +27,95 @@ data class Lesson(
     val killer: Boolean = false,
     val summarySw: String = summaryEn,
     val introSw: String = introEn,
+    val id: String = technique.name,
+    val focus: KillerFocus? = null,
+    val titleEn: String? = null,
+    val titleSw: String? = null,
 ) {
+    /** The lesson's name, in the phone's language. */
+    val title: String get() = if (titleEn == null) technique.label else tr(titleEn, titleSw ?: titleEn)
+
     /** A one-line description, in the phone's language. */
     val summary: String get() = tr(summaryEn, summarySw)
 
     /** How the technique works, in the phone's language. */
     val intro: String get() = tr(introEn, introSw)
+
+    /** Whether [step] is the kind of step this lesson teaches. [game] is the board before it, when known. */
+    fun teaches(step: Step, game: GameState? = null): Boolean =
+        focus?.matches(step, game) ?: (step.technique == technique)
+}
+
+/**
+ * The kinds of step the Killer course teaches, beyond the technique alone,
+ * so each lesson's example opens on a step that shows its idea.
+ */
+enum class KillerFocus {
+    /** Any cage step: the first look at a Killer. */
+    RULES,
+
+    /** A cage whose sum can be made only one way for its size, such as 3 in two cells (1+2). */
+    ONE_ANSWER,
+
+    /** A cage with one empty cell, which is its sum minus the rest. */
+    LAST_CELL,
+
+    /** A cage whose sum allows several sets, narrowed by what its cells can still hold. */
+    MEETS_GRID,
+
+    /** The 45 rule on one row, column or box, with cells poking in. */
+    INNIES,
+
+    /** The 45 rule with cells sticking out. */
+    OUTIES,
+
+    /** The 45 rule across two or more rows or columns. */
+    MANY_LINES,
+
+    /** A classic technique (pointing, pairs, triples) in a Killer puzzle. */
+    CLASSIC,
+    ;
+
+    fun matches(step: Step, game: GameState? = null): Boolean {
+        val cage = step.cage
+        val ff = step.fortyFive
+        return when (this) {
+            RULES -> step.technique == Technique.CAGE
+            ONE_ANSWER -> step.technique == Technique.CAGE && cage != null && !step.isPlacement &&
+                ways(cage.cells.size, cage.sum) == 1 && (game == null || cage.cells.all { game.values[it] == 0 })
+            // The solver rules out everything else in the last cell (then places it as a single).
+            LAST_CELL -> step.technique == Technique.CAGE && cage != null && cage.cells.size >= 2 &&
+                step.eliminations.size == 1 && cage.cells.containsAll(step.eliminations.keys) &&
+                (game == null || cage.cells.count { game.values[it] == 0 } == 1)
+            MEETS_GRID -> step.technique == Technique.CAGE && cage != null && !step.isPlacement &&
+                ways(cage.cells.size, cage.sum) > 1 && (game == null || ruledOutByTheGrid(step, cage, game))
+            INNIES -> step.technique == Technique.FORTY_FIVE && ff != null && !ff.outies && ff.houses.size == 1
+            OUTIES -> step.technique == Technique.FORTY_FIVE && ff != null && ff.outies
+            MANY_LINES -> step.technique == Technique.FORTY_FIVE && ff != null && ff.houses.size >= 2
+            CLASSIC -> step.technique in CLASSIC_TECHNIQUES
+        }
+    }
+
+    companion object {
+        private val CLASSIC_TECHNIQUES = setOf(
+            Technique.POINTING, Technique.CLAIMING, Technique.NAKED_PAIR, Technique.HIDDEN_PAIR, Technique.NAKED_TRIPLE,
+        )
+
+        /** How many sets of [size] different numbers add up to [sum]. */
+        fun ways(size: Int, sum: Int): Int = Killer.combinations(List(size) { Grid.ALL_DIGITS }, sum, 0).size
+
+        /**
+         * Whether [step] rules out a number that the cage's sum alone would
+         * allow, so the row, column or box had a say.
+         */
+        private fun ruledOutByTheGrid(step: Step, cage: Cage, game: GameState): Boolean {
+            val open = cage.cells.filter { game.values[it] == 0 }
+            val placed = cage.cells.map { game.values[it] }.filter { it != 0 }
+            if (placed.isNotEmpty() || open.size < 2) return false
+            val bySum = Killer.combinations(List(open.size) { Grid.ALL_DIGITS }, cage.sum, 0).fold(0) { m, c -> m or c }
+            return step.eliminations.values.any { it and bySum != 0 }
+        }
+    }
 }
 
 /**
@@ -177,6 +265,42 @@ object Tutorial {
         ),
         Lesson(
             Technique.CAGE,
+            id = "KILLER_RULES",
+            focus = KillerFocus.RULES,
+            titleEn = "How Killer works",
+            titleSw = "Jinsi Killer inavyofanya kazi",
+            summaryEn = "Killer: cages, sums and no repeats",
+            summarySw = "Killer: vizimba, jumla na kutorudia",
+            introEn = "Killer Sudoku keeps every Sudoku rule: each row, column and box holds 1 to 9 once. On top of that, the grid is split into cages drawn with dashed lines. The small number in a cage's corner is the sum of its cells, and a number can't repeat inside a cage. There are few printed numbers, or none, so the sums are your clues. Start with the cages that leave the fewest choices, small cages with very small or very large sums, and work outwards from them. Use pencil marks freely: Killer is solved more by narrowing down candidates than by spotting singles.",
+            introSw = "Killer Sudoku inafuata kila kanuni ya Sudoku: kila mstari, safu na sanduku lina 1 hadi 9 mara moja. Zaidi ya hapo, gridi imegawanywa katika vizimba vilivyochorwa kwa mistari ya vitone. Namba ndogo kwenye kona ya kizimba ni jumla ya visanduku vyake, na namba haiwezi kujirudia ndani ya kizimba. Kuna namba chache zilizochapishwa, au hakuna kabisa, kwa hiyo jumla ndizo vidokezo vyako. Anza na vizimba vinavyoacha machaguo machache zaidi, vizimba vidogo vyenye jumla ndogo sana au kubwa sana, kisha endelea kutoka hapo. Tumia alama za penseli bila kusita: Killer hutatuliwa zaidi kwa kupunguza uwezekano kuliko kwa kutafuta namba pekee.",
+            level = Difficulty.EASY, seed = SEED_KILLER_RULES, moves = MOVES_KILLER_RULES, killer = true,
+        ),
+        Lesson(
+            Technique.CAGE,
+            id = "KILLER_ONE_ANSWER",
+            focus = KillerFocus.ONE_ANSWER,
+            titleEn = "Cages with one answer",
+            titleSw = "Vizimba vyenye jibu moja",
+            summaryEn = "Killer: sums that can be made only one way",
+            summarySw = "Killer: jumla zinazopatikana kwa njia moja tu",
+            introEn = "Some sums can be made only one way. In two cells, 3 is 1+2, 4 is 1+3, 16 is 7+9 and 17 is 8+9. In three cells, 6 is 1+2+3, 7 is 1+2+4, 23 is 6+8+9 and 24 is 7+8+9. In four cells, 10 is 1+2+3+4, 11 is 1+2+3+5, 29 is 5+7+8+9 and 30 is 6+7+8+9. When you see one, you know exactly which numbers the cage holds, and only their order is left. Every other number can be crossed out of its cells. The combinations cheat sheet lists them all.",
+            introSw = "Baadhi ya jumla zinapatikana kwa njia moja tu. Katika visanduku viwili, 3 ni 1+2, 4 ni 1+3, 16 ni 7+9 na 17 ni 8+9. Katika visanduku vitatu, 6 ni 1+2+3, 7 ni 1+2+4, 23 ni 6+8+9 na 24 ni 7+8+9. Katika visanduku vinne, 10 ni 1+2+3+4, 11 ni 1+2+3+5, 29 ni 5+7+8+9 na 30 ni 6+7+8+9. Ukiona kimoja, unajua hasa namba zilizomo kwenye kizimba, na kinachobaki ni mpangilio wake tu. Kila namba nyingine inaweza kukatwa katika visanduku vyake. Orodha ya michanganyiko inazionyesha zote.",
+            level = Difficulty.EASY, seed = SEED_KILLER_ONE_ANSWER, moves = MOVES_KILLER_ONE_ANSWER, killer = true,
+        ),
+        Lesson(
+            Technique.CAGE,
+            id = "KILLER_LAST_CELL",
+            focus = KillerFocus.LAST_CELL,
+            titleEn = "The last cell of a cage",
+            titleSw = "Kisanduku cha mwisho cha kizimba",
+            summaryEn = "Killer: the sum minus what's already placed",
+            summarySw = "Killer: jumla kutoa zilizokwisha wekwa",
+            introEn = "When every cell of a cage but one is filled, the last cell is simply the cage's sum minus the numbers already in it. A cage of 15 holding 4 and 3 has 8 in its last cell. Look for these after every number you place in a cage, because one often leads to the next.",
+            introSw = "Visanduku vyote vya kizimba vikijazwa isipokuwa kimoja, kisanduku cha mwisho ni jumla ya kizimba kutoa namba zilizokwisha kuwemo. Kizimba cha 15 chenye 4 na 3 kina 8 katika kisanduku chake cha mwisho. Tafuta hivi baada ya kila namba unayoweka kwenye kizimba, kwa sababu kimoja mara nyingi huleta kingine.",
+            level = Difficulty.EASY, seed = SEED_KILLER_LAST_CELL, moves = MOVES_KILLER_LAST_CELL, killer = true,
+        ),
+        Lesson(
+            Technique.CAGE,
             summaryEn = "Killer: what a cage's sum allows",
             introEn = "In Killer Sudoku each dashed cage shows the sum of its cells, and a number can't repeat " +
                 "inside a cage. Small sums and large sums leave few choices: two cells adding to 3 can only be " +
@@ -187,7 +311,22 @@ object Tutorial {
             introSw = "Katika Killer Sudoku kila kizimba cha mistari ya vitone kinaonyesha jumla ya visanduku vyake, na namba haiwezi kujirudia ndani ya kizimba. Jumla ndogo na jumla kubwa huacha machaguo machache: visanduku viwili vyenye jumla ya 3 vinaweza kuwa 1 na 2 tu, na viwili vyenye jumla ya 17 vinaweza kuwa 8 na 9 tu. Angalia ni seti zipi za namba zinazotoa jumla hiyo kwa kile ambacho kila kisanduku bado kinaweza kushika, na ukate zilizobaki.",
         ),
         Lesson(
+            Technique.CAGE,
+            id = "KILLER_GRID",
+            focus = KillerFocus.MEETS_GRID,
+            titleEn = "Combinations meet the grid",
+            titleSw = "Michanganyiko na gridi",
+            summaryEn = "Killer: a cage's sets checked against its row, column and box",
+            summarySw = "Killer: seti za kizimba zikilinganishwa na mstari, safu na sanduku lake",
+            introEn = "Most sums can be made several ways: 10 in two cells could be 1+9, 2+8, 3+7 or 4+6. Don't stop at the list. Check each set against what the cage's cells can still hold. If both cells are in a row that already has a 9 and an 8, then 1+9 and 2+8 are out, and so are 1 and 2 in those cells. The fewer sets survive, the fewer numbers each cell can take.",
+            introSw = "Jumla nyingi zinapatikana kwa njia kadhaa: 10 katika visanduku viwili inaweza kuwa 1+9, 2+8, 3+7 au 4+6. Usiishie kwenye orodha. Linganisha kila seti na kile ambacho visanduku vya kizimba bado vinaweza kushika. Ikiwa visanduku vyote viwili viko kwenye mstari ambao tayari una 9 na 8, basi 1+9 na 2+8 haziwezekani, na hivyo hivyo 1 na 2 katika visanduku hivyo. Kadiri seti chache zinavyobaki, ndivyo namba chache kila kisanduku kinavyoweza kuchukua.",
+            level = Difficulty.EASY, seed = SEED_KILLER_GRID, moves = MOVES_KILLER_GRID, killer = true,
+        ),
+        Lesson(
             Technique.FORTY_FIVE,
+            focus = KillerFocus.INNIES,
+            titleEn = "The 45 rule: innies",
+            titleSw = "Kanuni ya 45: visanduku vya ndani",
             summaryEn = "Killer: every row, column and box adds up to 45",
             introEn = "The numbers 1 to 9 add up to 45, so every row, column and box does too, and k of them " +
                 "together add up to 45 × k. Add up the cages that sit entirely inside such an area. Whatever is " +
@@ -197,6 +336,42 @@ object Tutorial {
             level = Difficulty.MEDIUM, seed = 0, moves = 6, killer = true,
             summarySw = "Killer: kila mstari, safu na sanduku lina jumla ya 45",
             introSw = "Namba 1 hadi 9 zina jumla ya 45, kwa hiyo kila mstari, safu na sanduku lina jumla hiyo pia, na k kati yake kwa pamoja zina jumla ya 45 × k. Jumlisha vizimba vilivyo ndani kabisa ya eneo kama hilo. Kinachokosekana lazima kitoke kwenye visanduku vichache vya vizimba vingine vinavyoingia ndani. Vivyo hivyo, visanduku vya vizimba vinavyovuka vinavyotokeza nje lazima vijaze sehemu iliyobaki ya jumla za vizimba hivyo. Vikiwa kimoja au viwili tu, hii huvibainisha.",
+        ),
+        Lesson(
+            Technique.FORTY_FIVE,
+            id = "KILLER_OUTIES",
+            focus = KillerFocus.OUTIES,
+            titleEn = "The 45 rule: outies",
+            titleSw = "Kanuni ya 45: visanduku vya nje",
+            summaryEn = "Killer: the cells that stick out of an area",
+            summarySw = "Killer: visanduku vinavyotokeza nje ya eneo",
+            introEn = "Turn the 45 rule around. Take a row, column or box and every cage that has a cell in it. Those cages add up to their sums, and the area adds up to 45, so the difference is in the cells that stick out of the area: the outies. If the cages covering a box add up to 52, the cells sticking out of it hold 52 minus 45, which is 7. With one outie that's its number; with two, they make 7 between them.",
+            introSw = "Geuza kanuni ya 45. Chukua mstari, safu au sanduku na kila kizimba chenye kisanduku ndani yake. Vizimba hivyo vina jumla zake, na eneo lina jumla ya 45, kwa hiyo tofauti iko kwenye visanduku vinavyotokeza nje ya eneo hilo. Ikiwa vizimba vinavyofunika sanduku vina jumla ya 52, visanduku vinavyotokeza nje vina 52 kutoa 45, yaani 7. Kikiwa kimoja tu, hiyo ndiyo namba yake; vikiwa viwili, kwa pamoja vinatoa 7.",
+            level = Difficulty.MEDIUM, seed = SEED_KILLER_OUTIES, moves = MOVES_KILLER_OUTIES, killer = true,
+        ),
+        Lesson(
+            Technique.FORTY_FIVE,
+            id = "KILLER_MANY_LINES",
+            focus = KillerFocus.MANY_LINES,
+            titleEn = "The 45 rule across rows",
+            titleSw = "Kanuni ya 45 katika mistari kadhaa",
+            summaryEn = "Killer: two rows make 90, three make 135",
+            summarySw = "Killer: mistari miwili ni 90, mitatu ni 135",
+            introEn = "Two rows add up to 90, three to 135, and so on: 45 for each row or column you take together. A bigger area swallows more cages whole, which leaves fewer innies and outies, so when one row isn't enough, try two or three side by side. This is how Expert Killers, which have no printed numbers at all, get started.",
+            introSw = "Mistari miwili ina jumla ya 90, mitatu 135, na kuendelea: 45 kwa kila mstari au safu unayochukua pamoja. Eneo kubwa zaidi humeza vizimba vingi kamili, jambo linaloacha visanduku vichache vya ndani na vya nje, kwa hiyo mstari mmoja usipotosha, jaribu miwili au mitatu ubavu kwa ubavu. Hivi ndivyo Killer za Bingwa, zisizo na namba zilizochapishwa kabisa, zinavyoanzishwa.",
+            level = Difficulty.EXPERT, seed = SEED_KILLER_MANY_LINES, moves = MOVES_KILLER_MANY_LINES, killer = true,
+        ),
+        Lesson(
+            Technique.POINTING,
+            id = "KILLER_CLASSIC",
+            focus = KillerFocus.CLASSIC,
+            titleEn = "Classic techniques in Killer",
+            titleSw = "Mbinu za kawaida katika Killer",
+            summaryEn = "Killer: pointing and pairs on top of cage logic",
+            summarySw = "Killer: kuelekeza na jozi juu ya mantiki ya vizimba",
+            introEn = "Cage logic takes you far, but Hard and Expert Killers also need classic Sudoku techniques. Once the cages have narrowed the candidates, look for the same patterns as in a classic puzzle: a number pinned to one line inside a box (pointing), or two cells sharing the same two numbers (a naked pair). Cages make these easier to spot, because a cage of 3 in two cells is already a pair of 1 and 2.",
+            introSw = "Mantiki ya vizimba inakufikisha mbali, lakini Killer za Ngumu na Bingwa pia zinahitaji mbinu za kawaida za Sudoku. Vizimba vikishapunguza uwezekano, tafuta mifumo ileile ya fumbo la kawaida: namba iliyobanwa kwenye mstari mmoja ndani ya sanduku (kuelekeza), au visanduku viwili vyenye namba mbili zilezile (jozi wazi). Vizimba hufanya hivi kuonekana kwa urahisi zaidi, kwa sababu kizimba cha 3 katika visanduku viwili tayari ni jozi ya 1 na 2.",
+            level = Difficulty.HARD, seed = SEED_KILLER_CLASSIC, moves = MOVES_KILLER_CLASSIC, killer = true,
         ),
     )
 
@@ -217,7 +392,7 @@ object Tutorial {
      */
     fun practice(lesson: Lesson, random: Random = Random.Default, attempts: Int = PRACTICE_ATTEMPTS): Practice {
         fun generate(r: Random) = if (lesson.killer) Killer.generate(lesson.level, r) else Generator.generate(lesson.level, r)
-        fun uses(puzzle: Puzzle) = LogicSolver.grade(puzzle.givens, puzzle.cages).count(lesson.technique) > 0
+        fun uses(puzzle: Puzzle) = LogicSolver.grade(puzzle.givens, puzzle.cages).steps.any { lesson.teaches(it) }
 
         val seeds = PRACTICE_SEEDS[lesson.technique].orEmpty()
         var last: Puzzle? = null
@@ -229,6 +404,24 @@ object Tutorial {
         if (seeds.isNotEmpty()) return Practice(generate(Random(seeds.random(random))), true)
         return Practice(last ?: generate(random), false)
     }
+
+    // Where each Killer course lesson's example comes from: a seed and a number
+    // of hinted moves, found by searching generated Killer puzzles for a
+    // position whose next hint opens on the lesson's kind of step.
+    private const val SEED_KILLER_RULES = 6
+    private const val MOVES_KILLER_RULES = 0
+    private const val SEED_KILLER_ONE_ANSWER = 11
+    private const val MOVES_KILLER_ONE_ANSWER = 0
+    private const val SEED_KILLER_LAST_CELL = 0
+    private const val MOVES_KILLER_LAST_CELL = 7
+    private const val SEED_KILLER_GRID = 4
+    private const val MOVES_KILLER_GRID = 14
+    private const val SEED_KILLER_OUTIES = 3
+    private const val MOVES_KILLER_OUTIES = 16
+    private const val SEED_KILLER_MANY_LINES = 6
+    private const val MOVES_KILLER_MANY_LINES = 11
+    private const val SEED_KILLER_CLASSIC = 15
+    private const val MOVES_KILLER_CLASSIC = 24
 
     private const val PRACTICE_ATTEMPTS = 12
 
@@ -278,6 +471,12 @@ object Tutorial {
             game = game.place(last.placeCell, last.placeDigit, mistakeLimit = null, autoRemoveNotes = true)
         }
         val cards = (Hints.forGame(game) as? HintPlan.Teach)?.cards ?: return null
-        return Example(game, cards, start = cards.indexOfFirst { it.technique == lesson.technique }.coerceAtLeast(0))
+        return Example(game, cards, start = startOf(lesson, game, cards).coerceAtLeast(0))
+    }
+
+    /** The first of [cards] that shows what [lesson] teaches, or -1. */
+    fun startOf(lesson: Lesson, game: GameState, cards: List<HintCard>): Int = cards.indexOfFirst { card ->
+        val step = card.step
+        if (step == null) lesson.focus == null && card.technique == lesson.technique else lesson.teaches(step, game)
     }
 }

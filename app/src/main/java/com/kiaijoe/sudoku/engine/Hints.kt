@@ -8,6 +8,8 @@ package com.kiaijoe.sudoku.engine
  * @property eliminations cell to the digits this step rules out there.
  * @property candidates cell to the candidates worth showing in pattern cells.
  * @property placeCell where a digit is placed, or -1 for an elimination step.
+ * @property step the solver step behind the card, or null for a card that
+ *   sums up several steps (or reveals a cell).
  */
 data class HintCard(
     val technique: Technique?,
@@ -19,6 +21,7 @@ data class HintCard(
     val candidates: Map<Int, Int> = emptyMap(),
     val placeCell: Int = -1,
     val placeDigit: Int = 0,
+    val step: Step? = null,
 ) {
     val isPlacement get() = placeCell >= 0
 }
@@ -144,6 +147,7 @@ object Hints {
             candidates = shown,
             placeCell = step.cell,
             placeDigit = step.digit,
+            step = step,
         )
     }
 
