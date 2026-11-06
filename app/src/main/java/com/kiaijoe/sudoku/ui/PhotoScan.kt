@@ -66,7 +66,7 @@ object PhotoScan {
         gray(upright)
     }.getOrNull()
 
-    private fun gray(bitmap: Bitmap): GrayImage {
+    internal fun gray(bitmap: Bitmap): GrayImage {
         val w = bitmap.width
         val h = bitmap.height
         val argb = IntArray(w * h)

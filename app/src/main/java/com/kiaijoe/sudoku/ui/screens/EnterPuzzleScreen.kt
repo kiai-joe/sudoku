@@ -139,7 +139,8 @@ fun EnterPuzzleScreen(
                     unsure = scan.unsure
                     photo = PhotoScan.bitmap(scan.grid).asImageBitmap()
                     selected = 0
-                    result = null
+                    // Checked straight away: a misread number often leaves no solution, or a clash, which shows at once.
+                    result = withContext(Dispatchers.Default) { CustomPuzzle.check(scan.digits) }
                     val found = scan.digits.count { it != 0 }
                     scanNote = if (scan.unsure.isEmpty()) {
                         tr(
