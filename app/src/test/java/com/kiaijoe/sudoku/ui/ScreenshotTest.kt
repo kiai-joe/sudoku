@@ -1,6 +1,21 @@
 package com.kiaijoe.sudoku.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import com.kiaijoe.sudoku.ui.components.HanamaruFrame
+import com.kiaijoe.sudoku.ui.theme.Sumi
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
@@ -277,6 +292,27 @@ class ScreenshotTest {
             onExit = {},
             onReplay = {},
         )
+    }
+
+    /** The hanamaru's animation, frame by frame: ink bleeds, the brush draws, the stamp presses and petals scatter. */
+    @Test
+    @Config(qualifiers = "w411dp-h640dp-xxhdpi")
+    fun hanamaruFramesLight() = capture("hanamaru_frames_light", dark = false) {
+        val c = Sumi.colors
+        Column(Modifier.fillMaxSize().background(c.paper).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            listOf(listOf(120f, 450f, 800f), listOf(1150f, 1400f, 1700f), listOf(2000f)).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    row.forEach { ms ->
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(Modifier.size(110.dp).background(c.surface), contentAlignment = Alignment.Center) {
+                                HanamaruFrame(c.shu, ms, Modifier.size(88.dp))
+                            }
+                            Text("${ms.toInt()} ms", style = MaterialTheme.typography.labelMedium, color = c.inkMuted)
+                        }
+                    }
+                }
+            }
+        }
     }
 
     /** Watching a solve back, partway through, with its moments listed below. */
