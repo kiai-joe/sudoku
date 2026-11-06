@@ -1,6 +1,19 @@
 package com.kiaijoe.sudoku.ui.screens
 
 import androidx.activity.compose.BackHandler
+import android.content.ActivityNotFoundException
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import com.kiaijoe.sudoku.engine.Scanner
+import com.kiaijoe.sudoku.ui.PhotoScan
+import com.kiaijoe.sudoku.ui.components.Overline
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -59,13 +72,17 @@ import kotlinx.coroutines.withContext
 private fun parse(text: String): IntArray = IntArray(Grid.CELLS) { text.getOrNull(it)?.digitToIntOrNull() ?: 0 }
 
 /**
- * The board being typed in, drawn as a game: every number in indigo, and any
- * that repeats in a row, column or box marked wrong.
+ * The board being typed in, drawn as a game: every number in indigo, any
+ * that repeats in a row, column or box marked wrong, and numbers a scan
+ * wasn't sure of tinted gold.
  */
-private fun entryBoard(values: IntArray): GameState {
+private fun entryBoard(values: IntArray, unsure: Set<Int>): GameState {
     val clashes = CustomPuzzle.clashes(values)
     val solution = IntArray(Grid.CELLS) { if (it in clashes) 0 else values[it] }
-    return GameState.from(Puzzle(IntArray(Grid.CELLS), solution, Difficulty.EASY)).copy(values = values.toList())
+    return GameState.from(Puzzle(IntArray(Grid.CELLS), solution, Difficulty.EASY)).copy(
+        values = values.toList(),
+        marks = if (unsure.isEmpty()) emptyList() else List(Grid.CELLS) { if (it in unsure) 2 else 0 },
+    )
 }
 
 /**
@@ -79,6 +96,7 @@ fun EnterPuzzleScreen(
     replacesGame: Boolean,
     initial: String = "",
     initialSelected: Int = 0,
+    initialUnsure: Set<Int> = emptySet(),
 ) {
     BackHandler(onBack = onBack)
     val c = Sumi.colors
@@ -86,13 +104,65 @@ fun EnterPuzzleScreen(
     var selected by rememberSaveable { mutableIntStateOf(initialSelected) }
     var result by remember { mutableStateOf<CustomCheck?>(null) }
     var checking by remember { mutableStateOf(false) }
+    // From the last scan: numbers it wasn't sure of, the straightened photo, and what it found.
+    var unsure by remember { mutableStateOf(initialUnsure) }
+    var photo by remember { mutableStateOf<ImageBitmap?>(null) }
+    var scanNote by remember { mutableStateOf<String?>(null) }
+    var scanning by remember { mutableStateOf(false) }
+    var cameraUri by rememberSaveable { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val values = parse(text)
     val clues = values.count { it != 0 }
 
     fun set(cell: Int, digit: Int) {
         text = text.substring(0, cell) + digit + text.substring(cell + 1)
+        unsure = unsure - cell
         result = null
+    }
+
+    fun read(uri: Uri) {
+        scanning = true
+        scanNote = null
+        scope.launch {
+            val image = withContext(Dispatchers.Default) { PhotoScan.load(context, uri) }
+            val scan = image?.let { withContext(Dispatchers.Default) { Scanner.scan(it, PhotoScan.reader(context)) } }
+            scanning = false
+            when {
+                image == null -> scanNote = tr("That photo couldn't be opened.", "Picha hiyo haikuweza kufunguliwa.")
+                scan == null -> scanNote = tr(
+                    "No Sudoku grid found in that photo. Try again with the whole grid in view, flat and well lit.",
+                    "Hakuna gridi ya Sudoku kwenye picha hiyo. Jaribu tena gridi yote ikionekana, ikiwa bapa na yenye mwanga.",
+                )
+                else -> {
+                    text = scan.digits.joinToString("")
+                    unsure = scan.unsure
+                    photo = PhotoScan.bitmap(scan.grid).asImageBitmap()
+                    selected = 0
+                    result = null
+                    val found = scan.digits.count { it != 0 }
+                    scanNote = if (scan.unsure.isEmpty()) {
+                        tr(
+                            "Read $found numbers. Check them against your photo below, then tap Check.",
+                            "Namba $found zimesomwa. Zilinganishe na picha yako hapa chini, kisha gusa Kagua.",
+                        )
+                    } else {
+                        tr(
+                            "Read $found numbers. The ${scan.unsure.size} in gold may be wrong: check them against your photo below.",
+                            "Namba $found zimesomwa. Zile ${scan.unsure.size} za dhahabu huenda si sahihi: zilinganishe na picha yako hapa chini.",
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    val takePhoto = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { saved ->
+        val uri = cameraUri
+        if (saved && uri != null) read(Uri.parse(uri))
+    }
+    val pickPhoto = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) read(uri)
     }
 
     Page {
@@ -108,15 +178,53 @@ fun EnterPuzzleScreen(
                 Column(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
                     Text(
                         tr(
-                            "Tap a cell and a number. The next cell is selected for you, so you can type a row at a time.",
-                            "Gusa kisanduku kisha namba. Kisanduku kinachofuata huchaguliwa, hivyo unaweza kuandika mstari mzima.",
+                            "Scan it from a photo, or tap a cell and a number. The next cell is selected for you, so you can type a row at a time.",
+                            "Lichanganue kutoka picha, au gusa kisanduku kisha namba. Kisanduku kinachofuata huchaguliwa, hivyo unaweza kuandika mstari mzima.",
                         ),
                         style = MaterialTheme.typography.bodyMedium,
                         color = c.inkMuted,
                     )
                     Spacer(Modifier.height(12.dp))
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PillButton(
+                            tr("Camera", "Kamera"),
+                            {
+                                try {
+                                    val uri = PhotoScan.newPhotoUri(context)
+                                    cameraUri = uri.toString()
+                                    takePhoto.launch(uri)
+                                } catch (e: ActivityNotFoundException) {
+                                    scanNote = tr("This phone has no camera app to take the photo.", "Simu hii haina programu ya kamera ya kupiga picha.")
+                                }
+                            },
+                            Modifier.weight(1f),
+                            tone = ButtonTone.Outline,
+                            icon = Lucide.Camera,
+                            height = 44.dp,
+                            enabled = !scanning,
+                        )
+                        PillButton(
+                            tr("Photos", "Picha"),
+                            { pickPhoto.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
+                            Modifier.weight(1f),
+                            tone = ButtonTone.Outline,
+                            icon = Lucide.Image,
+                            height = 44.dp,
+                            enabled = !scanning,
+                        )
+                    }
+                    if (scanning || scanNote != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Text(
+                            if (scanning) tr("Reading the photo…", "Inasoma picha…") else scanNote.orEmpty(),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = c.ink,
+                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                        )
+                    }
+                    Spacer(Modifier.height(12.dp))
                     SudokuBoard(
-                        game = entryBoard(values),
+                        game = entryBoard(values, unsure),
                         selected = selected,
                         highlightSameNumbers = false,
                         onSelect = { selected = it },
@@ -150,6 +258,9 @@ fun EnterPuzzleScreen(
                                 text = "0".repeat(Grid.CELLS)
                                 selected = 0
                                 result = null
+                                unsure = emptySet()
+                                photo = null
+                                scanNote = null
                             },
                             tone = ButtonTone.Ghost,
                             height = 44.dp,
@@ -173,6 +284,16 @@ fun EnterPuzzleScreen(
                     result?.let { r ->
                         Spacer(Modifier.height(16.dp))
                         CheckResult(r, replacesGame, onPlay)
+                    }
+                    photo?.let { bitmap ->
+                        Spacer(Modifier.height(24.dp))
+                        Overline(tr("Your photo, straightened", "Picha yako, imenyooshwa"))
+                        Spacer(Modifier.height(8.dp))
+                        Image(
+                            bitmap = bitmap,
+                            contentDescription = tr("The scanned grid, to compare with the board", "Gridi iliyochanganuliwa, ya kulinganisha na ubao"),
+                            modifier = Modifier.fillMaxWidth().aspectRatio(1f).clip(CardShape),
+                        )
                     }
                     Spacer(Modifier.height(24.dp))
                 }

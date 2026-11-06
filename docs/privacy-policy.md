@@ -1,6 +1,6 @@
 # Sumi privacy policy
 
-*Last updated: 5 November 2026*
+*Last updated: 6 November 2026*
 
 Sumi is a Sudoku game for Android. This policy explains what happens to your information when you use it. The short version: **Sumi collects nothing, works entirely offline and has no ads.**
 
@@ -18,6 +18,10 @@ To let you carry on where you left off, Sumi keeps these on your device, in stor
 - which lessons you have finished
 
 If you add Sumi's home-screen widgets, they show today's daily puzzle, your streak and this week's solved days from the same stored information. This information never leaves your phone through Sumi. Puzzles, including the daily puzzle, are made on your phone, so no network is needed.
+
+## Scanning a puzzle
+
+*Enter a puzzle* can read a puzzle from a photo. Sumi doesn't use the camera itself, so it needs no camera permission: it asks your phone's camera app to take the picture, or lets you choose one in Android's photo picker, which shares only the photo you pick. Sumi reads the photo on your phone to find the numbers and keeps only the latest camera photo, in its private cache, until the next scan. Nothing is sent anywhere.
 
 ## Backups
 

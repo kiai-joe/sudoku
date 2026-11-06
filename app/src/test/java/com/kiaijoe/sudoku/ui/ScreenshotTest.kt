@@ -217,6 +217,14 @@ class ScreenshotTest {
         EnterPuzzleScreen(onBack = {}, onPlay = {}, replacesGame = true, initial = Fixtures.typedIn(), initialSelected = 40)
     }
 
+    /** After a scan: two numbers it wasn't sure of are tinted gold for checking. */
+    @Test
+    fun enterPuzzleScannedLight() = capture("enter_puzzle_scanned_light", dark = false) {
+        val typed = Fixtures.typedIn()
+        val unsure = typed.indices.filter { typed[it] != '0' }.let { setOf(it[3], it[11]) }
+        EnterPuzzleScreen(onBack = {}, onPlay = {}, replacesGame = false, initial = typed, initialSelected = 40, initialUnsure = unsure)
+    }
+
     @Test
     fun enterPuzzleDark() = capture("enter_puzzle_dark", dark = true) {
         EnterPuzzleScreen(onBack = {}, onPlay = {}, replacesGame = false, initial = Fixtures.typedIn(), initialSelected = 40)
