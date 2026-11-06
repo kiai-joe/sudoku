@@ -21,16 +21,19 @@ object GameCodec {
         state.checks.toString(),
         state.practice?.name ?: "-",
         if (state.afterLoss) "1" else "0",
+        if (state.log.isEmpty()) "-" else state.log.joinToString(";") { "${it.cell}.${it.value}.${it.second}${if (it.hint) ".h" else ""}" },
+        if (state.marks.isEmpty()) "-" else state.marks.joinToString(""),
     ).joinToString("|")
 
     /**
      * Returns null for anything that isn't a well-formed save. Older saves
      * have 10 fields (before grading), 11 (before daily puzzles), 12 (before
-     * Killer) or 13 (before checks, practice and restarts were saved).
+     * Killer), 13 (before checks, practice and restarts were saved), 16
+     * (before the replay log) or 17 (before colour marks).
      */
     fun decode(text: String): GameState? = runCatching {
         val parts = text.split("|")
-        if (parts.size !in 10..16 || parts[0] != VERSION) return null
+        if (parts.size !in 10..18 || parts[0] != VERSION) return null
         val givens = digits(parts[2])
         val solution = digits(parts[3])
         val values = digits(parts[4])
@@ -53,8 +56,25 @@ object GameCodec {
             checks = parts.getOrNull(13)?.toInt() ?: 0,
             practice = parts.getOrNull(14)?.takeIf { it != "-" }?.let { Technique.valueOf(it) },
             afterLoss = parts.getOrNull(15) == "1",
+            log = parts.getOrNull(16)?.takeIf { it != "-" }?.let(::log).orEmpty(),
+            marks = parts.getOrNull(17)?.takeIf { it != "-" }?.let(::marks).orEmpty(),
         )
     }.getOrNull()
+
+    private fun marks(s: String): List<Int> {
+        require(s.length == Grid.CELLS)
+        return s.map { ch -> ch.digitToInt().also { require(it in 0..2) } }
+    }
+
+    private fun log(s: String): List<LogEntry> = s.split(";").map { entry ->
+        val f = entry.split(".")
+        LogEntry(
+            cell = f[0].toInt().also { require(it in 0 until Grid.CELLS) },
+            value = f[1].toInt().also { require(it in 0..9) },
+            second = f[2].toLong(),
+            hint = f.getOrNull(3) == "h",
+        )
+    }
 
     private fun cages(s: String): List<Cage> = s.split(";").map { cage ->
         val (sum, cells) = cage.split(":")

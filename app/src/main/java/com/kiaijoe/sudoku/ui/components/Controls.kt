@@ -2,6 +2,10 @@ package com.kiaijoe.sudoku.ui.components
 
 import com.kiaijoe.sudoku.engine.tr
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -131,7 +135,9 @@ private fun ToolButton(
 
 /**
  * The number keys. In one row by default; with [grid], three rows of three
- * bigger keys, for a tablet with room beside the board.
+ * bigger keys, for a tablet with room beside the board. Long-pressing a key
+ * calls [onLongDigit] (lighting up where it can go); the lit [spotlight] key
+ * is outlined.
  */
 @Composable
 fun NumberPad(
@@ -141,6 +147,8 @@ fun NumberPad(
     modifier: Modifier = Modifier,
     largeNumbers: Boolean = false,
     grid: Boolean = false,
+    spotlight: Int? = null,
+    onLongDigit: ((Int) -> Unit)? = null,
 ) {
     if (grid) {
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -150,6 +158,7 @@ fun NumberPad(
                         val digit = row * 3 + col + 1
                         PadKey(
                             digit, remaining(digit), notesMode, largeNumbers, big = true, onDigit = onDigit,
+                            lit = digit == spotlight, onLongDigit = onLongDigit,
                             // Wider than tall, so three rows sit comfortably under the tools.
                             modifier = Modifier.weight(1f).aspectRatio(if (largeNumbers) 1.15f else 1.35f),
                         )
@@ -162,6 +171,7 @@ fun NumberPad(
             for (digit in 1..9) {
                 PadKey(
                     digit, remaining(digit), notesMode, largeNumbers, big = false, onDigit = onDigit,
+                    lit = digit == spotlight, onLongDigit = onLongDigit,
                     // Taller in large mode so the bigger digit still leaves room for the count under it.
                     modifier = Modifier.weight(1f).aspectRatio(if (largeNumbers) 0.6f else 0.72f),
                 )
@@ -171,6 +181,8 @@ fun NumberPad(
 }
 
 /** One number key: the digit in indigo with how many are left under it, or a tick once all nine are placed. */
+// combinedClickable (tap and long-press) is still marked experimental.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PadKey(
     digit: Int,
@@ -180,6 +192,8 @@ private fun PadKey(
     big: Boolean,
     onDigit: (Int) -> Unit,
     modifier: Modifier,
+    lit: Boolean = false,
+    onLongDigit: ((Int) -> Unit)? = null,
 ) {
     val c = Sumi.colors
     val done = left <= 0
@@ -192,17 +206,27 @@ private fun PadKey(
                     else -> Modifier.card(c, TileShape, elevation = 4.dp)
                 },
             )
+            .then(if (lit) Modifier.border(2.dp, c.ai, TileShape) else Modifier)
             .clip(TileShape)
-            .clickable(enabled = !done, role = Role.Button) { onDigit(digit) }
+            .combinedClickable(
+                enabled = !done || onLongDigit != null,
+                role = Role.Button,
+                onLongClick = onLongDigit?.let { { it(digit) } },
+                onClick = { if (!done) onDigit(digit) },
+            )
             .clearAndSetSemantics {
                 contentDescription = if (done) {
                     tr("$digit, all placed", "$digit, zote zimewekwa")
                 } else {
                     tr("$digit, $left left", "$digit, zimebaki $left")
                 }
+                if (lit) stateDescription = tr("Showing where it can go", "Inaonyesha inapoweza kwenda")
                 role = Role.Button
                 if (done) disabled()
                 onClick { onDigit(digit); true }
+                if (onLongDigit != null) {
+                    onLongClick(tr("Show where $digit can go", "Onyesha $digit inapoweza kwenda")) { onLongDigit(digit); true }
+                }
             },
         contentAlignment = Alignment.Center,
     ) {

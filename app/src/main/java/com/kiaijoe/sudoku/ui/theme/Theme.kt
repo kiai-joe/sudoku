@@ -179,6 +179,11 @@ data class BoardColors(
     val hintFocus: Color,
     /** The wash that sweeps across a finished row, column or box. */
     val wash: Color,
+    /** Cells where a highlighted number can still go. */
+    val spotlight: Color,
+    /** The player's two colour marks. */
+    val markA: Color,
+    val markB: Color,
 )
 
 private fun SumiColors.boardColors() = BoardColors(
@@ -196,6 +201,9 @@ private fun SumiColors.boardColors() = BoardColors(
     hintArea = aiFaint,
     hintFocus = if (dark) kin.copy(alpha = 0.42f) else kinSoft,
     wash = matcha,
+    spotlight = aiSoft,
+    markA = matchaSoft,
+    markB = if (dark) kin.copy(alpha = 0.28f) else kinSoft,
 )
 
 val LocalSumiColors = staticCompositionLocalOf { Washi }

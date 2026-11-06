@@ -65,6 +65,8 @@ data class UiState(
     val newAchievements: List<Achievement> = emptyList(),
     /** Lessons finished, by lesson id (the technique name for whole-technique lessons). */
     val lessonsDone: Set<String> = emptySet(),
+    /** The number whose possible cells are lit up (long-press on its key), or null. */
+    val spotlight: Int? = null,
 ) {
     val canContinue: Boolean get() = savedGame?.status == GameStatus.PLAYING && !generating
 }
@@ -104,8 +106,18 @@ enum class FeedbackKind { PLACE, NOTE, WRONG, COMPLETE, WIN, LOSE, HINT_STEP }
  */
 data class Feedback(val id: Long, val kind: FeedbackKind, val completed: List<Int> = emptyList())
 
-/** An open hint: the plan and which of its cards is showing. */
-data class HintUi(val plan: HintPlan, val index: Int = 0) {
+/**
+ * An open hint: the plan, which of its cards is showing, and how much of it
+ * is revealed: a [NUDGE] says where to look, [TECHNIQUE] names the step and
+ * shows its cells, [FULL] explains every step.
+ */
+data class HintUi(val plan: HintPlan, val index: Int = 0, val level: Int = FULL) {
+    companion object {
+        const val NUDGE = 1
+        const val TECHNIQUE = 2
+        const val FULL = 3
+    }
+
     private val cards: List<HintCard> get() = (plan as? HintPlan.Teach)?.cards.orEmpty()
     val card: HintCard? get() = cards.getOrNull(index)
     val total: Int get() = cards.size
@@ -260,7 +272,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             repo.saveDailyGame(game, killer)
             show(game, savedGame = _ui.value.savedGame)
             refreshDaily()
-            if (!killer) refreshWidget()
+            refreshWidget()
         }
     }
 
@@ -302,6 +314,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 feedback = null,
                 lastWinWasBest = false,
                 newAchievements = emptyList(),
+                spotlight = null,
                 stats = repo.loadStats(),
                 killerStats = repo.loadKillerStats(),
             )
@@ -441,7 +454,30 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         if (plan is HintPlan.NothingLeft) return
         val counted = game.copy(hintsUsed = game.hintsUsed + 1)
         persist(counted)
-        _ui.update { synced(it, counted).copy(game = counted, hint = HintUi(plan), selected = null) }
+        // Step by step, a hint starts with a nudge; a wrong number is always shown straight away.
+        val level = if (s.settings.gentleHints && plan is HintPlan.Teach) HintUi.NUDGE else HintUi.FULL
+        _ui.update { synced(it, counted).copy(game = counted, hint = HintUi(plan, level = level), selected = null, spotlight = null) }
+    }
+
+    /** Reveals more of the open hint: from the nudge to the technique, then the full explanation. */
+    override fun hintMore() = _ui.update { s ->
+        val h = s.hint ?: return@update s
+        if (h.level >= HintUi.FULL) s else s.copy(hint = h.copy(level = h.level + 1), feedback = Feedback(++feedbackId, FeedbackKind.HINT_STEP))
+    }
+
+    /** Lights up every cell where [digit] can still go, or turns that off if it's already lit. */
+    override fun toggleSpotlight(digit: Int) = _ui.update { s ->
+        s.copy(spotlight = if (s.spotlight == digit) null else digit, feedback = Feedback(++feedbackId, FeedbackKind.NOTE))
+    }
+
+    /** Moves [cell]'s colour mark on: none, first colour, second colour, none. Not undoable; saved with the game. */
+    override fun mark(cell: Int) {
+        val s = _ui.value
+        val game = s.game ?: return
+        if (game.status != GameStatus.PLAYING || s.paused || s.generating) return
+        val next = game.cycleMark(cell)
+        persist(next)
+        _ui.update { synced(it, next).copy(game = next, feedback = Feedback(++feedbackId, FeedbackKind.NOTE)) }
     }
 
     override fun hintNext() = _ui.update { s ->
@@ -458,7 +494,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         val card = _ui.value.hint?.card ?: return
         if (!card.isPlacement) return
         _ui.update { it.copy(hint = null, selected = card.placeCell) }
-        move { it.place(card.placeCell, card.placeDigit, mistakeLimit = null, autoRemoveNotes = _ui.value.settings.autoRemoveNotes) }
+        move(hint = true) {
+            it.place(card.placeCell, card.placeDigit, mistakeLimit = null, autoRemoveNotes = _ui.value.settings.autoRemoveNotes)
+        }
     }
 
     /** Erases the wrong number a hint pointed out. */
@@ -476,16 +514,17 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         if (game.status != GameStatus.PLAYING || s.paused) return
         val previous = undoStack.removeLastOrNull() ?: return
         // Undo restores the board but not the clock, mistakes or hints used.
-        val restored = game.copy(values = previous.values, notes = previous.notes)
+        val restored = game.copy(values = previous.values, notes = previous.notes).logged(game)
         persist(restored)
         _ui.update { synced(it, restored).copy(game = restored, canUndo = undoStack.isNotEmpty()) }
     }
 
-    private fun move(transform: (GameState) -> GameState) {
+    /** Applies [transform] as one undoable move, logging its board changes for the replay ([hint] when a hint placed it). */
+    private fun move(hint: Boolean = false, transform: (GameState) -> GameState) {
         val s = _ui.value
         val game = s.game ?: return
         if (game.status != GameStatus.PLAYING || s.paused || s.generating) return
-        val next = transform(game)
+        val next = transform(game).logged(game, hint)
         if (next == game) return
 
         undoStack.addLast(game)
@@ -496,7 +535,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             val day = next.daily
             if (day != null) {
                 repo.recordDailyWin(day, next.elapsedSeconds, killer = next.isKiller)
-                if (!next.isKiller) refreshWidget()
+                refreshWidget()
                 best = false
             } else if (next.isKiller) {
                 best = repo.recordKillerWin(next.elapsedSeconds, next.hintsUsed)

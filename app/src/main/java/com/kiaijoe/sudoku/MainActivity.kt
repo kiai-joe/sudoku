@@ -25,6 +25,7 @@ import com.kiaijoe.sudoku.ui.SudokuViewModel
 import com.kiaijoe.sudoku.ui.components.Tab
 import com.kiaijoe.sudoku.ui.screens.CalendarScreen
 import com.kiaijoe.sudoku.ui.screens.CombinationsScreen
+import com.kiaijoe.sudoku.ui.screens.ReplayScreen
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
 import com.kiaijoe.sudoku.ui.screens.LearnScreen
@@ -42,25 +43,31 @@ import kotlinx.coroutines.withContext
 class MainActivity : ComponentActivity() {
     /** Goes up by one each time the widget asks to open today's daily puzzle. */
     private var openDailyRequests by mutableIntStateOf(0)
+    private var openKillerDaily by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // Only a fresh launch, not one restored after rotation, acts on the widget's request.
-        if (savedInstanceState == null && intent.wantsDaily()) openDailyRequests++
-        setContent { SudokuApp(openDailyRequests = openDailyRequests) }
+        if (savedInstanceState == null && intent.wantsDaily()) openDaily(intent)
+        setContent { SudokuApp(openDailyRequests = openDailyRequests, openKillerDaily = openKillerDaily) }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.wantsDaily()) openDailyRequests++
+        if (intent.wantsDaily()) openDaily(intent)
+    }
+
+    private fun openDaily(intent: Intent) {
+        openKillerDaily = intent.getBooleanExtra(SumiWidget.EXTRA_KILLER, false)
+        openDailyRequests++
     }
 
     private fun Intent?.wantsDaily() = this?.getBooleanExtra(SumiWidget.EXTRA_OPEN_DAILY, false) == true
 }
 
-private enum class Screen { Home, Game, Stats, Calendar, Learn, Lesson, Settings, Combinations }
+private enum class Screen { Home, Game, Stats, Calendar, Learn, Lesson, Settings, Combinations, Replay }
 
 /** The screen each tab of the floating bar opens. */
 private val Tab.screen: Screen
@@ -72,7 +79,7 @@ private val Tab.screen: Screen
     }
 
 @Composable
-private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewModel()) {
+private fun SudokuApp(openDailyRequests: Int, openKillerDaily: Boolean = false, viewModel: SudokuViewModel = viewModel()) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
     var screen by rememberSaveable { mutableStateOf(Screen.Home) }
     var lessonIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -82,9 +89,10 @@ private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewM
     // Daily tab if it was solved since the widget last refreshed.
     LaunchedEffect(openDailyRequests) {
         if (openDailyRequests == 0) return@LaunchedEffect
-        viewModel.playDaily()
-        calendarKiller = false
-        screen = if (viewModel.ui.value.daily.solvedToday) Screen.Calendar else Screen.Game
+        viewModel.playDaily(killer = openKillerDaily)
+        calendarKiller = openKillerDaily
+        val daily = if (openKillerDaily) viewModel.ui.value.killerDaily else viewModel.ui.value.daily
+        screen = if (daily.solvedToday) Screen.Calendar else Screen.Game
     }
 
     val dark = state.settings.darkMode.resolve(isSystemInDarkTheme())
@@ -132,7 +140,16 @@ private fun SudokuApp(openDailyRequests: Int, viewModel: SudokuViewModel = viewM
                 state = state,
                 actions = viewModel,
                 onExit = { screen = Screen.Home },
+                onReplay = { screen = Screen.Replay },
             )
+            Screen.Replay -> {
+                val game = state.game
+                if (game == null) {
+                    LaunchedEffect(Unit) { screen = Screen.Home }
+                } else {
+                    ReplayScreen(game, onBack = { screen = Screen.Game })
+                }
+            }
             Screen.Settings -> SettingsScreen(
                 settings = state.settings,
                 onChange = viewModel::updateSettings,

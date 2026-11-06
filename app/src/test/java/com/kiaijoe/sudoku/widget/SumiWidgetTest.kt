@@ -8,6 +8,7 @@ import androidx.activity.ComponentActivity
 import com.github.takahirom.roborazzi.captureRoboImage
 import com.kiaijoe.sudoku.R
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -57,6 +58,18 @@ class SumiWidgetTest {
         assertEquals(View.GONE, frame.findViewById<View>(R.id.widget_number0).visibility)
         assertEquals("5", frame.text(R.id.widget_number3))
         frame.captureRoboImage("src/test/screenshots/widget_light.png")
+    }
+
+    @Test
+    fun killerShowsTheDailyKiller() {
+        val model = dailyWidgetModel(thursday, mapOf(thursday - 1 to 700L), inProgress = true, locale = Locale.UK, killer = true)
+        val frame = show(model)
+        assertEquals("DAILY KILLER · THURSDAY 5 NOVEMBER", frame.text(R.id.widget_overline))
+        assertEquals("Medium", frame.text(R.id.widget_title))
+        assertEquals("1", frame.text(R.id.widget_streak))
+        assertEquals("Continue", frame.text(R.id.widget_action_text))
+        assertTrue(model.description.startsWith("Daily Killer, Thursday"))
+        frame.captureRoboImage("src/test/screenshots/widget_killer_light.png")
     }
 
     @Test

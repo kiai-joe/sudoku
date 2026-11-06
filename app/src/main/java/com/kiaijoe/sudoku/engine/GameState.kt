@@ -3,6 +3,12 @@ package com.kiaijoe.sudoku.engine
 enum class GameStatus { PLAYING, WON, LOST }
 
 /**
+ * One change to the board, for watching a solve back: [cell] became [value]
+ * (0 for erased) at [second] on the clock, by a hint's Place when [hint].
+ */
+data class LogEntry(val cell: Int, val value: Int, val second: Long, val hint: Boolean = false)
+
+/**
  * Immutable snapshot of a game. Every move returns a new state, which keeps
  * undo, saving and Compose recomposition simple.
  *
@@ -13,6 +19,9 @@ enum class GameStatus { PLAYING, WON, LOST }
  * [checks] is how many times the player asked Check (mistakes hidden).
  * [practice] is the technique this game was started to practise, from a lesson.
  * [afterLoss] is set when the game was restarted after running out of mistakes.
+ * [log] is every change to the board's numbers since the start, for the replay.
+ * [marks] is the player's colour mark on each cell (0 none, 1 or 2), or
+ * empty when there are none.
  */
 data class GameState(
     val difficulty: Difficulty,
@@ -30,7 +39,44 @@ data class GameState(
     val checks: Int = 0,
     val practice: Technique? = null,
     val afterLoss: Boolean = false,
+    val log: List<LogEntry> = emptyList(),
+    val marks: List<Int> = emptyList(),
 ) {
+    /** [cell]'s colour mark: 0 for none, or 1 or 2. */
+    fun mark(cell: Int): Int = marks.getOrElse(cell) { 0 }
+
+    /** [cell]'s colour mark moved on to the next: none, the first colour, the second, then none again. */
+    fun cycleMark(cell: Int): GameState {
+        val next = (mark(cell) + 1) % 3
+        val all = if (marks.isEmpty()) MutableList(Grid.CELLS) { 0 } else marks.toMutableList()
+        all[cell] = next
+        return copy(marks = if (all.all { it == 0 }) emptyList() else all)
+    }
+
+    /** For each cell, the numbers it can still take given the numbers on the board (0 where filled). */
+    fun boardCandidates(): IntArray = IntArray(Grid.CELLS) { cell ->
+        if (values[cell] != 0) {
+            0
+        } else {
+            Grid.peers[cell].fold(Grid.ALL_DIGITS) { mask, peer ->
+                val v = values[peer]
+                if (v != 0) mask and bit(v).inv() else mask
+            }
+        }
+    }
+
+    /**
+     * This state with the numbers that changed since [before] added to the
+     * [log], at the current clock; [hint] marks them as placed by a hint.
+     * The log keeps the latest [LOG_LIMIT] changes.
+     */
+    fun logged(before: GameState, hint: Boolean = false): GameState {
+        val changes = values.indices.filter { values[it] != before.values[it] }
+        if (changes.isEmpty()) return this
+        val added = changes.map { LogEntry(it, values[it], elapsedSeconds, hint) }
+        return copy(log = (before.log + added).takeLast(LOG_LIMIT))
+    }
+
     val isKiller: Boolean get() = cages.isNotEmpty()
 
     fun isGiven(cell: Int) = givens[cell] != 0
@@ -140,9 +186,13 @@ data class GameState(
         status = GameStatus.PLAYING,
         checks = 0,
         afterLoss = afterLoss || status == GameStatus.LOST,
+        log = emptyList(),
     )
 
     companion object {
+        /** The most board changes a game keeps for its replay. */
+        const val LOG_LIMIT = 600
+
         fun bit(digit: Int) = 1 shl (digit - 1)
 
         fun from(puzzle: Puzzle) = GameState(

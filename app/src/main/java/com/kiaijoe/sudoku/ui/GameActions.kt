@@ -24,6 +24,9 @@ interface GameActions {
     fun hintPlace()
     fun hintEraseMistake()
     fun closeHint()
+    fun hintMore()
+    fun toggleSpotlight(digit: Int)
+    fun mark(cell: Int)
 
     /** Does nothing; for screenshots and previews. */
     object None : GameActions {
@@ -44,5 +47,8 @@ interface GameActions {
         override fun hintPlace() = Unit
         override fun hintEraseMistake() = Unit
         override fun closeHint() = Unit
+        override fun hintMore() = Unit
+        override fun toggleSpotlight(digit: Int) = Unit
+        override fun mark(cell: Int) = Unit
     }
 }

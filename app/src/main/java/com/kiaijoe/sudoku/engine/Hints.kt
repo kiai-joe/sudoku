@@ -26,6 +26,9 @@ data class HintCard(
     val isPlacement get() = placeCell >= 0
 }
 
+/** A gentle first hint: where to look ([text]) and the [cells] to light up, without saying what's there. */
+data class Nudge(val text: String, val cells: Set<Int>)
+
 sealed interface HintPlan {
     /** A wrong number is on the board; deal with that before anything else. */
     data class FixMistake(val cell: Int, val digit: Int) : HintPlan
@@ -123,6 +126,43 @@ object Hints {
             area = emptySet(),
             eliminations = eliminations,
             candidates = candidates,
+        )
+    }
+
+    /**
+     * Where to look for [card]'s step, without giving it away: its first row,
+     * column or box, its cage, or the area the 45 rule adds up.
+     */
+    fun nudge(card: HintCard): Nudge {
+        val step = card.step
+        val ff = step?.fortyFive
+        val cage = step?.cage
+        return when {
+            ff != null -> Nudge(
+                tr("Look at ${areaName(ff.houses)}.", "Angalia ${areaName(ff.houses)}."),
+                ff.houses.flatMap { it.cells.toList() }.toSet(),
+            )
+            cage != null -> Nudge(
+                tr("Look at the cage adding up to ${cage.sum}.", "Angalia kizimba chenye jumla ya ${cage.sum}."),
+                cage.cells.toSet(),
+            )
+            step != null && step.houses.isNotEmpty() -> {
+                val house = step.houses[0]
+                Nudge(tr("Look at ${houseName(house)}.", "Angalia ${houseName(house)}."), house.cells.toSet())
+            }
+            else -> Nudge(
+                tr("Look at the highlighted cells.", "Angalia visanduku vilivyoangaziwa."),
+                card.area.ifEmpty { card.focus },
+            )
+        }
+    }
+
+    /** The second, firmer hint: which technique [card] uses, before its explanation. */
+    fun techniqueHint(card: HintCard): String {
+        val name = (card.technique?.label ?: tr("a step", "hatua")).lowercase()
+        return tr(
+            "There's a $name here. Can you find it in the highlighted cells?",
+            "Kuna $name hapa. Unaweza kuiona katika visanduku vilivyoangaziwa?",
         )
     }
 

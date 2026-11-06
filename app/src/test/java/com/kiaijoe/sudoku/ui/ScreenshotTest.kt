@@ -22,6 +22,7 @@ import com.kiaijoe.sudoku.engine.Technique
 import com.kiaijoe.sudoku.engine.Tutorial
 import com.kiaijoe.sudoku.ui.screens.CalendarScreen
 import com.kiaijoe.sudoku.ui.screens.CombinationsScreen
+import com.kiaijoe.sudoku.ui.screens.ReplayScreen
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
 import com.kiaijoe.sudoku.ui.screens.LearnScreen
@@ -192,6 +193,29 @@ class ScreenshotTest {
         GameScreen(state = UiState(game = g, hint = HintUi(plan)), actions = GameActions.None, onExit = {})
     }
 
+    /** Hints step by step: first a nudge, then the technique. */
+    @Test
+    fun hintNudge() = capture("hint_nudge_light", dark = false) {
+        val (g, plan) = Fixtures.eliminationHint()
+        GameScreen(state = UiState(game = g, hint = HintUi(plan, level = HintUi.NUDGE)), actions = GameActions.None, onExit = {})
+    }
+
+    @Test
+    fun hintTechnique() = capture("hint_technique_light", dark = false) {
+        val (g, plan) = Fixtures.eliminationHint()
+        GameScreen(state = UiState(game = g, hint = HintUi(plan, level = HintUi.TECHNIQUE)), actions = GameActions.None, onExit = {})
+    }
+
+    /** Colour marks on a few cells, and every place 7 can still go lit up from its key. */
+    @Test
+    fun marksAndSpotlight() = capture("game_marks_light", dark = false) {
+        var g = Fixtures.midGame()
+        val empty = (0 until 81).filter { g.values[it] == 0 }
+        for (cell in empty.take(3)) g = g.cycleMark(cell)
+        for (cell in empty.drop(3).take(2)) g = g.cycleMark(cell).cycleMark(cell)
+        GameScreen(state = UiState(game = g, spotlight = 7), actions = GameActions.None, onExit = {})
+    }
+
     @Test
     fun hintMistake() = capture("hint_mistake_light", dark = false) {
         val g = Fixtures.midGame()
@@ -206,10 +230,19 @@ class ScreenshotTest {
 
     private fun win(dark: Boolean) = capture(if (dark) "win_dark" else "win_light", dark) {
         GameScreen(
-            state = UiState(game = Fixtures.wonGame(), lastWinWasBest = true, stats = Fixtures.stats),
+            state = UiState(game = Fixtures.playedGame(), lastWinWasBest = true, stats = Fixtures.stats),
             actions = GameActions.None,
             onExit = {},
+            onReplay = {},
         )
+    }
+
+    /** Watching a solve back, partway through, with its moments listed below. */
+    @Test
+    @Config(qualifiers = "w411dp-h1500dp-xxhdpi")
+    fun replayLight() = capture("replay_light", dark = false) {
+        val game = Fixtures.playedGame()
+        ReplayScreen(game, onBack = {}, initialShown = game.log.size / 2)
     }
 
     // --- Daily calendar ------------------------------------------------------
@@ -679,6 +712,41 @@ private object Fixtures {
             g = placeNextHint(g)
         }
         error("no cage hint found")
+    }
+
+    /**
+     * A Medium game played to the end by following hints, with a wrong number
+     * early on, one number placed by a hint and two long pauses, so its log
+     * has something to replay.
+     */
+    fun playedGame(): GameState {
+        val start = GameState.from(Generator.generate(Difficulty.MEDIUM, Random(2)))
+        var game = start
+        var clock = 0L
+        var move = 0
+        while (true) {
+            val cards = (Hints.forGame(game) as? HintPlan.Teach)?.cards ?: break
+            val card = cards.last()
+            move++
+            clock += when (move) {
+                9 -> 154L
+                30 -> 97L
+                else -> 11L + move % 7
+            }
+            if (move == 5) {
+                // A wrong number first, then the right one.
+                val wrong = (1..9).first { it != game.solution[card.placeCell] }
+                val before = game.copy(elapsedSeconds = clock)
+                game = before.place(card.placeCell, wrong, mistakeLimit = null, autoRemoveNotes = true).logged(before)
+                clock += 6
+                val fixed = game.copy(elapsedSeconds = clock).erase(card.placeCell)
+                game = fixed.logged(game)
+            }
+            val before = game.copy(elapsedSeconds = clock)
+            game = before.place(card.placeCell, card.placeDigit, mistakeLimit = null, autoRemoveNotes = true)
+                .logged(before, hint = move == 20)
+        }
+        return game.copy(status = GameStatus.WON, hintsUsed = 1)
     }
 
     fun wonGame(): GameState {

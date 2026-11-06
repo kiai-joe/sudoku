@@ -79,6 +79,8 @@ class LangTest {
                     seen += card.technique
                     assertSwahili("${card.technique} title", card.title)
                     assertSwahili("${card.technique} hint", card.text)
+                    assertSwahili("${card.technique} nudge", Hints.nudge(card).text)
+                    assertSwahili("${card.technique} technique hint", Hints.techniqueHint(card))
                 }
                 val last = plan.cards.last()
                 game = game.place(last.placeCell, last.placeDigit, mistakeLimit = null, autoRemoveNotes = true)
