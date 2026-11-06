@@ -93,7 +93,8 @@ fun dailyWidgetModel(
     return DailyWidgetModel(
         overline = ((if (killer) t("Daily Killer", "Killer ya leo") else t("Daily", "Leo")) + " · $dayName ${date.dayOfMonth} $month")
             .uppercase(locale),
-        title = label,
+        // The overline already says Daily Killer, so the title is just the level, leaving room for the streak.
+        title = Daily.difficultyFor(today, killer).label,
         streak = streak,
         days = days,
         action = action,
