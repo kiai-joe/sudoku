@@ -3,6 +3,7 @@ package com.kiaijoe.sudoku.ui.components
 import com.kiaijoe.sudoku.engine.tr
 import androidx.compose.foundation.background
 import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -180,6 +181,8 @@ fun NumberPad(
 }
 
 /** One number key: the digit in indigo with how many are left under it, or a tick once all nine are placed. */
+// combinedClickable (tap and long-press) is still marked experimental.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun PadKey(
     digit: Int,

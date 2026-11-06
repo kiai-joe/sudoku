@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -310,6 +311,8 @@ private fun cellBackground(
     else -> colors.cell
 }
 
+// combinedClickable (tap and long-press) is still marked experimental.
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun Cell(
     game: GameState,
