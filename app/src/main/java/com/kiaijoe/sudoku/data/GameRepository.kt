@@ -2,6 +2,7 @@ package com.kiaijoe.sudoku.data
 
 import android.content.Context
 import com.kiaijoe.sudoku.engine.Achievement
+import com.kiaijoe.sudoku.engine.Daily
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.GameCodec
 import com.kiaijoe.sudoku.engine.GameState
@@ -56,6 +57,16 @@ data class DifficultyStats(
 
     /** Share of timed wins solved without a hint, in percent, or null before any. */
     val noHintRate: Int? get() = if (timedWins == 0) null else (noHintWins * 100) / timedWins
+
+    /** Both records together, as Progress shows a level: regular games and that level's daily puzzles. */
+    operator fun plus(other: DifficultyStats) = DifficultyStats(
+        played = played + other.played,
+        won = won + other.won,
+        bestSeconds = listOfNotNull(bestSeconds, other.bestSeconds).minOrNull(),
+        timedWins = timedWins + other.timedWins,
+        totalSeconds = totalSeconds + other.totalSeconds,
+        noHintWins = noHintWins + other.noHintWins,
+    )
 }
 
 /**
@@ -131,11 +142,47 @@ class GameRepository(context: Context) {
             d to t
         }.toMap()
 
-    fun recordDailyWin(day: Long, seconds: Long, killer: Boolean = false) {
+    /**
+     * Records [day]'s daily puzzle as solved. The first solve of a day also
+     * counts in its level's statistics on Progress (all Killer levels share
+     * one record), timed and with its [hints] unless [timed] is false.
+     */
+    fun recordDailyWin(day: Long, seconds: Long, killer: Boolean = false, hints: Int = 0, timed: Boolean = true) {
+        countPastDailies() // Older wins first, so this one isn't counted twice.
         val results = loadDailyResults(killer).toMutableMap()
+        val first = day !in results
         results[day] = minOf(seconds, results[day] ?: Long.MAX_VALUE)
         prefs.edit().putStringSet(dailyResultsKey(killer), results.map { (d, t) -> "$d:$t" }.toSet()).apply()
+        if (first) recordWin(dailyStatsName(day, killer), seconds, hints, timed)
     }
+
+    /** Counts a newly started daily puzzle as played in its level's statistics. */
+    fun recordDailyStart(day: Long, killer: Boolean = false) = recordStart(dailyStatsName(day, killer))
+
+    /**
+     * Daily puzzles solved before they counted in the level statistics are
+     * added once, as played and solved with their time as a best; their hints
+     * weren't kept, so they stay out of the average and no-hint share.
+     */
+    fun countPastDailies() {
+        if (prefs.getBoolean(KEY_DAILY_STATS_COUNTED, false)) return
+        for (killer in listOf(false, true)) {
+            for ((day, seconds) in loadDailyResults(killer)) {
+                val name = dailyStatsName(day, killer)
+                val s = loadStats(name)
+                prefs.edit().apply {
+                    putInt(key(name, "played"), s.played + 1)
+                    putInt(key(name, "won"), s.won + 1)
+                    if (s.bestSeconds == null || seconds < s.bestSeconds) putLong(key(name, "best"), seconds)
+                }.apply()
+            }
+        }
+        prefs.edit().putBoolean(KEY_DAILY_STATS_COUNTED, true).apply()
+    }
+
+    /** Where a daily puzzle's statistics are kept: by level for classic, one record for Killer. */
+    private fun dailyStatsName(day: Long, killer: Boolean) =
+        if (killer) DAILY_KILLER else DAILY_PREFIX + Daily.difficultyFor(day).name
 
     /** Earned achievements and the epoch day each was earned. */
     fun loadAchievements(): Map<Achievement, Long> =
@@ -186,7 +233,22 @@ class GameRepository(context: Context) {
             .apply()
     }
 
+    /** Regular games per level, without daily puzzles; achievements count from these. */
     fun loadStats(): Map<Difficulty, DifficultyStats> = Difficulty.entries.associateWith { loadStats(it.name) }
+
+    /** What Progress shows per level: regular games and that level's daily puzzles together. */
+    fun loadLevelStats(): Map<Difficulty, DifficultyStats> =
+        Difficulty.entries.associateWith { loadStats(it.name) + loadStats(DAILY_PREFIX + it.name) }
+
+    /** Puzzles the player typed in, all levels together. */
+    fun loadCustomStats(): DifficultyStats = loadStats(CUSTOM)
+
+    fun recordCustomStart() = recordStart(CUSTOM)
+
+    fun recordCustomWin(seconds: Long, hints: Int, timed: Boolean = true): Boolean = recordWin(CUSTOM, seconds, hints, timed)
+
+    /** What Progress shows for Killer: regular Killer games and daily Killers together. */
+    fun loadKillerLevelStats(): DifficultyStats = loadStats(KILLER) + loadStats(DAILY_KILLER)
 
     /** Killer games keep their own record, apart from the classic levels. */
     fun loadKillerStats(): DifficultyStats = loadStats(KILLER)
@@ -257,9 +319,12 @@ class GameRepository(context: Context) {
 
     fun resetStats() {
         prefs.edit().apply {
-            (Difficulty.entries.map { it.name } + KILLER + VARIANTS.map { it.name }).forEach { name ->
+            (Difficulty.entries.map { it.name } + KILLER + VARIANTS.map { it.name } +
+                Difficulty.entries.map { DAILY_PREFIX + it.name } + DAILY_KILLER + CUSTOM).forEach { name ->
                 for (field in STAT_FIELDS) remove(key(name, field))
             }
+            // The daily calendar stays, but its past wins aren't counted back in.
+            putBoolean(KEY_DAILY_STATS_COUNTED, true)
         }.apply()
     }
 
@@ -269,6 +334,10 @@ class GameRepository(context: Context) {
         /** The one preferences file that holds everything; the backup rules in res/xml name it. */
         const val PREFS_NAME = "sudoku"
         private const val KILLER = "KILLER"
+        private const val CUSTOM = "CUSTOM"
+        private const val DAILY_PREFIX = "DAILY_"
+        private const val DAILY_KILLER = "DAILY_KILLER"
+        private const val KEY_DAILY_STATS_COUNTED = "daily_stats_counted"
         private val VARIANTS = listOf(Variant.X, Variant.JIGSAW)
         private val STAT_FIELDS = listOf("played", "won", "best", "timed", "total", "nohint")
         private const val KEY_LESSONS_DONE = "lessons_done"

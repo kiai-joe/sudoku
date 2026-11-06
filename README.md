@@ -97,7 +97,7 @@ and install it, allowing "Install unknown apps" for your browser when asked. New
 
 ### Progress
 
-- **Stats per level.** Games played and solved, win rate, best and average time, and how often you solve without hints, for each classic level and for Killer, Sudoku X and Jigsaw.
+- **Stats per level.** Games played and solved, win rate, best and average time, and how often you solve without hints, for each classic level and for Killer, Sudoku X, Jigsaw and the puzzles you type in yourself. Daily puzzles count under their level, and daily Killers under Killer.
 - **25 achievements, shown as seals.** They range from a first solve to a 30-day streak. There are fast and clean solves, an Expert with mistakes hidden, a Swordfish puzzle, 100 solves, every lesson, a full Monday-to-Sunday week, and daily Killer streaks. A seal you earn stamps onto the win screen as the hanamaru settles, with a ring of gold spreading from it.
 - **A new phone keeps your progress.** Android's backup and phone-to-phone transfer include your progress, or you can save and restore a backup file from Settings.
 

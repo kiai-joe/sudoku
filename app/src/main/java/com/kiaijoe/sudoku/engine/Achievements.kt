@@ -100,6 +100,7 @@ enum class Achievement(
  * @property killerDailyDays the days whose daily Killer was solved.
  * @property lessonsDone how many lessons are finished.
  * @property variantWon Sudoku X and Jigsaw wins.
+ * @property customWon wins on puzzles the player typed in.
  */
 data class Progress(
     val won: Map<Difficulty, Int> = emptyMap(),
@@ -110,6 +111,7 @@ data class Progress(
     val killerDailyDays: Set<Long> = emptySet(),
     val lessonsDone: Int = 0,
     val variantWon: Int = 0,
+    val customWon: Int = 0,
 )
 
 object Achievements {
@@ -127,7 +129,7 @@ object Achievements {
         val classicLevels = progress.won.filterValues { it > 0 }.keys.toMutableSet()
 
         val anySolved = classicLevels.isNotEmpty() || progress.killerWon > 0 || progress.dailySolved > 0 ||
-            progress.killerDailyDays.isNotEmpty() || progress.variantWon > 0
+            progress.killerDailyDays.isNotEmpty() || progress.variantWon > 0 || progress.customWon > 0
         if (anySolved) out += Achievement.FIRST_STAMP
         if (progress.killerWon > 0) out += Achievement.CAGE_BREAKER
 
@@ -160,7 +162,7 @@ object Achievements {
         if (progress.longestStreak >= 7) out += Achievement.WEEK_OF_INK
         if (progress.longestStreak >= 30) out += Achievement.MOON_CYCLE
 
-        val solved = progress.won.values.sum() + progress.killerWon + progress.variantWon +
+        val solved = progress.won.values.sum() + progress.killerWon + progress.variantWon + progress.customWon +
             progress.dailyDays.size + progress.killerDailyDays.size
         if (solved >= 100) out += Achievement.HUNDRED_STAMPS
         if (progress.lessonsDone >= 1) out += Achievement.FIRST_LESSON

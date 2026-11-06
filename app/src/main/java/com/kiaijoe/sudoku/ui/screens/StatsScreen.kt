@@ -77,6 +77,7 @@ fun StatsScreen(
     onBack: () -> Unit,
     killerStats: DifficultyStats = DifficultyStats(),
     variantStats: Map<Variant, DifficultyStats> = emptyMap(),
+    customStats: DifficultyStats = DifficultyStats(),
     achievements: Map<Achievement, Long> = emptyMap(),
     onTab: ((Tab) -> Unit)? = null,
     recentGames: List<GameState> = emptyList(),
@@ -84,10 +85,10 @@ fun StatsScreen(
 ) {
     BackHandler(onBack = onBack)
     var confirmReset by remember { mutableStateOf(false) }
-    // The figures for each chip: the four classic levels, then Killer, Sudoku X and Jigsaw.
+    // The figures for each chip: the four classic levels, then Killer, Sudoku X, Jigsaw and typed-in puzzles.
     val others = listOf(Variant.X, Variant.JIGSAW)
     val all = Difficulty.entries.map { stats[it] ?: DifficultyStats() } + killerStats +
-        others.map { variantStats[it] ?: DifficultyStats() }
+        others.map { variantStats[it] ?: DifficultyStats() } + customStats
     // Which chip is picked. Opens on the one played most.
     var level by rememberSaveable {
         val played = all.map { it.played }
@@ -105,7 +106,7 @@ fun StatsScreen(
             Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            val labels = Difficulty.entries.map { it.label } + "Killer" + others.map { it.label }
+            val labels = Difficulty.entries.map { it.label } + "Killer" + others.map { it.label } + tr("Your puzzles", "Mafumbo yako")
             labels.forEachIndexed { i, label ->
                 SumiChip(
                     label,
