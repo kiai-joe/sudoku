@@ -1,0 +1,39 @@
+name: Rewrite release notes
+
+# Run by hand (Actions › Rewrite release notes › Run workflow) to rewrite
+# every release's notes, oldest first, so each lists what changed since the
+# release before it. Each keeps its first line (version and commit) and its
+# APK; only the text changes. Safe to run again.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rewrite each release's notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          previous_sha=""
+          for tag in $(gh release list --limit 1000 --exclude-drafts --json tagName,createdAt \
+              --jq 'sort_by(.createdAt) | .[].tagName'); do
+            sha=$(git rev-list -n 1 "$tag" 2>/dev/null || true)
+            if [[ -z "$sha" ]]; then
+              echo "::warning::$tag has no tag in git; left as it is"
+              continue
+            fi
+            version_line=$(gh release view "$tag" --json body --jq '.body' | head -n 1)
+            .github/scripts/release-notes.sh "$version_line" "$sha" "$previous_sha" > notes.md
+            gh release edit "$tag" --notes-file notes.md
+            echo "Rewrote $tag"
+            previous_sha=$sha
+          done

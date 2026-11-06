@@ -172,6 +172,8 @@ The **Release APK** workflow publishes a GitHub release with `Sumi.apk` attached
 - running the workflow by hand (Actions › Release APK › Run workflow) does the same for the chosen branch
 - a tag such as `v0.2.0` makes a release with that version name
 
+Each release's notes list what changed since the release before it: the titles of the pull requests merged in between. **Rewrite release notes** (Actions › Rewrite release notes › Run workflow) rewrites every older release's notes the same way.
+
 APKs are signed with the debug key in `app/signing/debug.keystore`, so every build can update the last one. This key is not secret; publishing on Google Play needs a separate private key.
 
 ### Project layout
