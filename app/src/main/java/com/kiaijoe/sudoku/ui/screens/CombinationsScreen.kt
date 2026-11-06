@@ -58,7 +58,7 @@ fun CombinationsScreen(onBack: () -> Unit, initialSize: Int = 2) {
     var size by rememberSaveable { mutableIntStateOf(initialSize) }
     Page {
         Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-            SumiTopBar(tr("Cage combinations", "Michanganyiko ya vizimba"), onBack = onBack)
+            SumiTopBar(tr("Combinations", "Michanganyiko"), onBack = onBack)
             Column(
                 Modifier
                     .fillMaxSize()

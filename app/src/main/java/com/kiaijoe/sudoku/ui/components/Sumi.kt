@@ -256,12 +256,14 @@ fun SumiTopBar(
         Row(Modifier.align(Alignment.CenterStart)) {
             if (onBack != null) IconTile(backIcon, backDescription, onBack)
         }
+        // Long titles (lesson names, Swahili) step down a size and may take two lines.
+        val long = title.length > 16
         Text(
             title,
-            style = MaterialTheme.typography.titleLarge,
+            style = if (long) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
             color = Sumi.colors.ink,
             textAlign = TextAlign.Center,
-            maxLines = 1,
+            maxLines = if (long) 2 else 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.Center)

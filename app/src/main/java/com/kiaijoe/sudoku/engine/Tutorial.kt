@@ -80,9 +80,9 @@ enum class KillerFocus {
         val cage = step.cage
         val ff = step.fortyFive
         return when (this) {
-            RULES -> step.technique == Technique.CAGE
+            RULES -> step.technique == Technique.CAGE && cage != null && cage.cells.size >= 2
             ONE_ANSWER -> step.technique == Technique.CAGE && cage != null && !step.isPlacement &&
-                ways(cage.cells.size, cage.sum) == 1 && (game == null || cage.cells.all { game.values[it] == 0 })
+                cage.cells.size >= 2 && ways(cage.cells.size, cage.sum) == 1 && (game == null || cage.cells.all { game.values[it] == 0 })
             // The solver rules out everything else in the last cell (then places it as a single).
             LAST_CELL -> step.technique == Technique.CAGE && cage != null && cage.cells.size >= 2 &&
                 step.eliminations.size == 1 && cage.cells.containsAll(step.eliminations.keys) &&
@@ -408,10 +408,10 @@ object Tutorial {
     // Where each Killer course lesson's example comes from: a seed and a number
     // of hinted moves, found by searching generated Killer puzzles for a
     // position whose next hint opens on the lesson's kind of step.
-    private const val SEED_KILLER_RULES = 6
+    private const val SEED_KILLER_RULES = 5
     private const val MOVES_KILLER_RULES = 0
-    private const val SEED_KILLER_ONE_ANSWER = 11
-    private const val MOVES_KILLER_ONE_ANSWER = 0
+    private const val SEED_KILLER_ONE_ANSWER = 39
+    private const val MOVES_KILLER_ONE_ANSWER = 10
     private const val SEED_KILLER_LAST_CELL = 0
     private const val MOVES_KILLER_LAST_CELL = 7
     private const val SEED_KILLER_GRID = 4

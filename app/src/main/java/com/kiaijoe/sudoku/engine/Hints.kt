@@ -264,6 +264,12 @@ object Hints {
             (1..9).filter { mask and (1 shl (it - 1)) != 0 }.joinToString("+")
         } + if (combos.size > 4) tr(", among others", ", miongoni mwa nyingine") else ""
         val has = joinAnd(placed.map { it.toString() })
+        if (cage.cells.size == 1) {
+            return tr(
+                "This cage is a single cell, so it holds its sum: ${cage.sum}.",
+                "Kizimba hiki ni kisanduku kimoja, kwa hiyo kina jumla yake: ${cage.sum}.",
+            )
+        }
         if (open.size == 1) {
             return tr(
                 "This cage adds up to ${cage.sum} and already has $has, so its last empty cell must be $remaining.",
