@@ -29,6 +29,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import com.kiaijoe.sudoku.ui.shareText
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import android.content.Intent
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -107,8 +112,16 @@ private fun GameState.title(): String = when {
     else -> difficulty.label
 }
 
+/** Opens the replay of the game just won; null where there is none (tests, previews). */
+private val LocalOnReplay = staticCompositionLocalOf<(() -> Unit)?> { null }
+
 @Composable
-fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit) {
+fun GameScreen(state: UiState, actions: GameActions, onExit: () -> Unit, onReplay: (() -> Unit)? = null) {
+    CompositionLocalProvider(LocalOnReplay provides onReplay) { GameScreenContent(state, actions, onExit) }
+}
+
+@Composable
+private fun GameScreenContent(state: UiState, actions: GameActions, onExit: () -> Unit) {
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -585,7 +598,28 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
             }
         }
         ListCard(rows = rows)
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(16.dp))
+        val context = LocalContext.current
+        val onReplay = LocalOnReplay.current
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            PillButton(
+                tr("Share", "Shiriki"),
+                {
+                    val daily = if (game.isKiller) state.killerDaily else state.daily
+                    val send = Intent(Intent.ACTION_SEND)
+                        .setType("text/plain")
+                        .putExtra(Intent.EXTRA_TEXT, shareText(game, daily.takeIf { game.daily != null }))
+                    context.startActivity(Intent.createChooser(send, null))
+                },
+                Modifier.weight(1f),
+                tone = ButtonTone.Outline,
+                icon = Lucide.Share2,
+            )
+            if (onReplay != null && game.log.isNotEmpty()) {
+                PillButton(tr("Replay", "Marudio"), onReplay, Modifier.weight(1f), tone = ButtonTone.Outline, icon = Lucide.History)
+            }
+        }
+        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             PillButton(tr("Home", "Nyumbani"), onHome, Modifier.weight(1f), tone = ButtonTone.Soft, icon = Lucide.House)
             PillButton(tr("New game", "Mchezo mpya"), onNewGame, Modifier.weight(1f), tone = ButtonTone.Seal, icon = Lucide.RotateCcw)

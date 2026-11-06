@@ -260,7 +260,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             repo.saveDailyGame(game, killer)
             show(game, savedGame = _ui.value.savedGame)
             refreshDaily()
-            if (!killer) refreshWidget()
+            refreshWidget()
         }
     }
 
@@ -458,7 +458,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         val card = _ui.value.hint?.card ?: return
         if (!card.isPlacement) return
         _ui.update { it.copy(hint = null, selected = card.placeCell) }
-        move { it.place(card.placeCell, card.placeDigit, mistakeLimit = null, autoRemoveNotes = _ui.value.settings.autoRemoveNotes) }
+        move(hint = true) {
+            it.place(card.placeCell, card.placeDigit, mistakeLimit = null, autoRemoveNotes = _ui.value.settings.autoRemoveNotes)
+        }
     }
 
     /** Erases the wrong number a hint pointed out. */
@@ -476,16 +478,17 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         if (game.status != GameStatus.PLAYING || s.paused) return
         val previous = undoStack.removeLastOrNull() ?: return
         // Undo restores the board but not the clock, mistakes or hints used.
-        val restored = game.copy(values = previous.values, notes = previous.notes)
+        val restored = game.copy(values = previous.values, notes = previous.notes).logged(game)
         persist(restored)
         _ui.update { synced(it, restored).copy(game = restored, canUndo = undoStack.isNotEmpty()) }
     }
 
-    private fun move(transform: (GameState) -> GameState) {
+    /** Applies [transform] as one undoable move, logging its board changes for the replay ([hint] when a hint placed it). */
+    private fun move(hint: Boolean = false, transform: (GameState) -> GameState) {
         val s = _ui.value
         val game = s.game ?: return
         if (game.status != GameStatus.PLAYING || s.paused || s.generating) return
-        val next = transform(game)
+        val next = transform(game).logged(game, hint)
         if (next == game) return
 
         undoStack.addLast(game)
@@ -496,7 +499,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             val day = next.daily
             if (day != null) {
                 repo.recordDailyWin(day, next.elapsedSeconds, killer = next.isKiller)
-                if (!next.isKiller) refreshWidget()
+                refreshWidget()
                 best = false
             } else if (next.isKiller) {
                 best = repo.recordKillerWin(next.elapsedSeconds, next.hintsUsed)

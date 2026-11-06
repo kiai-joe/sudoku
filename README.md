@@ -82,10 +82,16 @@ and install it, allowing "Install unknown apps" for your browser when asked. New
 - **25 achievements, shown as seals.** They range from a first solve to a 30-day streak. There are fast and clean solves, an Expert with mistakes hidden, a Swordfish puzzle, 100 solves, every lesson, a full Monday-to-Sunday week, and daily Killer streaks.
 - **A new phone keeps your progress.** Android's backup and phone-to-phone transfer include your progress, or you can save and restore a backup file from Settings.
 
+### After a game
+
+- **Share your result.** The win screen's Share button sends a short summary through Android's share sheet: the puzzle, your time, mistakes and hints, and for a daily puzzle that week as a row of red squares with your streak, so friends playing the same daily can compare.
+- **Replay.** Watch your solve back move by move, with play, a step either way and a slider. Below the board, the moments worth a look jump straight there: wrong numbers, numbers a hint placed, and your three longest pauses. Every game keeps a log of its board changes for this, saved with the game.
+
 ### Home-screen widgets
 
 - **Daily puzzle (4×2).** Today's level, your streak and this week, with a button that opens straight into today's puzzle.
 - **Streak (2×1).** Your streak and a round Play button.
+- **Daily Killer (4×2).** The same for the daily Killer: its level, its own streak and this week, with a button straight into today's Killer.
 
 ### Look, comfort and access
 

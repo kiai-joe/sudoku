@@ -39,6 +39,7 @@ fun dailyWidgetModel(
     results: Map<Long, Long>,
     inProgress: Boolean,
     locale: Locale = Locale.getDefault(),
+    killer: Boolean = false,
 ): DailyWidgetModel {
     val date = LocalDate.ofEpochDay(today)
     val monday = date.minusDays((date.dayOfWeek.value - 1).toLong())
@@ -67,9 +68,13 @@ fun dailyWidgetModel(
     }
     val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, locale)
     val month = date.month.getDisplayName(TextStyle.FULL, locale)
-    val label = Daily.label(today)
+    val label = Daily.label(today, killer)
     val description = buildString {
-        append(t("Daily puzzle, $dayName, $label. ", "Fumbo la leo, $dayName, $label. "))
+        if (killer) {
+            append(t("Daily Killer, $dayName, $label. ", "Killer ya leo, $dayName, $label. "))
+        } else {
+            append(t("Daily puzzle, $dayName, $label. ", "Fumbo la leo, $dayName, $label. "))
+        }
         append(
             when {
                 solvedIn != null -> t("Solved in ${formatTime(solvedIn)}. ", "Limetatuliwa kwa ${formatTime(solvedIn)}. ")
@@ -86,7 +91,8 @@ fun dailyWidgetModel(
         )
     }
     return DailyWidgetModel(
-        overline = (t("Daily", "Leo") + " · $dayName ${date.dayOfMonth} $month").uppercase(locale),
+        overline = ((if (killer) t("Daily Killer", "Killer ya leo") else t("Daily", "Leo")) + " · $dayName ${date.dayOfMonth} $month")
+            .uppercase(locale),
         title = label,
         streak = streak,
         days = days,

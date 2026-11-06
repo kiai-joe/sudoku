@@ -46,6 +46,9 @@ class SumiWidget : AppWidgetProvider() {
         /** Extra on the launch intent that opens today's daily puzzle. */
         const val EXTRA_OPEN_DAILY = "open_daily"
 
+        /** With [EXTRA_OPEN_DAILY], opens today's daily Killer instead. */
+        const val EXTRA_KILLER = "killer"
+
         private val DAY_IDS = intArrayOf(
             R.id.widget_day0, R.id.widget_day1, R.id.widget_day2, R.id.widget_day3,
             R.id.widget_day4, R.id.widget_day5, R.id.widget_day6,
@@ -71,24 +74,32 @@ class SumiWidget : AppWidgetProvider() {
             val manager = AppWidgetManager.getInstance(context) ?: return
             val large = manager.getAppWidgetIds(ComponentName(context, SumiWidget::class.java))
             val small = manager.getAppWidgetIds(ComponentName(context, SumiStreakWidget::class.java))
-            if (large.isEmpty() && small.isEmpty()) return
+            val killer = manager.getAppWidgetIds(ComponentName(context, SumiKillerWidget::class.java))
+            if (large.isEmpty() && small.isEmpty() && killer.isEmpty()) return
             val model = model(context)
             if (large.isNotEmpty()) render(context, model).let { views -> for (id in large) manager.updateAppWidget(id, views) }
             if (small.isNotEmpty()) renderSmall(context, model).let { views -> for (id in small) manager.updateAppWidget(id, views) }
+            if (killer.isNotEmpty()) {
+                render(context, model(context, killer = true), killer = true).let { views ->
+                    for (id in killer) manager.updateAppWidget(id, views)
+                }
+            }
             scheduleMidnight(context)
         }
 
-        /** What the widgets show today, from what Sumi has saved. */
-        fun model(context: Context, today: Long = LocalDate.now().toEpochDay()): DailyWidgetModel {
+        /** What the widgets show today, from what Sumi has saved: the classic daily, or the Killer one when [killer]. */
+        fun model(context: Context, today: Long = LocalDate.now().toEpochDay(), killer: Boolean = false): DailyWidgetModel {
             val repo = GameRepository(context)
-            val inProgress = repo.loadDailyGame()?.let { it.daily == today && it.status == GameStatus.PLAYING && !it.isKiller } == true
-            return dailyWidgetModel(today, repo.loadDailyResults(), inProgress)
+            val inProgress = repo.loadDailyGame(killer)
+                ?.let { it.daily == today && it.status == GameStatus.PLAYING && it.isKiller == killer } == true
+            return dailyWidgetModel(today, repo.loadDailyResults(killer), inProgress, killer = killer)
         }
 
         /** The Daily puzzle widget's views for today. */
         fun render(context: Context): RemoteViews = render(context, model(context))
 
-        fun render(context: Context, model: DailyWidgetModel): RemoteViews {
+        /** The 4×2 widget's views for [model]; the Killer one when [killer], whose button opens the daily Killer. */
+        fun render(context: Context, model: DailyWidgetModel, killer: Boolean = false): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_daily)
             views.setTextViewText(R.id.widget_overline, model.overline)
             views.setTextViewText(R.id.widget_title, model.title)
@@ -131,7 +142,7 @@ class SumiWidget : AppWidgetProvider() {
             views.setContentDescription(android.R.id.background, model.description)
             views.setOnClickPendingIntent(android.R.id.background, launch(context, openDaily = false))
             // Once today is solved the button just opens Sumi, where the result is.
-            views.setOnClickPendingIntent(R.id.widget_action, launch(context, openDaily = !model.solved))
+            views.setOnClickPendingIntent(R.id.widget_action, launch(context, openDaily = !model.solved, killer = killer))
             return views
         }
 
@@ -172,18 +183,30 @@ class SumiWidget : AppWidgetProvider() {
         internal fun stopMidnightIfUnused(context: Context) {
             val manager = AppWidgetManager.getInstance(context) ?: return
             val any = manager.getAppWidgetIds(ComponentName(context, SumiWidget::class.java)).isNotEmpty() ||
-                manager.getAppWidgetIds(ComponentName(context, SumiStreakWidget::class.java)).isNotEmpty()
+                manager.getAppWidgetIds(ComponentName(context, SumiStreakWidget::class.java)).isNotEmpty() ||
+                manager.getAppWidgetIds(ComponentName(context, SumiKillerWidget::class.java)).isNotEmpty()
             if (!any) context.getSystemService(AlarmManager::class.java)?.cancel(midnightIntent(context))
         }
 
-        private fun launch(context: Context, openDaily: Boolean): PendingIntent {
+        private fun launch(context: Context, openDaily: Boolean, killer: Boolean = false): PendingIntent {
             val intent = Intent(context, MainActivity::class.java)
-                .setAction(if (openDaily) "com.kiaijoe.sudoku.OPEN_DAILY" else Intent.ACTION_MAIN)
+                .setAction(
+                    when {
+                        !openDaily -> Intent.ACTION_MAIN
+                        killer -> "com.kiaijoe.sudoku.OPEN_KILLER_DAILY"
+                        else -> "com.kiaijoe.sudoku.OPEN_DAILY"
+                    },
+                )
                 .putExtra(EXTRA_OPEN_DAILY, openDaily)
+                .putExtra(EXTRA_KILLER, killer)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
             return PendingIntent.getActivity(
                 context,
-                if (openDaily) 1 else 0,
+                when {
+                    !openDaily -> 0
+                    killer -> 2
+                    else -> 1
+                },
                 intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
             )
