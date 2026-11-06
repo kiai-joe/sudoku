@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Where the camera app puts a puzzle photo: a scratch folder in the app's cache. -->
+<paths>
+    <cache-path name="scans" path="scans/" />
+</paths>

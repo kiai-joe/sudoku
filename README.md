@@ -59,7 +59,7 @@ and install it, allowing "Install unknown apps" for your browser when asked. New
   - Expert: the same with no printed numbers at all.
 - **Sudoku X.** Both long diagonals must hold 1 to 9 as well, drawn as faint lines across the board. Four levels, graded the same way, and hints know about the diagonals.
 - **Jigsaw.** The 3×3 boxes are replaced by nine odd shapes of nine cells, each holding 1 to 9. Every puzzle has its own new layout. Four levels, with hints that name the shapes.
-- **Enter a puzzle.** Type in one from a book or a newspaper. Sumi marks any repeated number, checks there's exactly one solution, grades it by technique, and then plays it with hints like any other game.
+- **Enter a puzzle.** Scan one from a book or a newspaper with the camera (or a photo you already have), or type it in. Sumi finds the grid, straightens it and reads the printed numbers on the phone; numbers it isn't sure of are tinted gold, with the straightened photo below the board to check against. Sumi marks any repeated number, checks there's exactly one solution, grades it by technique, and then plays it with hints like any other game.
 - **Daily puzzles.** There are two each day, the same for everyone, made from the date so they work offline. The classic one rises from Easy on Monday to Expert on Sunday, and so does a daily Killer. Each has its own streak and calendar, and neither replaces your regular game.
 
 <table>
@@ -185,6 +185,7 @@ app/src/main/java/com/kiaijoe/sudoku/
 │   ├── LogicSolver.kt   Human-style solver that grades puzzles by technique
 │   ├── Generator.kt     Graded, unique-solution puzzle generator and levels
 │   ├── CustomPuzzle.kt  Checks and grades a puzzle typed in by the player
+│   ├── Scanner.kt       Finds a grid in a photo, straightens it and reads its digits
 │   ├── Killer.kt        Killer cages, cage combinations and the Killer generator
 │   ├── Hints.kt         Turns solver steps into explained, step-by-step hints
 │   ├── Tutorial.kt      Lessons, worked examples and practice puzzles
