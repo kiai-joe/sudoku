@@ -144,8 +144,8 @@ fun EnterPuzzleScreen(
                     val found = scan.digits.count { it != 0 }
                     scanNote = if (scan.unsure.isEmpty()) {
                         tr(
-                            "Read $found numbers. Check them against your photo below, then tap Check.",
-                            "Namba $found zimesomwa. Zilinganishe na picha yako hapa chini, kisha gusa Kagua.",
+                            "Read $found numbers. Check them against your photo below before you play.",
+                            "Namba $found zimesomwa. Zilinganishe na picha yako hapa chini kabla ya kucheza.",
                         )
                     } else {
                         tr(
