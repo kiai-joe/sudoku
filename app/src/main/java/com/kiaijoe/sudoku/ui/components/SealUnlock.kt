@@ -26,6 +26,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
@@ -89,71 +90,80 @@ fun SealUnlock(a: Achievement, animate: Boolean, delayMs: Int = 0, modifier: Mod
 internal fun SealUnlockFrame(a: Achievement, ms: Float, modifier: Modifier = Modifier) {
     val c = Sumi.colors
     val f = SealAnim.at(ms)
-    Row(
+    // The card is drawn behind the content, not around it, so the falling seal isn't clipped to its edges.
+    Box(
         modifier
             .fillMaxWidth()
-            // The card arrives with its seal, so nothing sits empty while the hanamaru draws.
-            .graphicsLayer { alpha = f.alpha }
-            .card(c, color = c.kinSoft)
+            .graphicsLayer {
+                alpha = f.alpha
+                // Fade each child in place rather than through an offscreen layer, which would clip the seal.
+                compositingStrategy = CompositingStrategy.ModulateAlpha
+            }
             .clearAndSetSemantics {
                 contentDescription = tr("New achievement: ${a.title}. ${a.description}", "Tuzo mpya: ${a.title}. ${a.description}")
                 liveRegion = LiveRegionMode.Polite
-            }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            },
     ) {
-        Box(Modifier.size(64.dp), contentAlignment = Alignment.Center) {
-            // The gold ring and rays spread from under the seal as it lands.
-            Canvas(Modifier.size(64.dp)) {
-                val centre = Offset(size.width / 2f, size.height / 2f)
-                val seal = size.minDimension / 2f * (56f / 64f)
-                if (f.ring > 0f && f.ring < 1f) {
-                    drawCircle(
-                        color = c.kin.copy(alpha = 0.7f * (1f - f.ring)),
-                        radius = seal * (1f + 0.55f * f.ring),
-                        center = centre,
-                        style = Stroke(width = 3.dp.toPx() * (1f - 0.6f * f.ring)),
-                    )
-                }
-                if (f.rays > 0f && f.rays < 1f) {
-                    for (k in 0 until SealAnim.RAYS) {
-                        val angle = 2f * PI.toFloat() * k / SealAnim.RAYS - PI.toFloat() / 2f
-                        val inner = seal * (1.1f + 0.35f * f.rays)
-                        val outer = inner + seal * 0.32f * (1f - f.rays)
-                        drawLine(
-                            color = c.kin.copy(alpha = 1f - f.rays),
-                            start = Offset(centre.x + inner * cos(angle), centre.y + inner * sin(angle)),
-                            end = Offset(centre.x + outer * cos(angle), centre.y + outer * sin(angle)),
-                            strokeWidth = 3.dp.toPx(),
-                            cap = StrokeCap.Round,
+        Box(Modifier.matchParentSize().card(c, color = c.kinSoft))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(Modifier.size(64.dp), contentAlignment = Alignment.Center) {
+                // The gold ring and rays spread from under the seal as it lands.
+                Canvas(Modifier.size(64.dp)) {
+                    val centre = Offset(size.width / 2f, size.height / 2f)
+                    val seal = size.minDimension / 2f * (56f / 64f)
+                    if (f.ring > 0f && f.ring < 1f) {
+                        drawCircle(
+                            color = c.kin.copy(alpha = 0.7f * (1f - f.ring)),
+                            radius = seal * (1f + 0.55f * f.ring),
+                            center = centre,
+                            style = Stroke(width = 3.dp.toPx() * (1f - 0.6f * f.ring)),
                         )
                     }
+                    if (f.rays > 0f && f.rays < 1f) {
+                        for (k in 0 until SealAnim.RAYS) {
+                            val angle = 2f * PI.toFloat() * k / SealAnim.RAYS - PI.toFloat() / 2f
+                            val inner = seal * (1.1f + 0.35f * f.rays)
+                            val outer = inner + seal * 0.32f * (1f - f.rays)
+                            drawLine(
+                                color = c.kin.copy(alpha = 1f - f.rays),
+                                start = Offset(centre.x + inner * cos(angle), centre.y + inner * sin(angle)),
+                                end = Offset(centre.x + outer * cos(angle), centre.y + outer * sin(angle)),
+                                strokeWidth = 3.dp.toPx(),
+                                cap = StrokeCap.Round,
+                            )
+                        }
+                    }
                 }
+                SealMark(
+                    a,
+                    earned = true,
+                    size = 56,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = f.scale
+                        scaleY = f.scale
+                        rotationZ = f.rotation
+                    },
+                )
             }
-            SealMark(
-                a,
-                earned = true,
-                size = 56,
-                modifier = Modifier.graphicsLayer {
-                    scaleX = f.scale
-                    scaleY = f.scale
-                    rotationZ = f.rotation
-                },
-            )
-        }
-        Spacer(Modifier.width(14.dp))
-        Column(
-            Modifier
-                .weight(1f)
-                .graphicsLayer {
-                    alpha = f.text
-                    translationY = (1f - f.text) * 8.dp.toPx()
-                },
-        ) {
-            Text(tr("NEW ACHIEVEMENT", "TUZO MPYA"), style = MaterialTheme.typography.labelSmall, color = c.shu)
-            Spacer(Modifier.height(2.dp))
-            Text(a.title, style = MaterialTheme.typography.titleMedium, color = c.ink)
-            Text(a.description, style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
+            Spacer(Modifier.width(14.dp))
+            Column(
+                Modifier
+                    .weight(1f)
+                    .graphicsLayer {
+                        alpha = f.text
+                        translationY = (1f - f.text) * 8.dp.toPx()
+                    },
+            ) {
+                Text(tr("NEW ACHIEVEMENT", "TUZO MPYA"), style = MaterialTheme.typography.labelSmall, color = c.shu)
+                Spacer(Modifier.height(2.dp))
+                Text(a.title, style = MaterialTheme.typography.titleMedium, color = c.ink)
+                Text(a.description, style = MaterialTheme.typography.bodySmall, color = c.inkMuted)
+            }
         }
     }
 }
@@ -190,7 +200,7 @@ internal object SealAnim {
         val pressT = ((t - DROP_END) / (PRESS_END - DROP_END)).coerceIn(0f, 1f)
         val spread = ((t - DROP_END) / (RING_END - DROP_END)).coerceIn(0f, 1f)
         return Frame(
-            scale = if (t < DROP_END) 2.2f - 1.2f * fall else press(pressT),
+            scale = if (t < DROP_END) 1.8f - 0.8f * fall else press(pressT),
             rotation = -24f * (1f - fall),
             alpha = (t / 120f).coerceIn(0f, 1f),
             ring = if (t <= DROP_END) 0f else easeOut(spread),

@@ -11,7 +11,7 @@ class SealAnimTest {
     @Test
     fun fallsFromAboveAndEndsStill() {
         val first = SealAnim.at(0f)
-        assertTrue("starts big, as if above the card", first.scale > 2f)
+        assertTrue("starts big, as if above the card", first.scale > 1.5f)
         assertEquals(0f, first.alpha, 0f)
         assertEquals(0f, first.text, 0f)
 
