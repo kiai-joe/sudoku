@@ -831,7 +831,13 @@ private fun EndDialogs(game: GameState, actions: GameActions) {
             },
             confirmButton = { PillButton(tr("Try again", "Jaribu tena"), actions::restart, height = 44.dp) },
             dismissButton = {
-                PillButton(tr("New puzzle", "Fumbo jipya"), { actions.newLike(game) }, tone = ButtonTone.Soft, height = 44.dp)
+                val onReplay = LocalOnReplay.current
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (onReplay != null && game.log.isNotEmpty()) {
+                        PillButton(tr("Replay", "Marudio"), onReplay, tone = ButtonTone.Ghost, icon = Lucide.History, height = 44.dp)
+                    }
+                    PillButton(tr("New puzzle", "Fumbo jipya"), { actions.newLike(game) }, tone = ButtonTone.Soft, height = 44.dp)
+                }
             },
         )
         GameStatus.PLAYING -> Unit

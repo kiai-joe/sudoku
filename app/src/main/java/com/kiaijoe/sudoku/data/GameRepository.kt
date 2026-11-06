@@ -88,6 +88,18 @@ class GameRepository(context: Context) {
 
     fun loadGame(): GameState? = prefs.getString(KEY_GAME, null)?.let(GameCodec::decode)
 
+    /** The last [RECENT_GAMES] finished games, won or lost, newest first, for replaying from Progress. */
+    fun loadRecentGames(): List<GameState> =
+        (0 until RECENT_GAMES).mapNotNull { i -> prefs.getString("$KEY_RECENT$i", null)?.let(GameCodec::decode) }
+
+    /** Keeps [game], just finished, as the newest recent game; the oldest drops off. */
+    fun recordFinished(game: GameState) {
+        val kept = (listOf(game) + loadRecentGames()).take(RECENT_GAMES)
+        prefs.edit().apply {
+            kept.forEachIndexed { i, g -> putString("$KEY_RECENT$i", GameCodec.encode(g)) }
+        }.apply()
+    }
+
     fun saveGame(state: GameState?) {
         prefs.edit().apply {
             if (state == null) remove(KEY_GAME) else putString(KEY_GAME, GameCodec.encode(state))
@@ -261,6 +273,8 @@ class GameRepository(context: Context) {
         private val STAT_FIELDS = listOf("played", "won", "best", "timed", "total", "nohint")
         private const val KEY_LESSONS_DONE = "lessons_done"
         private const val KEY_GAME = "current_game"
+        private const val KEY_RECENT = "recent_game_"
+        const val RECENT_GAMES = 2
         private const val KEY_DAILY_GAME = "daily_game"
         private const val KEY_DAILY_RESULTS = "daily_results"
         private const val KEY_KILLER_DAILY_GAME = "killer_daily_game"
