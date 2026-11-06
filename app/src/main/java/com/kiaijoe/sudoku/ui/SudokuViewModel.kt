@@ -64,6 +64,8 @@ data class UiState(
     val stats: Map<Difficulty, DifficultyStats> = emptyMap(),
     val killerStats: DifficultyStats = DifficultyStats(),
     val variantStats: Map<Variant, DifficultyStats> = emptyMap(),
+    /** The last two finished games, newest first, to replay from Progress. */
+    val recentGames: List<GameState> = emptyList(),
     val achievements: Map<Achievement, Long> = emptyMap(),
     val newAchievements: List<Achievement> = emptyList(),
     /** Lessons finished, by lesson id (the technique name for whole-technique lessons). */
@@ -158,6 +160,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             stats = repo.loadStats(),
             killerStats = repo.loadKillerStats(),
             variantStats = repo.loadVariantStats(),
+            recentGames = repo.loadRecentGames(),
             lessonsDone = repo.loadLessonsDone(),
             achievements = repo.loadAchievements(),
         )
@@ -573,6 +576,8 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             undoStack.clear()
         }
         val newAchievements = if (next.status == GameStatus.WON) award(next) else emptyList()
+        val finished = next.status != GameStatus.PLAYING
+        if (finished) repo.recordFinished(next)
         persist(next)
         _ui.update {
             synced(it, next).copy(
@@ -583,6 +588,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 killerStats = if (next.status == GameStatus.WON) repo.loadKillerStats() else it.killerStats,
                 variantStats = if (next.status == GameStatus.WON) repo.loadVariantStats() else it.variantStats,
                 newAchievements = newAchievements,
+                recentGames = if (finished) repo.loadRecentGames() else it.recentGames,
                 achievements = if (newAchievements.isEmpty()) it.achievements else repo.loadAchievements(),
                 feedback = when (next.status) {
                     GameStatus.WON -> Feedback(++feedbackId, FeedbackKind.WIN)

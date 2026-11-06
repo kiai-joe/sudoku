@@ -104,7 +104,7 @@ and install it, allowing "Install unknown apps" for your browser when asked. New
 ### After a game
 
 - **Share your result.** The win screen's Share button sends a short summary through Android's share sheet: the puzzle, your time, mistakes and hints, and for a daily puzzle that week as a row of red squares with your streak, so friends playing the same daily can compare.
-- **Replay.** Watch your solve back move by move, with play, a step either way and a slider. Below the board, the moments worth a look jump straight there: wrong numbers, numbers a hint placed, and your three longest pauses. Every game keeps a log of its board changes for this, saved with the game.
+- **Replay.** Watch a game back move by move, with play, a step either way and a slider. Open it from the win screen or the *Out of mistakes* screen, and the last two finished games stay on Progress to replay later. Below the board, the moments worth a look jump straight there: wrong numbers, numbers a hint placed, and your three longest pauses. Every game keeps a log of its board changes for this, saved with the game.
 
 ### Home-screen widgets
 

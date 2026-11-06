@@ -46,7 +46,12 @@ import com.kiaijoe.sudoku.data.DifficultyStats
 import com.kiaijoe.sudoku.engine.Achievement
 import com.kiaijoe.sudoku.engine.Difficulty
 import com.kiaijoe.sudoku.engine.Variant
+import com.kiaijoe.sudoku.engine.GameState
+import com.kiaijoe.sudoku.engine.GameStatus
 import com.kiaijoe.sudoku.ui.components.ButtonTone
+import com.kiaijoe.sudoku.ui.components.ListCard
+import com.kiaijoe.sudoku.ui.components.ListRow
+import com.kiaijoe.sudoku.ui.components.RowChevron
 import com.kiaijoe.sudoku.ui.components.ChipTone
 import com.kiaijoe.sudoku.ui.components.Overline
 import com.kiaijoe.sudoku.ui.components.PillButton
@@ -73,6 +78,8 @@ fun StatsScreen(
     variantStats: Map<Variant, DifficultyStats> = emptyMap(),
     achievements: Map<Achievement, Long> = emptyMap(),
     onTab: ((Tab) -> Unit)? = null,
+    recentGames: List<GameState> = emptyList(),
+    onReplay: (Int) -> Unit = {},
 ) {
     BackHandler(onBack = onBack)
     var confirmReset by remember { mutableStateOf(false) }
@@ -134,6 +141,32 @@ fun StatsScreen(
                 ),
                 style = MaterialTheme.typography.bodySmall,
                 color = c.inkMuted,
+            )
+        }
+
+        // The last two finished games, to watch back.
+        val replayable = recentGames.withIndex().filter { it.value.log.isNotEmpty() }
+        if (replayable.isNotEmpty()) {
+            Spacer(Modifier.height(24.dp))
+            Overline(tr("Replay a recent game", "Rudia mchezo wa karibuni"))
+            Spacer(Modifier.height(8.dp))
+            ListCard(
+                rows = replayable.map { (i, g) ->
+                    @Composable {
+                        val won = g.status == GameStatus.WON
+                        ListRow(
+                            icon = if (won) Lucide.CircleCheckBig else Lucide.X,
+                            title = g.title(),
+                            subtitle = (if (won) tr("Solved", "Limetatuliwa") else tr("Out of mistakes", "Makosa yamekwisha")) +
+                                " · ${formatTime(g.elapsedSeconds)} · " +
+                                tr(if (g.log.size == 1) "1 move" else "${g.log.size} moves", if (g.log.size == 1) "hatua 1" else "hatua ${g.log.size}"),
+                            iconColor = if (won) c.ai else c.shu,
+                            iconBackground = if (won) c.aiSoft else c.shuSoft,
+                            onClick = { onReplay(i) },
+                            trailing = { RowChevron() },
+                        )
+                    }
+                },
             )
         }
 

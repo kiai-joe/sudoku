@@ -11,6 +11,7 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -83,6 +84,7 @@ private val Tab.screen: Screen
 private fun SudokuApp(openDailyRequests: Int, openKillerDaily: Boolean = false, viewModel: SudokuViewModel = viewModel()) {
     val state by viewModel.ui.collectAsStateWithLifecycle()
     var screen by rememberSaveable { mutableStateOf(Screen.Home) }
+    var replayRecent by rememberSaveable { mutableIntStateOf(-1) }
     var lessonIndex by rememberSaveable { mutableIntStateOf(0) }
     var calendarKiller by rememberSaveable { mutableStateOf(false) }
 
@@ -154,14 +156,20 @@ private fun SudokuApp(openDailyRequests: Int, openKillerDaily: Boolean = false, 
                 state = state,
                 actions = viewModel,
                 onExit = { screen = Screen.Home },
-                onReplay = { screen = Screen.Replay },
+                onReplay = {
+                    replayRecent = -1
+                    screen = Screen.Replay
+                },
             )
             Screen.Replay -> {
-                val game = state.game
+                // -1 replays the game on screen; 0 or 1 a recent game opened from Progress.
+                val fromProgress = replayRecent >= 0
+                val game = if (fromProgress) state.recentGames.getOrNull(replayRecent) else state.game
+                val back = { screen = if (fromProgress) Screen.Stats else Screen.Game }
                 if (game == null) {
-                    LaunchedEffect(Unit) { screen = Screen.Home }
+                    LaunchedEffect(Unit) { back() }
                 } else {
-                    ReplayScreen(game, onBack = { screen = Screen.Game })
+                    key(replayRecent) { ReplayScreen(game, onBack = back) }
                 }
             }
             Screen.Settings -> SettingsScreen(
@@ -227,6 +235,11 @@ private fun SudokuApp(openDailyRequests: Int, openKillerDaily: Boolean = false, 
                 onReset = viewModel::resetStats,
                 onBack = { screen = Screen.Home },
                 onTab = onTab,
+                recentGames = state.recentGames,
+                onReplay = { i ->
+                    replayRecent = i
+                    screen = Screen.Replay
+                },
             )
         }
     }

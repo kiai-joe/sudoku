@@ -25,6 +25,7 @@ import com.kiaijoe.sudoku.ui.screens.CalendarScreen
 import com.kiaijoe.sudoku.ui.screens.CombinationsScreen
 import com.kiaijoe.sudoku.ui.screens.EnterPuzzleScreen
 import com.kiaijoe.sudoku.ui.screens.ReplayScreen
+import com.kiaijoe.sudoku.ui.screens.boardAt
 import com.kiaijoe.sudoku.ui.screens.GameScreen
 import com.kiaijoe.sudoku.ui.screens.HomeScreen
 import com.kiaijoe.sudoku.ui.screens.LearnScreen
@@ -641,7 +642,14 @@ class ScreenshotTest {
             onReset = {},
             onBack = {},
             onTab = {},
+            recentGames = listOf(Fixtures.lostGame(), Fixtures.playedGame()),
         )
+    }
+
+    /** Out of mistakes, with Replay beside Try again and New puzzle. */
+    @Test
+    fun lostLight() = capture("lost_light", dark = false) {
+        GameScreen(state = UiState(game = Fixtures.lostGame()), actions = GameActions.None, onExit = {}, onReplay = {})
     }
 
     /** A win that earns two achievements. */
@@ -777,6 +785,20 @@ private object Fixtures {
      * early on, one number placed by a hint and two long pauses, so its log
      * has something to replay.
      */
+    /** A game lost halfway through: the first half of [playedGame]'s moves, then out of mistakes. */
+    fun lostGame(): GameState {
+        val g = playedGame()
+        val half = g.log.size / 2
+        val log = g.log.take(half)
+        return g.copy(
+            values = boardAt(g, half),
+            log = log,
+            status = GameStatus.LOST,
+            mistakes = 3,
+            elapsedSeconds = log.last().second,
+        )
+    }
+
     fun playedGame(): GameState {
         val start = GameState.from(Generator.generate(Difficulty.MEDIUM, Random(2)))
         var game = start
