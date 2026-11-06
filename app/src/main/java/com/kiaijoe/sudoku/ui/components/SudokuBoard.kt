@@ -7,6 +7,8 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.ui.semantics.onLongClick
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -95,6 +97,8 @@ fun SudokuBoard(
     flagged: Set<Int> = emptySet(),
     flash: Feedback? = null,
     largeNumbers: Boolean = false,
+    spotlight: Int? = null,
+    onLongPress: ((Int) -> Unit)? = null,
 ) {
     val cageOf: Map<Int, Cage> = remember(game.cages) {
         buildMap { for (cage in game.cages) for (c in cage.cells) put(c, cage) }
@@ -104,6 +108,12 @@ fun SudokuBoard(
     val colors = LocalBoardColors.current
     val selectedDigit = selected?.let { game.values[it] }?.takeIf { it != 0 && highlightSameNumbers }
     val wash = rememberInkWash(flash)
+    // Where the highlighted number can still go, from the numbers on the board.
+    val spotCells: Set<Int> = remember(game.values, spotlight) {
+        val d = spotlight ?: return@remember emptySet()
+        val cands = game.boardCandidates()
+        (0 until Grid.CELLS).filter { game.values[it] == d || cands[it] and (1 shl (d - 1)) != 0 }.toSet()
+    }
 
     BoxWithConstraints(
         modifier = modifier
@@ -138,7 +148,7 @@ fun SudokuBoard(
                         background = if (hint != null || mistakeCell != null) {
                             hintBackground(index, hint, mistakeCell, colors)
                         } else {
-                            cellBackground(game, index, selected, selectedDigit, colors, wrongShown(index))
+                            cellBackground(game, index, selected, selectedDigit, colors, wrongShown(index), index in spotCells)
                         },
                         wrongShown = wrongShown(index),
                         isSelected = index == selected && hint == null,
@@ -151,6 +161,7 @@ fun SudokuBoard(
                         colors = colors,
                         washAlpha = { wash?.alpha(index) ?: 0f },
                         onClick = { onSelect(index) },
+                        onLongClick = onLongPress?.let { { it(index) } },
                         modifier = Modifier
                             .offset(geo.inBox(c), geo.inBox(r))
                             .size(geo.cell),
@@ -262,6 +273,10 @@ internal fun cellDescription(
     }
     if (hintShown != 0) append(tr(", hint candidates ", ", namba za dokezo ")).append(digitsText(hintShown))
     if (hintStruck != 0) append(tr(", ruled out ", ", zimeondolewa ")).append(digitsText(hintStruck))
+    when (game.mark(index)) {
+        1 -> append(tr(", marked green", ", alama ya kijani"))
+        2 -> append(tr(", marked gold", ", alama ya dhahabu"))
+    }
 }
 
 private fun digitsText(mask: Int) = (1..9).filter { mask and (1 shl (it - 1)) != 0 }.joinToString(", ")
@@ -283,9 +298,13 @@ private fun cellBackground(
     selectedDigit: Int?,
     colors: BoardColors,
     wrongShown: Boolean,
+    spotlit: Boolean = false,
 ): Color = when {
     index == selected -> colors.selected
     wrongShown -> colors.wrongBackground
+    spotlit -> colors.spotlight
+    game.mark(index) == 1 -> colors.markA
+    game.mark(index) == 2 -> colors.markB
     selectedDigit != null && game.values[index] == selectedDigit -> colors.sameNumber
     selected != null && Grid.arePeers(index, selected) -> colors.peer
     else -> colors.cell
@@ -303,6 +322,7 @@ private fun Cell(
     washAlpha: () -> Float,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLongClick: (() -> Unit)? = null,
     wrongShown: Boolean = false,
     hintShown: Int = 0,
     hintStruck: Int = 0,
@@ -320,9 +340,13 @@ private fun Cell(
                 val a = washAlpha()
                 if (a > 0f) drawRect(colors.wash.copy(alpha = a))
             }
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .semantics {
                 contentDescription = description
+                if (onLongClick != null) {
+                    // `this.` picks the semantics action, not the onLongClick parameter of the same name.
+                    this.onLongClick(label = tr("Change colour mark", "Badilisha alama ya rangi")) { onLongClick(); true }
+                }
                 selected = isSelected
                 role = Role.Button
             },

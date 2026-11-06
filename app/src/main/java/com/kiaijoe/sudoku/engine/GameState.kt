@@ -20,6 +20,8 @@ data class LogEntry(val cell: Int, val value: Int, val second: Long, val hint: B
  * [practice] is the technique this game was started to practise, from a lesson.
  * [afterLoss] is set when the game was restarted after running out of mistakes.
  * [log] is every change to the board's numbers since the start, for the replay.
+ * [marks] is the player's colour mark on each cell (0 none, 1 or 2), or
+ * empty when there are none.
  */
 data class GameState(
     val difficulty: Difficulty,
@@ -38,7 +40,31 @@ data class GameState(
     val practice: Technique? = null,
     val afterLoss: Boolean = false,
     val log: List<LogEntry> = emptyList(),
+    val marks: List<Int> = emptyList(),
 ) {
+    /** [cell]'s colour mark: 0 for none, or 1 or 2. */
+    fun mark(cell: Int): Int = marks.getOrElse(cell) { 0 }
+
+    /** [cell]'s colour mark moved on to the next: none, the first colour, the second, then none again. */
+    fun cycleMark(cell: Int): GameState {
+        val next = (mark(cell) + 1) % 3
+        val all = if (marks.isEmpty()) MutableList(Grid.CELLS) { 0 } else marks.toMutableList()
+        all[cell] = next
+        return copy(marks = if (all.all { it == 0 }) emptyList() else all)
+    }
+
+    /** For each cell, the numbers it can still take given the numbers on the board (0 where filled). */
+    fun boardCandidates(): IntArray = IntArray(Grid.CELLS) { cell ->
+        if (values[cell] != 0) {
+            0
+        } else {
+            Grid.peers[cell].fold(Grid.ALL_DIGITS) { mask, peer ->
+                val v = values[peer]
+                if (v != 0) mask and bit(v).inv() else mask
+            }
+        }
+    }
+
     /**
      * This state with the numbers that changed since [before] added to the
      * [log], at the current clock; [hint] marks them as placed by a hint.

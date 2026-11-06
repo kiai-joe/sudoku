@@ -209,6 +209,17 @@ fun SettingsScreen(
                                     settings.highlightSameNumbers,
                                 ) { onChange(settings.copy(highlightSameNumbers = it)) }
                             },
+                            {
+                                SwitchRow(
+                                    Lucide.Lightbulb,
+                                    tr("Hints step by step", "Madokezo hatua kwa hatua"),
+                                    tr(
+                                        "A nudge first, then the technique, then the full explanation",
+                                        "Kidokezo kidogo kwanza, kisha mbinu, kisha maelezo kamili",
+                                    ),
+                                    settings.gentleHints,
+                                ) { onChange(settings.copy(gentleHints = it)) }
+                            },
                         ),
                     )
 

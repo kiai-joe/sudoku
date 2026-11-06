@@ -16,6 +16,8 @@ import com.kiaijoe.sudoku.ui.theme.InkTheme
  * @property theme the ink palette.
  * @property largeNumbers bigger digits on the board and number pad.
  * @property darkMode light, dark, or following the phone.
+ * @property gentleHints hints start with a nudge, then the technique, then
+ *   the full explanation; off shows the full explanation at once.
  */
 data class Settings(
     val mistakeLimit: Boolean = true,
@@ -26,6 +28,7 @@ data class Settings(
     val theme: InkTheme = InkTheme.SUMI,
     val largeNumbers: Boolean = false,
     val darkMode: DarkMode = DarkMode.SYSTEM,
+    val gentleHints: Boolean = true,
 )
 
 /**
@@ -147,6 +150,7 @@ class GameRepository(context: Context) {
         darkMode = prefs.getString(KEY_DARK_MODE, null)
             ?.let { name -> DarkMode.entries.firstOrNull { it.name == name } }
             ?: DarkMode.SYSTEM,
+        gentleHints = prefs.getBoolean(KEY_GENTLE_HINTS, true),
     )
 
     fun saveSettings(settings: Settings) {
@@ -159,6 +163,7 @@ class GameRepository(context: Context) {
             .putString(KEY_THEME, settings.theme.name)
             .putBoolean(KEY_LARGE_NUMBERS, settings.largeNumbers)
             .putString(KEY_DARK_MODE, settings.darkMode.name)
+            .putBoolean(KEY_GENTLE_HINTS, settings.gentleHints)
             .apply()
     }
 
@@ -243,5 +248,6 @@ class GameRepository(context: Context) {
         private const val KEY_THEME = "theme"
         private const val KEY_LARGE_NUMBERS = "large_numbers"
         private const val KEY_DARK_MODE = "dark_mode"
+        private const val KEY_GENTLE_HINTS = "gentle_hints"
     }
 }

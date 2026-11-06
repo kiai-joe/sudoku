@@ -65,12 +65,14 @@ and install it, allowing "Install unknown apps" for your browser when asked. New
 - **Help on the board.** The selected cell's row, column, box and matching numbers are highlighted. Undo and erase are always there.
 - **Mistakes.** There's a limit of 3, which you can turn off. Turn off *Show mistakes right away* and nothing gives away whether a number is right until you tap **Check**.
 - **Finishing touches.** A matcha ink wash runs across every row, column or box you finish. Gentle vibrations mark each move, with a longer pattern for a win or a loss. Vibrations use the phone's own haptics, so they need no permission.
+- **Highlight a number.** Long-press a number key to light up every cell where that number can still go, and the cells that already hold it. Long-press it again to turn it off.
+- **Colour marks.** Long-press a cell to tint it green, then gold, then clear it, to keep track of chains and pairs. Marks are saved with the game and read out by screen readers.
 - **Timer.** It pauses when you leave, and a manual pause hides the board.
 - **Saving.** The game is saved after every move.
 
 ### Learning
 
-- **Teaching hints.** A hint finds the easiest next step on your board, highlights the cells involved, and explains it in plain words ("In the centre box, 4 can only go in row 5…"). Candidates a step rules out are crossed out on the board. A wrong number is pointed out first. On a phone the hint slides up as a sheet, so the board stays in view.
+- **Teaching hints.** A hint finds the easiest next step on your board, highlights the cells involved, and explains it in plain words ("In the centre box, 4 can only go in row 5…"). Candidates a step rules out are crossed out on the board. A wrong number is pointed out first. On a phone the hint slides up as a sheet, so the board stays in view. Hints go step by step: first a nudge to where to look, then the technique's name and its cells, then the full explanation. Turn off *Hints step by step* in Settings to get the full explanation straight away. A hint counts once however far you take it.
 - **Lessons.** There's a lesson for every technique, each with a worked example from a real puzzle that you step through on the board. Learn tracks which lessons you've finished.
 - **A Killer course.** Nine lessons take you from the rules through cages with one answer, the last cell of a cage, cage combinations and how they meet the grid, to the 45 rule (innies, outies, and across several rows) and classic techniques in Killer.
 - **Combinations cheat sheet.** Every way to make each sum in 2 to 5 cells, with the one-answer sums marked and the numbers a sum always uses. Open it from Learn, or from the Σ button in any Killer game, where it opens on the size of the selected cell's cage.

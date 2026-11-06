@@ -73,6 +73,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.kiaijoe.sudoku.engine.GameState
+import com.kiaijoe.sudoku.engine.Hints
+import com.kiaijoe.sudoku.engine.HintCard
 import com.kiaijoe.sudoku.engine.GameStatus
 import com.kiaijoe.sudoku.engine.HintPlan
 import com.kiaijoe.sudoku.ui.Feedback
@@ -337,6 +339,7 @@ private fun HintSheet(hint: HintUi?, actions: GameActions, modifier: Modifier = 
             HintContent(
                 hint = current,
                 onNext = actions::hintNext,
+                onMore = actions::hintMore,
                 onPlace = actions::hintPlace,
                 onErase = actions::hintEraseMistake,
                 onClose = actions::closeHint,
@@ -375,12 +378,14 @@ private fun BoardArea(
             highlightSameNumbers = state.settings.highlightSameNumbers,
             onSelect = actions::select,
             modifier = Modifier.fillMaxSize(),
-            hint = state.hint?.card,
+            hint = state.hint?.boardCard(),
             mistakeCell = (state.hint?.plan as? HintPlan.FixMistake)?.cell,
             revealWrong = state.settings.instantCheck,
             flagged = state.flagged,
             flash = feedback,
             largeNumbers = state.settings.largeNumbers,
+            spotlight = state.spotlight.takeIf { state.hint == null },
+            onLongPress = actions::mark,
         )
         if (state.paused) PausedOverlay(onResume = actions::togglePause)
         if (won) {
@@ -419,6 +424,7 @@ private fun Controls(
         HintPanel(
             hint = hint,
             onNext = actions::hintNext,
+            onMore = actions::hintMore,
             onPlace = actions::hintPlace,
             onErase = actions::hintEraseMistake,
             onClose = actions::closeHint,
@@ -441,6 +447,8 @@ private fun Controls(
                 onDigit = actions::input,
                 largeNumbers = state.settings.largeNumbers,
                 grid = gridPad,
+                spotlight = state.spotlight,
+                onLongDigit = actions::toggleSpotlight,
                 modifier = if (gridPad) Modifier.widthIn(max = 380.dp) else Modifier,
             )
         }
@@ -455,9 +463,10 @@ private fun HintPanel(
     onPlace: () -> Unit,
     onErase: () -> Unit,
     onClose: () -> Unit,
+    onMore: () -> Unit = {},
 ) {
     SumiCard(Modifier.fillMaxWidth(), padding = PaddingValues(20.dp)) {
-        HintContent(hint, onNext, onPlace, onErase, onClose)
+        HintContent(hint, onNext, onPlace, onErase, onClose, onMore)
     }
 }
 
@@ -469,10 +478,16 @@ private fun ColumnScope.HintContent(
     onPlace: () -> Unit,
     onErase: () -> Unit,
     onClose: () -> Unit,
+    onMore: () -> Unit = {},
 ) {
     val c = Sumi.colors
     val mistake = hint.plan as? HintPlan.FixMistake
     val card = hint.card
+    // A gentle hint first says where to look, then names the technique.
+    if (mistake == null && card != null && hint.level < HintUi.FULL) {
+        GentleHint(hint.level, card, onClose, onMore)
+        return
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
         IconBadge(
             if (mistake != null) Lucide.Eye else Lucide.Lightbulb,
@@ -526,6 +541,58 @@ private fun ColumnScope.HintContent(
             hint.hasNext ->
                 PillButton(tr("Next step", "Hatua ijayo"), onNext, Modifier.weight(1f), trailingIcon = Lucide.ChevronRight)
         }
+    }
+}
+
+/** A hint before its full explanation: a nudge to where to look, or the technique's name. */
+@Composable
+private fun GentleHint(level: Int, card: HintCard, onClose: () -> Unit, onMore: () -> Unit) {
+    val c = Sumi.colors
+    val nudge = level == HintUi.NUDGE
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        IconBadge(Lucide.Lightbulb, tint = c.ink, background = c.kinSoft, size = 40.dp)
+        Spacer(Modifier.width(12.dp))
+        Text(
+            if (nudge) tr("A nudge", "Kidokezo kidogo") else card.title,
+            style = MaterialTheme.typography.titleLarge,
+            color = c.ink,
+            modifier = Modifier.weight(1f).semantics { heading() },
+        )
+    }
+    Spacer(Modifier.height(12.dp))
+    Text(
+        if (nudge) Hints.nudge(card).text else Hints.techniqueHint(card),
+        style = MaterialTheme.typography.bodyLarge,
+        color = c.ink,
+    )
+    Spacer(Modifier.height(16.dp))
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        PillButton(tr("Close", "Funga"), onClose, Modifier.weight(1f), tone = ButtonTone.Soft)
+        PillButton(
+            if (nudge) tr("More help", "Msaada zaidi") else tr("Show me", "Nionyeshe"),
+            onMore,
+            Modifier.weight(1f),
+            trailingIcon = Lucide.ChevronRight,
+        )
+    }
+}
+
+/**
+ * What the board shows for an open hint at its level: a nudge lights up only
+ * where to look, the technique adds its cells and candidates, and the full
+ * hint adds what it rules out.
+ */
+private fun HintUi.boardCard(): HintCard? {
+    val card = card ?: return null
+    return when (level) {
+        HintUi.NUDGE -> card.copy(
+            area = Hints.nudge(card).cells,
+            focus = emptySet(),
+            eliminations = emptyMap(),
+            candidates = emptyMap(),
+        )
+        HintUi.TECHNIQUE -> card.copy(eliminations = emptyMap())
+        else -> card
     }
 }
 

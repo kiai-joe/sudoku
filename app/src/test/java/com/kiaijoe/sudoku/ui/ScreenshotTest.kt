@@ -193,6 +193,29 @@ class ScreenshotTest {
         GameScreen(state = UiState(game = g, hint = HintUi(plan)), actions = GameActions.None, onExit = {})
     }
 
+    /** Hints step by step: first a nudge, then the technique. */
+    @Test
+    fun hintNudge() = capture("hint_nudge_light", dark = false) {
+        val (g, plan) = Fixtures.eliminationHint()
+        GameScreen(state = UiState(game = g, hint = HintUi(plan, level = HintUi.NUDGE)), actions = GameActions.None, onExit = {})
+    }
+
+    @Test
+    fun hintTechnique() = capture("hint_technique_light", dark = false) {
+        val (g, plan) = Fixtures.eliminationHint()
+        GameScreen(state = UiState(game = g, hint = HintUi(plan, level = HintUi.TECHNIQUE)), actions = GameActions.None, onExit = {})
+    }
+
+    /** Colour marks on a few cells, and every place 7 can still go lit up from its key. */
+    @Test
+    fun marksAndSpotlight() = capture("game_marks_light", dark = false) {
+        var g = Fixtures.midGame()
+        val empty = (0 until 81).filter { g.values[it] == 0 }
+        for (cell in empty.take(3)) g = g.cycleMark(cell)
+        for (cell in empty.drop(3).take(2)) g = g.cycleMark(cell).cycleMark(cell)
+        GameScreen(state = UiState(game = g, spotlight = 7), actions = GameActions.None, onExit = {})
+    }
+
     @Test
     fun hintMistake() = capture("hint_mistake_light", dark = false) {
         val g = Fixtures.midGame()
