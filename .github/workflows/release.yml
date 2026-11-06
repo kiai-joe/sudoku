@@ -25,6 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # All history and tags, to list what changed since the last release.
+          fetch-depth: 0
 
       - uses: actions/setup-java@v4
         with:
@@ -58,11 +61,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp app/build/outputs/apk/debug/app-debug.apk Sumi.apk
-          cat > notes.md <<EOF
-          Version $VERSION_NAME (code $VERSION_CODE), built from ${GITHUB_SHA::7}.
-
-          **Install:** open this page on your Android phone, tap **Sumi.apk**, and allow "Install unknown apps" for your browser when asked. Newer builds install over older ones and keep your saved game and stats.
-          EOF
+          # The notes list what changed since the release before this one.
+          previous=$(gh release list --limit 1 --exclude-drafts --json tagName --jq '.[0].tagName // ""')
+          previous_sha=""
+          if [[ -n "$previous" ]]; then previous_sha=$(git rev-list -n 1 "$previous" 2>/dev/null || true); fi
+          .github/scripts/release-notes.sh \
+            "Version $VERSION_NAME (code $VERSION_CODE), built from ${GITHUB_SHA::7}." \
+            "$GITHUB_SHA" "$previous_sha" > notes.md
           gh release create "$TAG" Sumi.apk \
             --target "$GITHUB_SHA" \
             --title "$TITLE" \
