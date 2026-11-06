@@ -56,6 +56,7 @@ import com.kiaijoe.sudoku.ui.components.ChipTone
 import com.kiaijoe.sudoku.ui.components.Overline
 import com.kiaijoe.sudoku.ui.components.PillButton
 import com.kiaijoe.sudoku.ui.components.ScreenTitle
+import com.kiaijoe.sudoku.ui.components.SealMark
 import com.kiaijoe.sudoku.ui.components.SumiCard
 import com.kiaijoe.sudoku.ui.components.SumiChip
 import com.kiaijoe.sudoku.ui.components.Tab
@@ -244,26 +245,6 @@ private fun StatTile(value: String, label: String, modifier: Modifier = Modifier
 }
 
 /** An achievement's round seal: vermilion and stamped when earned, a lock on the sunk well when not. */
-@Composable
-private fun SealMark(a: Achievement, earned: Boolean, size: Int) {
-    val c = Sumi.colors
-    Box(
-        Modifier
-            .size(size.dp)
-            .clip(CircleShape)
-            .background(if (earned) c.shu else c.surfaceSunk)
-            .then(if (earned) Modifier.padding(3.dp).border(2.dp, c.onShu, CircleShape) else Modifier),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            if (earned) a.icon else Lucide.Lock,
-            contentDescription = null,
-            tint = if (earned) c.onShu else c.inkMuted,
-            modifier = Modifier.size((size * 0.42f).dp),
-        )
-    }
-}
-
 @Composable
 private fun Seal(a: Achievement, day: Long?, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val c = Sumi.colors

@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.kiaijoe.sudoku.ui.components.HanamaruFrame
+import com.kiaijoe.sudoku.ui.components.SealUnlockFrame
 import com.kiaijoe.sudoku.ui.theme.Sumi
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
@@ -311,6 +312,19 @@ class ScreenshotTest {
                         }
                     }
                 }
+            }
+        }
+    }
+
+    /** A new achievement's seal, frame by frame: it falls, presses down, the gold ring and rays spread, its name fades in. */
+    @Test
+    @Config(qualifiers = "w411dp-h900dp-xxhdpi")
+    fun sealUnlockFramesLight() = capture("seal_unlock_frames_light", dark = false) {
+        val c = Sumi.colors
+        Column(Modifier.fillMaxSize().background(c.paper).padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            listOf(150f, 300f, 420f, 520f, 650f, 800f, 1100f).forEach { ms ->
+                Text("${ms.toInt()} ms", style = MaterialTheme.typography.labelMedium, color = c.inkMuted)
+                SealUnlockFrame(Achievement.STEADY_HAND, ms)
             }
         }
     }

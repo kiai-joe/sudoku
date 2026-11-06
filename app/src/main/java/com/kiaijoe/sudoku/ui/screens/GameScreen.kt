@@ -88,6 +88,7 @@ import com.kiaijoe.sudoku.ui.components.CardShape
 import com.kiaijoe.sudoku.ui.components.ChipTone
 import com.kiaijoe.sudoku.ui.components.GameToolbar
 import com.kiaijoe.sudoku.ui.components.HanamaruStamp
+import com.kiaijoe.sudoku.ui.components.SealUnlock
 import com.kiaijoe.sudoku.ui.components.IconBadge
 import com.kiaijoe.sudoku.ui.components.IconTile
 import com.kiaijoe.sudoku.ui.components.ListCard
@@ -262,7 +263,7 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
                     StatusRow(state, game)
                     CheckMessage(state)
                     Spacer(Modifier.height(16.dp))
-                    Controls(state, game, actions, onExit, won, gridPad)
+                    Controls(state, game, actions, onExit, won, gridPad, celebrate = sawPlaying)
                     Spacer(Modifier.height(12.dp))
                 }
             }
@@ -287,7 +288,7 @@ private fun Play(state: UiState, game: GameState, actions: GameActions, onExit: 
                     // The hint sheet sits over this space instead of the tools and number pad.
                     Spacer(Modifier.height(sheetHeight))
                 } else {
-                    Controls(state, game, actions, onExit, won)
+                    Controls(state, game, actions, onExit, won, celebrate = sawPlaying)
                     Spacer(Modifier.height(16.dp))
                 }
             }
@@ -419,10 +420,11 @@ private fun Controls(
     onExit: () -> Unit,
     won: Boolean,
     gridPad: Boolean = false,
+    celebrate: Boolean = false,
 ) {
     val hint = state.hint
     if (won) {
-        WinPanel(state, game, onNewGame = { actions.newLike(game) }, onHome = onExit)
+        WinPanel(state, game, onNewGame = { actions.newLike(game) }, onHome = onExit, celebrate = celebrate)
     } else if (hint != null) {
         HintPanel(
             hint = hint,
@@ -600,7 +602,7 @@ private fun HintUi.boardCard(): HintCard? {
 }
 
 @Composable
-private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onHome: () -> Unit) {
+private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onHome: () -> Unit, celebrate: Boolean = false) {
     val c = Sumi.colors
     val best = state.stats[game.difficulty]?.bestSeconds
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -659,17 +661,11 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
                     )
                 }
             }
-            for (achievement in state.newAchievements) {
-                add {
-                    ListRow(
-                        icon = achievement.icon,
-                        title = tr("New achievement: ${achievement.title}", "Tuzo mpya: ${achievement.title}"),
-                        subtitle = achievement.description,
-                        iconColor = c.onShu,
-                        iconBackground = c.shu,
-                    )
-                }
-            }
+        }
+        // Each new achievement stamps in once the hanamaru is down, a moment apart.
+        state.newAchievements.forEachIndexed { i, achievement ->
+            SealUnlock(achievement, animate = celebrate, delayMs = SEAL_DELAY_MS + i * SEAL_STAGGER_MS)
+            Spacer(Modifier.height(12.dp))
         }
         ListCard(rows = rows)
         Spacer(Modifier.height(16.dp))
@@ -700,6 +696,10 @@ private fun WinPanel(state: UiState, game: GameState, onNewGame: () -> Unit, onH
         }
     }
 }
+
+/** The hanamaru takes about two seconds; new achievement seals land just as it settles, then one after another. */
+private const val SEAL_DELAY_MS = 1700
+private const val SEAL_STAGGER_MS = 450
 
 private fun mistakesCount(n: Int) = tr(if (n == 1) "1 mistake" else "$n mistakes", if (n == 1) "kosa 1" else "makosa $n")
 
