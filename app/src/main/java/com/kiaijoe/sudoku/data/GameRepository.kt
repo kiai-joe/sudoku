@@ -240,6 +240,13 @@ class GameRepository(context: Context) {
     fun loadLevelStats(): Map<Difficulty, DifficultyStats> =
         Difficulty.entries.associateWith { loadStats(it.name) + loadStats(DAILY_PREFIX + it.name) }
 
+    /** Puzzles the player typed in, all levels together. */
+    fun loadCustomStats(): DifficultyStats = loadStats(CUSTOM)
+
+    fun recordCustomStart() = recordStart(CUSTOM)
+
+    fun recordCustomWin(seconds: Long, hints: Int, timed: Boolean = true): Boolean = recordWin(CUSTOM, seconds, hints, timed)
+
     /** What Progress shows for Killer: regular Killer games and daily Killers together. */
     fun loadKillerLevelStats(): DifficultyStats = loadStats(KILLER) + loadStats(DAILY_KILLER)
 
@@ -313,7 +320,7 @@ class GameRepository(context: Context) {
     fun resetStats() {
         prefs.edit().apply {
             (Difficulty.entries.map { it.name } + KILLER + VARIANTS.map { it.name } +
-                Difficulty.entries.map { DAILY_PREFIX + it.name } + DAILY_KILLER).forEach { name ->
+                Difficulty.entries.map { DAILY_PREFIX + it.name } + DAILY_KILLER + CUSTOM).forEach { name ->
                 for (field in STAT_FIELDS) remove(key(name, field))
             }
             // The daily calendar stays, but its past wins aren't counted back in.
@@ -327,6 +334,7 @@ class GameRepository(context: Context) {
         /** The one preferences file that holds everything; the backup rules in res/xml name it. */
         const val PREFS_NAME = "sudoku"
         private const val KILLER = "KILLER"
+        private const val CUSTOM = "CUSTOM"
         private const val DAILY_PREFIX = "DAILY_"
         private const val DAILY_KILLER = "DAILY_KILLER"
         private const val KEY_DAILY_STATS_COUNTED = "daily_stats_counted"

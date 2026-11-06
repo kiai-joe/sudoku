@@ -64,6 +64,8 @@ data class UiState(
     val stats: Map<Difficulty, DifficultyStats> = emptyMap(),
     val killerStats: DifficultyStats = DifficultyStats(),
     val variantStats: Map<Variant, DifficultyStats> = emptyMap(),
+    /** Puzzles the player typed in. */
+    val customStats: DifficultyStats = DifficultyStats(),
     /** The last two finished games, newest first, to replay from Progress. */
     val recentGames: List<GameState> = emptyList(),
     val achievements: Map<Achievement, Long> = emptyMap(),
@@ -161,6 +163,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             stats = repo.loadLevelStats(),
             killerStats = repo.loadKillerLevelStats(),
             variantStats = repo.loadVariantStats(),
+            customStats = repo.loadCustomStats(),
             recentGames = repo.loadRecentGames(),
             lessonsDone = repo.loadLessonsDone(),
             achievements = repo.loadAchievements(),
@@ -200,6 +203,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             won = repo.loadStats().mapValues { it.value.won },
             killerWon = repo.loadKillerStats().won,
             variantWon = repo.loadVariantStats().values.sumOf { it.won },
+            customWon = repo.loadCustomStats().won,
             dailySolved = daily.size,
             longestStreak = Daily.longestStreak(daily.keys),
             dailyDays = daily.keys,
@@ -253,9 +257,10 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         }
     }
 
-    /** Plays a puzzle the player typed in and [CustomPuzzle] checked. It takes the regular game's slot; it isn't in the stats. */
+    /** Plays a puzzle the player typed in and [CustomPuzzle] checked. It takes the regular game's slot and counts under Your puzzles. */
     fun playCustom(puzzle: Puzzle) {
         val game = GameState.from(puzzle).copy(custom = true)
+        repo.recordCustomStart()
         repo.saveGame(game)
         show(game, savedGame = game)
     }
@@ -346,6 +351,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 stats = repo.loadLevelStats(),
                 killerStats = repo.loadKillerLevelStats(),
                 variantStats = repo.loadVariantStats(),
+                customStats = repo.loadCustomStats(),
             )
         }
         updateTimer()
@@ -565,7 +571,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
             val timed = !s.settings.zen
             // A new best against the record Progress shows for this kind of game, daily puzzles included.
             val record = when {
-                next.custom -> null
+                next.custom -> repo.loadCustomStats()
                 next.isKiller -> repo.loadKillerLevelStats()
                 next.variant != Variant.CLASSIC -> repo.loadVariantStats()[next.variant]
                 else -> repo.loadLevelStats()[next.difficulty]
@@ -578,7 +584,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                     repo.recordDailyWin(day, next.elapsedSeconds, killer = next.isKiller, hints = next.hintsUsed, timed = timed)
                     refreshWidget()
                 }
-                next.custom -> Unit
+                next.custom -> repo.recordCustomWin(next.elapsedSeconds, next.hintsUsed, timed)
                 next.isKiller -> repo.recordKillerWin(next.elapsedSeconds, next.hintsUsed, timed)
                 next.variant != Variant.CLASSIC -> repo.recordVariantWin(next.variant, next.elapsedSeconds, next.hintsUsed, timed)
                 else -> repo.recordWin(next.difficulty, next.elapsedSeconds, next.hintsUsed, timed)
@@ -597,6 +603,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 stats = if (next.status == GameStatus.WON) repo.loadLevelStats() else it.stats,
                 killerStats = if (next.status == GameStatus.WON) repo.loadKillerLevelStats() else it.killerStats,
                 variantStats = if (next.status == GameStatus.WON) repo.loadVariantStats() else it.variantStats,
+                customStats = if (next.status == GameStatus.WON) repo.loadCustomStats() else it.customStats,
                 newAchievements = newAchievements,
                 recentGames = if (finished) repo.loadRecentGames() else it.recentGames,
                 achievements = if (newAchievements.isEmpty()) it.achievements else repo.loadAchievements(),
@@ -641,7 +648,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
 
     fun resetStats() {
         repo.resetStats()
-        _ui.update { it.copy(stats = repo.loadLevelStats(), killerStats = repo.loadKillerLevelStats(), variantStats = repo.loadVariantStats()) }
+        _ui.update { it.copy(stats = repo.loadLevelStats(), killerStats = repo.loadKillerLevelStats(), variantStats = repo.loadVariantStats(), customStats = repo.loadCustomStats()) }
     }
 
     // --- Timer ----------------------------------------------------------
