@@ -151,14 +151,15 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
 
     /** Everything the screens show, as saved. */
     private fun loadState(): UiState = repo.loadGame().let { saved ->
+        repo.countPastDailies()
         UiState(
             game = saved,
             savedGame = saved,
             daily = loadDaily(killer = false),
             killerDaily = loadDaily(killer = true),
             settings = repo.loadSettings(),
-            stats = repo.loadStats(),
-            killerStats = repo.loadKillerStats(),
+            stats = repo.loadLevelStats(),
+            killerStats = repo.loadKillerLevelStats(),
             variantStats = repo.loadVariantStats(),
             recentGames = repo.loadRecentGames(),
             lessonsDone = repo.loadLessonsDone(),
@@ -295,6 +296,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
         startLoading()
         viewModelScope.launch {
             val game = withContext(Dispatchers.Default) { Daily.gameFor(daily.today, killer) }
+            repo.recordDailyStart(daily.today, killer)
             repo.saveDailyGame(game, killer)
             show(game, savedGame = _ui.value.savedGame)
             refreshDaily()
@@ -341,8 +343,9 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 lastWinWasBest = false,
                 newAchievements = emptyList(),
                 spotlight = null,
-                stats = repo.loadStats(),
-                killerStats = repo.loadKillerStats(),
+                stats = repo.loadLevelStats(),
+                killerStats = repo.loadKillerLevelStats(),
+                variantStats = repo.loadVariantStats(),
             )
         }
         updateTimer()
@@ -558,20 +561,27 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
 
         var best = s.lastWinWasBest
         if (next.status == GameStatus.WON) {
+            // Zen mode wins count, untimed.
+            val timed = !s.settings.zen
+            // A new best against the record Progress shows for this kind of game, daily puzzles included.
+            val record = when {
+                next.custom -> null
+                next.isKiller -> repo.loadKillerLevelStats()
+                next.variant != Variant.CLASSIC -> repo.loadVariantStats()[next.variant]
+                else -> repo.loadLevelStats()[next.difficulty]
+            }
+            val previous = record?.bestSeconds
+            best = timed && record != null && (previous == null || next.elapsedSeconds < previous)
             val day = next.daily
-            if (day != null) {
-                repo.recordDailyWin(day, next.elapsedSeconds, killer = next.isKiller)
-                refreshWidget()
-                best = false
-            } else {
-                // Zen mode wins count, untimed.
-                val timed = !s.settings.zen
-                best = when {
-                    next.custom -> false
-                    next.isKiller -> repo.recordKillerWin(next.elapsedSeconds, next.hintsUsed, timed)
-                    next.variant != Variant.CLASSIC -> repo.recordVariantWin(next.variant, next.elapsedSeconds, next.hintsUsed, timed)
-                    else -> repo.recordWin(next.difficulty, next.elapsedSeconds, next.hintsUsed, timed)
+            when {
+                day != null -> {
+                    repo.recordDailyWin(day, next.elapsedSeconds, killer = next.isKiller, hints = next.hintsUsed, timed = timed)
+                    refreshWidget()
                 }
+                next.custom -> Unit
+                next.isKiller -> repo.recordKillerWin(next.elapsedSeconds, next.hintsUsed, timed)
+                next.variant != Variant.CLASSIC -> repo.recordVariantWin(next.variant, next.elapsedSeconds, next.hintsUsed, timed)
+                else -> repo.recordWin(next.difficulty, next.elapsedSeconds, next.hintsUsed, timed)
             }
             undoStack.clear()
         }
@@ -584,8 +594,8 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
                 game = next,
                 canUndo = undoStack.isNotEmpty(),
                 lastWinWasBest = best,
-                stats = if (next.status == GameStatus.WON) repo.loadStats() else it.stats,
-                killerStats = if (next.status == GameStatus.WON) repo.loadKillerStats() else it.killerStats,
+                stats = if (next.status == GameStatus.WON) repo.loadLevelStats() else it.stats,
+                killerStats = if (next.status == GameStatus.WON) repo.loadKillerLevelStats() else it.killerStats,
                 variantStats = if (next.status == GameStatus.WON) repo.loadVariantStats() else it.variantStats,
                 newAchievements = newAchievements,
                 recentGames = if (finished) repo.loadRecentGames() else it.recentGames,
@@ -631,7 +641,7 @@ class SudokuViewModel(application: Application) : AndroidViewModel(application),
 
     fun resetStats() {
         repo.resetStats()
-        _ui.update { it.copy(stats = repo.loadStats(), killerStats = repo.loadKillerStats(), variantStats = repo.loadVariantStats()) }
+        _ui.update { it.copy(stats = repo.loadLevelStats(), killerStats = repo.loadKillerLevelStats(), variantStats = repo.loadVariantStats()) }
     }
 
     // --- Timer ----------------------------------------------------------
