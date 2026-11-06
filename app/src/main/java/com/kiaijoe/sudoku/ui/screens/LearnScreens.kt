@@ -351,7 +351,7 @@ fun LessonScreen(
                             "${lesson.technique.label.lowercase()} somewhere along the way.",
                         "Fumbo jipya la ${if (lesson.killer) "Killer " else ""}${lesson.level.label} linalohitaji " +
                             "${lesson.technique.label.lowercase()} mahali fulani njiani.",
-                    ),
+                    )
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = c.inkMuted,
