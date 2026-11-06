@@ -65,7 +65,7 @@ class SumiWidgetTest {
         val model = dailyWidgetModel(thursday, mapOf(thursday - 1 to 700L), inProgress = true, locale = Locale.UK, killer = true)
         val frame = show(model)
         assertEquals("DAILY KILLER · THURSDAY 5 NOVEMBER", frame.text(R.id.widget_overline))
-        assertEquals("Killer · Medium", frame.text(R.id.widget_title))
+        assertEquals("Medium", frame.text(R.id.widget_title))
         assertEquals("1", frame.text(R.id.widget_streak))
         assertEquals("Continue", frame.text(R.id.widget_action_text))
         assertTrue(model.description.startsWith("Daily Killer, Thursday"))
