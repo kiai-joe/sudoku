@@ -174,7 +174,7 @@ The **Release APK** workflow publishes a GitHub release with `Sumi.apk` attached
 
 Each release's notes list what changed since the release before it: the titles of the pull requests merged in between. **Rewrite release notes** (Actions › Rewrite release notes › Run workflow) rewrites every older release's notes the same way.
 
-APKs are signed with the debug key in `app/signing/debug.keystore`, so every build can update the last one. This key is not secret; publishing on Google Play needs a separate private key.
+Released APKs are signed with Sumi's private release key, which the workflow reads from four repository secrets: `SIGNING_KEYSTORE_BASE64` (the keystore file, base64), `SIGNING_STORE_PASSWORD`, `SIGNING_KEY_ALIAS` and `SIGNING_KEY_PASSWORD`. The release fails if the secrets are set but the APK comes out signed with anything else. Builds without the secrets (pull requests, your own machine) use the debug key in `app/signing/debug.keystore`, which is not secret. A phone can't update between the two keys, so test builds and releases don't install over each other.
 
 ### Project layout
 

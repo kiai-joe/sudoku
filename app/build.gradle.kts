@@ -20,19 +20,35 @@ android {
         versionName = System.getenv("VERSION_NAME") ?: "0.1.0"
     }
 
+    // The release workflow signs with Sumi's private key, which it reads from
+    // the repository's secrets into these variables. Builds without them (pull
+    // requests, a laptop) use the debug key below instead.
+    val privateKey = System.getenv("SIGNING_STORE_FILE")?.takeIf { it.isNotBlank() }
+
     signingConfigs {
-        // A debug key checked into the repo, so APKs built on any machine or
-        // CI runner share one signature and can update each other. It is not
-        // a secret; a Play Store release would need its own private key.
+        // A debug key checked into the repo, so test builds on any machine
+        // share one signature. It is not a secret.
         getByName("debug") {
             storeFile = file("signing/debug.keystore")
             storePassword = "android"
             keyAlias = "androiddebugkey"
             keyPassword = "android"
         }
+        if (privateKey != null) {
+            create("sumi") {
+                storeFile = file(privateKey)
+                storePassword = System.getenv("SIGNING_STORE_PASSWORD")
+                keyAlias = System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword = System.getenv("SIGNING_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
+        // The APK people install. Signed with Sumi's key when the release workflow provides it.
+        debug {
+            if (privateKey != null) signingConfig = signingConfigs.getByName("sumi")
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true

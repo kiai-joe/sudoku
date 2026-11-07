@@ -53,8 +53,36 @@ jobs:
       - name: Unit tests
         run: ./gradlew testDebugUnitTest --stacktrace
 
+      - name: Unpack the signing key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+        run: |
+          # Without the secret (a fork, say) the APK keeps the debug key.
+          if [[ -n "$KEYSTORE_BASE64" ]]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/sumi.jks"
+            echo "SIGNING_STORE_FILE=$RUNNER_TEMP/sumi.jks" >> "$GITHUB_ENV"
+            echo "SIGNED=true" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No SIGNING_KEYSTORE_BASE64 secret; signing with the debug key"
+            echo "SIGNED=false" >> "$GITHUB_ENV"
+          fi
+
       - name: Build APK
+        env:
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
         run: ./gradlew assembleDebug --stacktrace
+
+      - name: Check the signature
+        run: |
+          apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
+          "$apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | tee certs.txt
+          if [[ "$SIGNED" == "true" ]] && grep -q "CN=Android Debug" certs.txt; then
+            echo "::error::The signing key was provided but the APK is signed with the debug key"
+            exit 1
+          fi
+          rm -f "$RUNNER_TEMP/sumi.jks"
 
       - name: Publish release
         env:
@@ -65,9 +93,22 @@ jobs:
           previous=$(gh release list --limit 1 --exclude-drafts --json tagName --jq '.[0].tagName // ""')
           previous_sha=""
           if [[ -n "$previous" ]]; then previous_sha=$(git rev-list -n 1 "$previous" 2>/dev/null || true); fi
-          .github/scripts/release-notes.sh \
-            "Version $VERSION_NAME (code $VERSION_CODE), built from ${GITHUB_SHA::7}." \
-            "$GITHUB_SHA" "$previous_sha" > notes.md
+          version_line="Version $VERSION_NAME (code $VERSION_CODE), built from ${GITHUB_SHA::7}."
+          if [[ "$SIGNED" == "true" ]]; then version_line="$version_line Signed with Sumi's release key."; fi
+          .github/scripts/release-notes.sh "$version_line" "$GITHUB_SHA" "$previous_sha" > notes.md
+          # The first build signed with the release key can't install over a debug-signed one.
+          if [[ "$SIGNED" == "true" && -n "$previous" ]] && \
+              ! gh release view "$previous" --json body --jq '.body' | head -n 1 | grep -q "release key"; then
+            cat >> notes.md <<'EOF'
+
+          **This build is signed with Sumi's own release key, so it can't install over an earlier build.** To keep your progress:
+          1. In the Sumi you have now, open **Settings › Save a backup file** and save it somewhere you can find.
+          2. Uninstall Sumi, then install this build.
+          3. Open **Settings › Restore from a backup** and pick the file.
+
+          Builds after this one update normally again.
+          EOF
+          fi
           gh release create "$TAG" Sumi.apk \
             --target "$GITHUB_SHA" \
             --title "$TITLE" \
