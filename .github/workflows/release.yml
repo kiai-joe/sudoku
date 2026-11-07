@@ -78,7 +78,9 @@ jobs:
         run: |
           apksigner=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)
           "$apksigner" verify --print-certs app/build/outputs/apk/debug/app-debug.apk | tee certs.txt
-          if [[ "$SIGNED" == "true" ]] && grep -q "CN=Android Debug" certs.txt; then
+          # The SHA-256 of the debug key in app/signing/debug.keystore ("CN=Sumi Debug").
+          debug_cert=c3a74cbf72a01d2107428728644b4d70e38c5b5ca2aab670ddbe0b0951222797
+          if [[ "$SIGNED" == "true" ]] && grep -qi "$debug_cert" certs.txt; then
             echo "::error::The signing key was provided but the APK is signed with the debug key"
             exit 1
           fi
